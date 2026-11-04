@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Belvia</title>
+<style>
+:root{--bg:#F8F5EF;--sf:#EFEAE0;--wh:#fff;--ink:#1D1A2E;--mu:#5C5873;--ln:#E4DFD3;--ac:#5A3FD6;--on:#fff;--cr:#C23B27;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#14112A;--sf:#221E3D;--wh:#1A1733;--ink:#F3F0FA;--mu:#B3AECB;--ln:#332F52;--ac:#9B87FF;--on:#14112A;--cr:#FF8C75}}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
+#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.wrap{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px}.pad{padding:44px 22px 22px}.center{align-items:center;justify-content:center;text-align:center}
+.logo{font-size:38px;font-weight:800;color:var(--ac);letter-spacing:-1px}.mut{color:var(--mu);margin:0}.note{font-size:13px;color:var(--mu);margin:0}.err{color:var(--cr);margin:0;min-height:1.2em;font-size:14px}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mu)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--wh);border:1.5px solid var(--ln);border-radius:14px;padding:0 14px;min-height:50px}textarea{padding:12px 14px;resize:none}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ac);outline-offset:1px}
+.row2{display:flex;gap:10px}.chk{flex-direction:row;align-items:center;gap:10px;font-size:14px}.chk input{min-height:0;width:22px;height:22px}
+button{font:inherit;cursor:pointer}
+.btn{min-height:50px;border:0;border-radius:26px;background:var(--ac);color:var(--on);font-weight:700;padding:0 22px}.btn.o{background:none;border:1.5px solid var(--ac);color:var(--ac)}.btn.d{background:none;color:var(--cr);border:1.5px solid var(--cr)}
+.lnk{border:0;background:none;color:var(--ac);font-weight:600;min-height:44px}
+.ib{min-width:44px;min-height:44px;border:0;background:none;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;border-radius:22px;font-size:20px}
+.spin{width:52px;height:52px;border-radius:50%;border:5px solid var(--ln);border-top-color:var(--ac);animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.hd{display:flex;align-items:center;gap:8px;padding:12px 16px 6px}.hd h1{margin:0;font-size:26px;color:var(--ac);flex:1}
+.body{flex:1;overflow:auto;padding-bottom:8px}
+nav{display:flex;border-top:1px solid var(--ln);background:var(--bg)}nav button{flex:1;min-height:56px;border:0;background:none;color:var(--mu);font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}nav button.on{color:var(--ac);font-weight:700}
+.av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-weight:700;flex:none}
+.strip{display:flex;gap:10px;padding:6px 14px 12px;overflow-x:auto}.it{border:0;background:none;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:4px;min-width:68px;font-size:12px}
+.ring{padding:3px;border-radius:50%;border:2px dashed var(--ln);display:inline-flex}.ring.has{border:3px solid transparent;background:linear-gradient(var(--bg),var(--bg)) padding-box,conic-gradient(#f43f5e,#f59e0b,#84cc16,#22d3ee,#6366f1,#d946ef,#f43f5e) border-box}
+.srch{margin:0 16px 8px;width:calc(100% - 32px);border-radius:26px;background:var(--sf);border-color:transparent}
+.chips{display:flex;gap:8px;padding:0 16px 8px}.chip{border:0;border-radius:18px;background:var(--sf);color:var(--ink);padding:8px 14px;font-size:13px;font-weight:600;min-height:36px}.chip.on{background:var(--ac);color:var(--on)}
+.row{display:flex;align-items:center;gap:12px;padding:10px 16px;min-height:64px;border:0;background:none;width:100%;text-align:left;color:var(--ink);border-bottom:1px solid var(--ln)}.row .t{flex:1;min-width:0}.row b{display:block}.row small{color:var(--mu);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{margin:40px 24px;text-align:center;color:var(--mu);display:flex;flex-direction:column;gap:12px;align-items:center}.empty b{color:var(--ink);font-size:18px}
+.fab{position:absolute;right:18px;bottom:76px;width:56px;height:56px;border-radius:28px;border:0;background:var(--ac);color:var(--on);font-size:30px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.msgs{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.b{max-width:80%;padding:9px 12px;border-radius:16px;background:var(--sf);align-self:flex-start;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left;border:0;color:var(--ink);font:inherit;border-bottom-left-radius:4px}
+.b.me{background:var(--ac);color:var(--on);align-self:flex-end;border-bottom-left-radius:16px;border-bottom-right-radius:4px}
+.q{font-size:12px;opacity:.85;border-left:3px solid currentColor;padding-left:8px;margin-bottom:4px}.mt{font-size:11px;opacity:.85;text-align:right;margin-top:2px}.re{align-self:flex-end;font-size:16px;margin-top:-4px}
+.act{align-self:flex-end;display:flex;flex-wrap:wrap;gap:4px;background:var(--sf);border-radius:16px;padding:4px}.act button{min-height:40px;min-width:40px;border:0;background:none;color:var(--ink);font-size:14px;border-radius:12px}
+.comp{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--ln);align-items:center}.comp input{flex:1;min-width:0;border-radius:26px}
+.rp{padding:6px 14px;background:var(--sf);font-size:13px;color:var(--mu);display:flex;justify-content:space-between;align-items:center}.rp:empty{display:none}
+.sec{padding:14px 16px 4px;font-size:13px;color:var(--mu);font-weight:700}.cd{margin:6px 16px;padding:14px;background:var(--sf);border-radius:18px;display:flex;flex-direction:column;gap:10px}
+.ov{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:5}
+.sv{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;font-size:26px;font-weight:700;color:#fff;border:0;width:100%}
+.sw{display:flex;gap:8px}.sw button{width:40px;height:40px;border-radius:50%;border:3px solid transparent}.sw button.on{border-color:var(--ink)}
+.toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// Set this to the address of your Belvia API (see backend/README.md). Never put database details here.
+const API = "https://YOUR-API-URL";
+const COL = ["#5A3FD6", "#C23B27", "#0F766E", "#B45309", "#1D4ED8"];
+const app = document.getElementById("app");
+const $ = (id) => document.getElementById(id);
+let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "";
+try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
+let V = { tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ini = (n) => ((n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("") || "?").toUpperCase();
+const pal = [["#E6E3FF", "#3A2FA0"], ["#FFE1E7", "#8A1F36"], ["#DDF3E4", "#14532D"], ["#DCEBFF", "#1E4F8F"], ["#FFEFD2", "#7A4A05"]];
+const av = (n, s) => { const p = pal[(n || "").length % 5]; return '<span class="av" style="width:' + s + 'px;height:' + s + 'px;background:' + p[0] + ';color:' + p[1] + ';font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>"; };
+const tm = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() == n.toDateString() ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString([], { day: "2-digit", month: "2-digit" }); };
+const toast = (m) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; app.appendChild(t); setTimeout(() => t.remove(), 2600); };
+const ico = (p) => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + p + '"/></svg>';
+const IC = { chats: "M4 5h16v11H9l-5 4z", status: "M12 3a9 9 0 100 18 9 9 0 000-18zM12 9a3 3 0 100 6 3 3 0 000-6z", calls: "M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z", singles: "M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z", me: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" };
+
+async function api(p, m, b) {
+  if (API.indexOf("YOUR-API-URL") > -1) throw new Error("The API address is not set yet. Edit API in index.html.");
+  let r;
+  try {
+    r = await fetch(API + "/api" + p, { method: m || "GET", headers: Object.assign({ "Content-Type": "application/json" }, T ? { Authorization: "Bearer " + T } : {}), body: b ? JSON.stringify(b) : undefined });
+  } catch (e) { throw new Error("Cannot reach the server. Check your internet."); }
+  let j = {};
+  try { j = await r.json(); } catch (e) {}
+  if (r.status == 401 && T) { logout(); throw new Error("Please log in again."); }
+  if (!r.ok) throw new Error(j.error || "Something went wrong.");
+  return j;
+}
+function logout() { T = ""; U = null; CT = []; CH = []; MS = []; ST = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false }); render(); }
+const loadCT = async () => { CT = (await api("/contacts")).contacts; };
+const loadCH = async () => { CH = (await api("/chats")).chats; };
+const loadST = async () => { ST = (await api("/status")).status; };
+const loadAll = () => Promise.all([loadCT(), loadCH(), loadST()]);
+async function loadMsgs(sc) {
+  const id = V.cid; const j = await api("/messages/" + id);
+  if (V.scr != "chat" || V.cid != id) return;
+  const k = JSON.stringify(j.messages);
+  if (k !== msKey) { const last = MS.length ? MS[MS.length - 1].id : 0; MS = j.messages; msKey = k; const nl = MS.length ? MS[MS.length - 1].id : 0; upd(sc || nl != last); }
+}
+function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") await loadMsgs(false); else if (V.tab == "chats" && !V.ov) { await loadCH(); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} }, 4000); }
+
+function welcome() {
+  const s = V.mode == "signup";
+  return '<div class="wrap pad"><div class="logo">Belvia</div><p class="mut">' + (s ? "Private messaging. Create your account to start." : "Welcome back. Log in to continue.") + "</p>" +
+    (s ? '<label>Your name<input id="nm" placeholder="e.g. Juma Otieno" autocomplete="name"></label>' : "") +
+    '<div class="row2"><label style="width:96px">Code<input id="cc" value="+254" inputmode="tel"></label><label style="flex:1">Phone number<input id="ph" inputmode="tel" placeholder="712 345 678" autocomplete="tel-national"></label></div>' +
+    '<label>Password<input id="pw" type="password" placeholder="At least 8 characters" autocomplete="' + (s ? "new-password" : "current-password") + '"></label>' +
+    (s ? '<p class="note">Phone verification by SMS code is added in the next update. Until then, keep your password private.</p><label class="chk"><input type="checkbox" id="ag"> I agree to the Terms of Service and Privacy Policy</label>' : "") +
+    '<button class="btn" data-a="auth">' + (s ? "Create account" : "Log in") + '</button><p id="err" class="err"></p><button class="lnk" data-a="mode">' + (s ? "I already have an account" : "Create a new account") + "</button></div>";
+}
+function setup() { return '<div class="wrap center"><div class="spin"></div><h2 style="margin:0">Setting up your account</h2><p id="st" class="mut">Creating your profile…</p></div>'; }
+async function auth() {
+  const s = V.mode == "signup", er = $("err");
+  const nm = s ? $("nm").value.trim() : "", ph = ($("cc").value + $("ph").value).replace(/\D/g, ""), pw = $("pw").value;
+  if (s && !nm) { er.textContent = "Please enter your name."; return; }
+  if (ph.length < 9 || ph.length > 15) { er.textContent = "Enter a valid phone number."; return; }
+  if (pw.length < 8) { er.textContent = "Password must be at least 8 characters."; return; }
+  if (s && !$("ag").checked) { er.textContent = "Please accept the Terms to continue."; return; }
+  er.textContent = "";
+  try {
+    const j = await api(s ? "/signup" : "/login", "POST", { name: nm, phone: ph, password: pw });
+    T = j.token; U = j.user; try { localStorage.setItem("bv.t", T); } catch (e) {}
+    if (s) {
+      V.scr = "setup"; render();
+      const m = ["Creating your profile…", "Preparing secure storage…", "Almost ready…"]; let i = 0;
+      const t = setInterval(() => { i = Math.min(i + 1, 2); const e = $("st"); if (e) e.textContent = m[i]; }, 900);
+      await Promise.all([loadAll(), new Promise((r) => setTimeout(r, 2700))]); clearInterval(t);
+    } else await loadAll();
+    V.scr = null; V.tab = "chats"; render(); start();
+  } catch (e) { const x = $("err"); if (x) x.textContent = e.message; else { V.scr = null; render(); toast(e.message); } }
+}
+
+function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
+function listHtml() {
+  let L = CH.slice(); const q = V.q.trim().toLowerCase();
+  if (q) L = L.filter((x) => x.display.toLowerCase().indexOf(q) > -1);
+  if (V.f != "all") L = [];
+  if (!L.length) {
+    if (V.f == "unread") return '<div class="empty"><b>Nothing unread</b>Read receipts arrive in the next update.</div>';
+    if (V.f == "groups") return '<div class="empty"><b>Groups are coming soon</b>Group chats arrive in a later update.</div>';
+    if (q) return '<div class="empty"><b>No matches</b>Try another name.</div>';
+    return '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
+  }
+  return L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 48) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.from_id == U.id ? "You: " : "") + esc(x.body) + "</small></span><small>" + tm(x.created_at) + "</small></button>").join("");
+}
+function strip() {
+  const mine = ST.some((s) => s.user_id == U.id);
+  return '<div class="strip"><button class="it" data-a="tab" data-t="status"><span class="ring ' + (mine ? "has" : "") + '">' + av(mine ? U.name : "+", 54) + "</span>My status</button>" +
+    CT.map((c) => '<button class="it" data-a="open" data-id="' + c.id + '"><span class="ring ' + (ST.some((s) => s.user_id == c.id) ? "has" : "") + '">' + av(c.name, 54) + "</span>" + esc(c.name.split(" ")[0]) + "</button>").join("") + "</div>";
+}
+const soon = (t, x) => '<div class="empty"><b>' + t + "</b>" + x + "</div>";
+function statusTab() {
+  const mine = ST.filter((s) => s.user_id == U.id), oth = ST.filter((s) => s.user_id != U.id);
+  const r = (x, own) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="vs" data-id="' + x.id + '"><span class="av" style="width:44px;height:44px;background:' + x.color + ';color:#fff;font-size:13px">Aa</span><span class="t"><b>' + esc(own ? x.body.slice(0, 40) : x.name) + "</b><small>" + (own ? "" : esc(x.body.slice(0, 40)) + " · ") + tm(x.created_at) + "</small></span></button>" + (own ? '<button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="ds" data-id="' + x.id + '">Delete</button>' : "") + "</div>";
+  return '<div class="cd"><b>My status</b><span class="mut">Share a text update. It disappears after 24 hours.</span><button class="btn" data-a="sc">Add status</button></div>' + mine.map((x) => r(x, 1)).join("") +
+    '<div class="sec">Updates from contacts</div>' + (oth.length ? oth.map((x) => r(x, 0)).join("") : '<p class="mut" style="padding:0 16px">No updates yet. People see your status after you add them as a contact; you see theirs after they add you.</p>') +
+    '<div class="sec">Status privacy</div><div class="cd"><span class="mut">Ghost view, “My contacts except…” and “Only share with…” arrive in the next update.</span></div>';
+}
+function meTab() {
+  return '<div style="text-align:center;padding:12px">' + av(U.name, 96) + '<h2 style="margin:8px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save profile</button></div>' +
+    '<div class="sec">Account</div><div class="cd"><div>Linked devices: <b>1 of 4</b> (this device)</div><div>Trust score: <b>100%</b></div><button class="btn o" data-a="legal">Legal</button></div><div class="cd"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + "</button></div>";
+}
+function main() {
+  const t = V.tab; let b = "", f = "";
+  if (t == "chats") { b = strip() + '<input id="q" class="srch" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '"><div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + listHtml() + "</div>"; f = '<button class="fab" data-a="cov" aria-label="New chat">+</button>'; }
+  else if (t == "status") b = statusTab();
+  else if (t == "calls") b = soon("Calls are coming soon", "Voice and video calls arrive in a later update.");
+  else if (t == "singles") b = soon("Singles are coming soon", "18+ only. Profiles are shown by town, never exact distance. A chat opens only when both people like each other.");
+  else b = meTab();
+  return '<div class="hd"><h1>' + ({ chats: "Belvia", status: "Status", calls: "Calls", singles: "Singles", me: "Me" })[t] + '</h1></div><div class="body">' + b + "</div>" + f + nav();
+}
+function msgsHtml() {
+  if (!MS.length) return '<div class="empty"><b>No messages yet</b>Say hello.</div>';
+  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="sel" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + tm(x.created_at) + (me ? " ✓" : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '<button data-a="copy" data-m="' + x.id + '">Copy</button></div>' : ""); }).join("");
+}
+const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
+function peer() { return CT.find((c) => c.id == V.cid) || CH.find((c) => c.peer == V.cid) && { id: V.cid, name: CH.find((c) => c.peer == V.cid).display, phone: CH.find((c) => c.peer == V.cid).phone }; }
+function chatView() {
+  const c = peer() || { name: "Chat", phone: "" };
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.name, 40) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small class="mut" style="display:block">' + esc(c.phone) + '</small></div><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delchat" aria-label="Delete chat">Delete</button></div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
+}
+function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
+async function send() {
+  const i = $("msg"), t = i.value.trim(); if (!t) return;
+  const rp = V.reply; i.value = ""; V.reply = null; V.sel = null; upd(false);
+  try { await api("/messages", "POST", { to: V.cid, body: t, reply: rp }); await loadMsgs(true); loadCH().catch(() => {}); } catch (e) { toast(e.message); i.value = t; }
+  i.focus();
+}
+function overlays() {
+  const o = V.ov;
+  if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><div class="cd"><label>Phone number of a Belvia user<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Only people who already have a Belvia account can be added.</p>') + "</div></div>";
+  if (o == "sc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New status</h1></div><div class="body"><div class="cd"><label>Your update<textarea id="stx" rows="4" maxlength="140" placeholder="What’s on your mind?">' + esc(V.draft) + '</textarea></label><div class="sw">' + COL.map((c) => '<button data-a="col" data-c="' + c + '" class="' + (V.col == c ? "on" : "") + '" style="background:' + c + '" aria-label="Colour ' + c + '"></button>').join("") + '</div><button class="btn" data-a="post">Post status</button></div></div></div>';
+  if (o == "legal") { const T2 = [["Terms of Service", "Draft text. Use Belvia respectfully and lawfully."], ["Privacy Policy", "Draft text. Explains what Belvia collects and why."], ["Community Rules", "Draft text. No spam, scams, threats or abuse."], ["About Us", "Belvia is a private messaging app."]]; return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Legal</h1></div><div class="body"><div class="cd"><span class="mut">Last updated: November 2026. Draft text, to be reviewed before launch.</span>' + T2.map((x) => "<div><b>" + x[0] + '</b><br><span class="mut">' + x[1] + "</span></div>").join("") + "</div></div></div>"; }
+  if (o == "view") { const x = ST.find((s) => s.id == V.vid); if (x) return '<button class="sv" style="background:' + x.color + '" data-a="cv">' + esc(x.body) + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400">' + (x.user_id == U.id ? "Your status" : esc(x.name)) + " · tap to close</small></button>"; }
+  return "";
+}
+function render() {
+  let h; if (!U && V.scr != "setup") h = welcome(); else if (V.scr == "setup") h = setup(); else if (V.scr == "chat") h = chatView(); else h = main();
+  app.innerHTML = h + (U ? overlays() : "");
+  if (U && V.scr == "chat") { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
+}
+app.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-a]"); if (!b) return;
+  const a = b.dataset.a, id = b.dataset.id, m = b.dataset.m;
+  try {
+    if (a == "mode") { V.mode = V.mode == "signup" ? "login" : "signup"; return render(); }
+    if (a == "auth") return auth();
+    if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } return; }
+    if (a == "flt") { V.f = b.dataset.t; return render(); }
+    if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
+    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; MS = []; msKey = ""; render(); return loadMsgs(true); }
+    if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); loadCH().then(() => { const l = $("lst"); if (l) l.innerHTML = listHtml(); }).catch(() => {}); return; }
+    if (a == "send") return send();
+    if (a == "sel") { V.sel = V.sel == m ? null : m; return upd(false); }
+    if (a == "norep") { V.reply = null; return upd(false); }
+    const x = MS.find((z) => z.id == m);
+    if (a == "reply" && x) { V.reply = x.body.slice(0, 80); V.sel = null; upd(false); const i = $("msg"); if (i) i.focus(); return; }
+    if (a == "react" && x) { V.sel = null; upd(false); await api("/messages/" + m + "/react", "POST", { emoji: x.reaction == b.dataset.e ? null : b.dataset.e }); return loadMsgs(false); }
+    if (a == "copy" && x) { V.sel = null; upd(false); if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(x.body).then(() => toast("Copied"), () => toast("Copy is not available")); } else toast("Copy is not available"); return; }
+    if (a == "delchat") { await api("/chats/" + V.cid, "DELETE"); await loadCH(); V.scr = null; render(); return toast("Chat deleted"); }
+    if (a == "addc") { const er = $("ce"), p = $("cp").value.trim(); if (p.replace(/\D/g, "").length < 9) { er.textContent = "Enter a valid phone number."; return; } try { await api("/contacts", "POST", { phone: p, alias: $("cn").value.trim() }); await loadCT(); render(); toast("Contact added"); } catch (err) { er.textContent = err.message; } return; }
+    if (a == "delc") { await api("/contacts/" + id, "DELETE"); await loadCT(); return render(); }
+    if (a == "sc") { V.ov = "sc"; V.draft = ""; return render(); }
+    if (a == "col") { V.draft = $("stx").value; V.col = b.dataset.c; return render(); }
+    if (a == "post") { const t = $("stx").value.trim(); if (!t) return toast("Write something first"); await api("/status", "POST", { body: t, color: V.col }); await loadST(); V.ov = null; render(); return toast("Status posted"); }
+    if (a == "vs") { V.ov = "view"; V.vid = id; return render(); }
+    if (a == "cv") { V.ov = null; return render(); }
+    if (a == "ds") { await api("/status/" + id, "DELETE"); await loadST(); return render(); }
+    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value }); U = j.user; render(); return toast("Profile saved"); }
+    if (a == "legal") { V.ov = "legal"; return render(); }
+    if (a == "logout") { if (!V.lo) { V.lo = true; return render(); } return logout(); }
+  } catch (err) { toast(err.message); }
+});
+app.addEventListener("input", (e) => { if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); } });
+app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); send(); } });
+(async function init() {
+  if (T) { try { U = await api("/me"); await loadAll(); start(); } catch (e) { if (!T) U = null; } }
+  render();
+})();
+</script>
+</body>
+</html>
