@@ -5,6 +5,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { Pool } = require("pg");
 
 const { DATABASE_URL, JWT_SECRET, FRONTEND_ORIGIN } = process.env;
@@ -21,6 +22,16 @@ app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false }));
 app.use(express.json({ limit: "100kb" }));
 app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
 const authLimit = rateLimit({ windowMs: 15 * 60000, max: 20 });
+
+// ---- Recovery code: XXXX-XXXX-XXXX-XXXX (only the hash is stored) ----
+const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const makeCode = () => {
+  const b = crypto.randomBytes(16);
+  let s = "";
+  for (let i = 0; i < 16; i++) s += ALPHA[b[i] % 32];
+  return s.match(/.{4}/g).join("-");
+};
+const hashCode = (c) => crypto.createHash("sha256").update(String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "")).digest("hex");
 
 const typing = new Map();
 const isTyping = (from, to) => Date.now() - (typing.get(from + ">" + to) || 0) < 6000;
@@ -51,7 +62,12 @@ const need = (req, res, next) => {
 const isId = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ""));
 const pub = (u) => ({ id: u.id, name: u.name, phone: u.phone, about: u.about, seen_privacy: u.seen_privacy });
 const sign = (u) => jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: "30d" });
-const phoneOf = (p) => "+" + String(p || "").replace(/\D/g, "");
+// Normalises a number so one real phone = one account (removes the extra 0 in 2540712...)
+const phoneOf = (p) => {
+  let d = String(p || "").replace(/\D/g, "");
+  if (d.startsWith("2540")) d = "254" + d.slice(4);
+  return "+" + d;
+};
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 
 app.get("/health", (req, res) => res.json({ service: "orivoclass-api", status: "ok" }));
@@ -63,14 +79,16 @@ app.post("/api/signup", authLimit, wrap(async (req, res) => {
   const password = String(req.body.password || "");
   if (!name) return bad(res, "Please enter your name.");
   if (phone.length < 10 || phone.length > 16) return bad(res, "Enter a valid phone number.");
+  if (phone.startsWith("+254") && !/^\+254[17]\d{8}$/.test(phone)) return bad(res, "Enter a valid Kenyan number.");
   if (password.length < 8) return bad(res, "Password must be at least 8 characters.");
   const hash = await bcrypt.hash(password, 10);
+  const code = makeCode();
   try {
     const r = await db.query(
-      "INSERT INTO users(phone,name,pass_hash) VALUES($1,$2,$3) RETURNING *",
-      [phone, name, hash]
+      "INSERT INTO users(phone,name,pass_hash,recovery_hash) VALUES($1,$2,$3,$4) RETURNING *",
+      [phone, name, hash, hashCode(code)]
     );
-    res.json({ token: sign(r.rows[0]), user: pub(r.rows[0]) });
+    res.json({ token: sign(r.rows[0]), user: pub(r.rows[0]), recovery_code: code });
   } catch (e) {
     if (e.code === "23505") return bad(res, "This number is already registered.", 409);
     throw e;
@@ -83,6 +101,18 @@ app.post("/api/login", authLimit, wrap(async (req, res) => {
   if (!u || !(await bcrypt.compare(String(req.body.password || ""), u.pass_hash)))
     return bad(res, "Wrong number or password.", 401);
   res.json({ token: sign(u), user: pub(u) });
+}));
+
+// Forgot password: number + recovery code + new password. A new code is issued after use.
+app.post("/api/recover", authLimit, wrap(async (req, res) => {
+  const password = String(req.body.password || "");
+  if (password.length < 8) return bad(res, "Password must be at least 8 characters.");
+  const u = (await db.query("SELECT * FROM users WHERE phone=$1", [phoneOf(req.body.phone)])).rows[0];
+  if (!u || !u.recovery_hash || u.recovery_hash !== hashCode(req.body.code))
+    return bad(res, "Wrong number or recovery code.", 401);
+  const code = makeCode();
+  await db.query("UPDATE users SET pass_hash=$2, recovery_hash=$3 WHERE id=$1", [u.id, await bcrypt.hash(password, 10), hashCode(code)]);
+  res.json({ token: sign(u), user: pub(u), recovery_code: code });
 }));
 
 app.get("/api/me", need, wrap(async (req, res) => {
@@ -292,6 +322,7 @@ CREATE INDEX IF NOT EXISTS msg_pair ON messages(from_id,to_id,id);
 CREATE TABLE IF NOT EXISTS statuses(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, color text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamptz;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS seen_privacy text NOT NULL DEFAULT 'everyone';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_hash text;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at timestamptz;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS view_once boolean NOT NULL DEFAULT false;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS opened_at timestamptz;
