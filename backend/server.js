@@ -54,7 +54,7 @@ const sign = (u) => jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: "30d" });
 const phoneOf = (p) => "+" + String(p || "").replace(/\D/g, "");
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 
-app.get("/health", (req, res) => res.json({ service: "belvia-api", status: "ok" }));
+app.get("/health", (req, res) => res.json({ service: "orivoclass-api", status: "ok" }));
 
 // ---- Auth ----
 app.post("/api/signup", authLimit, wrap(async (req, res) => {
@@ -111,7 +111,7 @@ app.get("/api/contacts", need, wrap(async (req, res) => {
 
 app.post("/api/contacts", need, wrap(async (req, res) => {
   const u = (await db.query("SELECT id FROM users WHERE phone=$1", [phoneOf(req.body.phone)])).rows[0];
-  if (!u) return bad(res, "This number is not on Belvia yet.", 404);
+  if (!u) return bad(res, "This number is not on Orivoclass yet.", 404);
   if (u.id === req.uid) return bad(res, "That is your own number.");
   const alias = String(req.body.alias || "").trim().slice(0, 60);
   await db.query(
@@ -285,7 +285,7 @@ app.delete("/api/status/:id", need, wrap(async (req, res) => {
 }));
 
 const schema = `
-CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), phone text UNIQUE NOT NULL, name text NOT NULL, about text NOT NULL DEFAULT 'Hey there! I am using Belvia.', pass_hash text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), phone text UNIQUE NOT NULL, name text NOT NULL, about text NOT NULL DEFAULT 'Hey there! I am using Orivoclass.', pass_hash text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS contacts(owner uuid REFERENCES users(id) ON DELETE CASCADE, contact uuid REFERENCES users(id) ON DELETE CASCADE, alias text, PRIMARY KEY(owner,contact));
 CREATE TABLE IF NOT EXISTS messages(id bigserial PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, reply text, reaction text, del_from boolean NOT NULL DEFAULT false, del_to boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS msg_pair ON messages(from_id,to_id,id);
@@ -301,5 +301,5 @@ CREATE TABLE IF NOT EXISTS reports(id bigserial PRIMARY KEY, reporter uuid REFER
 CREATE TABLE IF NOT EXISTS chat_prefs(owner uuid REFERENCES users(id) ON DELETE CASCADE, peer uuid REFERENCES users(id) ON DELETE CASCADE, pinned boolean NOT NULL DEFAULT false, archived boolean NOT NULL DEFAULT false, PRIMARY KEY(owner,peer));`;
 
 db.query(schema)
-  .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Belvia API running")))
+  .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Orivoclass API running")))
   .catch((e) => { console.error("Database setup failed:", e.message); process.exit(1); });
