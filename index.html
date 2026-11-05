@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orivoclass</title>
 <style>
-:root{--bg:#F8F5EF;--sf:#EFEAE0;--wh:#fff;--ink:#1D1A2E;--mu:#5C5873;--ln:#E4DFD3;--ac:#5A3FD6;--on:#fff;--cr:#C23B27;--ok:#1F7A5A;--tk:#8FD3FF;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#14112A;--sf:#221E3D;--wh:#1A1733;--ink:#F3F0FA;--mu:#B3AECB;--ln:#332F52;--ac:#9B87FF;--on:#14112A;--cr:#FF8C75;--ok:#4ADE80;--tk:#0A4C8A}}
+:root{--bg:#121022;--sf:#1D1A35;--wh:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
 #app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .wrap{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px}.pad{padding:44px 22px 22px}.center{align-items:center;justify-content:center;text-align:center}
@@ -30,7 +29,7 @@ nav{display:flex;border-top:1px solid var(--ln);background:var(--bg)}nav button{
 .chips{display:flex;gap:8px;padding:0 16px 8px}.chip{border:0;border-radius:18px;background:var(--sf);color:var(--ink);padding:8px 14px;font-size:13px;font-weight:600;min-height:36px}.chip.on{background:var(--ac);color:var(--on)}
 .row{display:flex;align-items:center;gap:12px;padding:10px 16px;min-height:64px;border:0;background:none;width:100%;text-align:left;color:var(--ink);border-bottom:1px solid var(--ln)}.row .t{flex:1;min-width:0}.row b{display:block}.row small{color:var(--mu);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .empty{margin:40px 24px;text-align:center;color:var(--mu);display:flex;flex-direction:column;gap:12px;align-items:center}.empty b{color:var(--ink);font-size:18px}
-.fab{position:absolute;right:18px;bottom:76px;width:56px;height:56px;border-radius:28px;border:0;background:var(--ac);color:var(--on);font-size:30px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.fab{position:absolute;right:20px;bottom:24px;width:60px;height:60px;border-radius:30px;border:0;background:var(--ac);color:var(--on);font-size:30px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .msgs{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .b{max-width:80%;padding:9px 12px;border-radius:16px;background:var(--sf);align-self:flex-start;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left;border:0;color:var(--ink);font:inherit;border-bottom-left-radius:4px}
 .b.me{background:var(--ac);color:var(--on);align-self:flex-end;border-bottom-left-radius:16px;border-bottom-right-radius:4px}
@@ -44,6 +43,7 @@ nav{display:flex;border-top:1px solid var(--ln);background:var(--bg)}nav button{
 .sw{display:flex;gap:8px}.sw button{width:40px;height:40px;border-radius:50%;border:3px solid transparent}.sw button.on{border-color:var(--ink)}
 .toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;max-width:90%}
 .rd{color:var(--tk);font-weight:700}
+.tabs{display:flex;border-bottom:1px solid var(--ln)}.tabs button{flex:1;min-height:48px;border:0;border-bottom:3px solid transparent;background:none;color:var(--mu);font-size:14px;font-weight:500}.tabs button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--ac)}
 </style>
 </head>
 <body>
@@ -56,15 +56,20 @@ const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
 let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
-let V = { once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
+let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const ini = (n) => ((n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("") || "?").toUpperCase();
 const pal = [["#E6E3FF", "#3A2FA0"], ["#FFE1E7", "#8A1F36"], ["#DDF3E4", "#14532D"], ["#DCEBFF", "#1E4F8F"], ["#FFEFD2", "#7A4A05"]];
-const av = (n, s) => { const p = pal[(n || "").length % 5]; return '<span class="av" style="width:' + s + 'px;height:' + s + 'px;background:' + p[0] + ';color:' + p[1] + ';font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>"; };
+const av = (n, s, on) => {
+  const p = pal[(n || "").length % 5];
+  const a = '<span class="av" style="width:' + s + 'px;height:' + s + 'px;background:' + p[0] + ';color:' + p[1] + ';font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>";
+  return on ? '<span style="position:relative;display:inline-flex;flex:none">' + a + '<span style="position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;background:var(--ok);border:2px solid var(--bg)"></span></span>' : a;
+};
 const tm = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() == n.toDateString() ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString([], { day: "2-digit", month: "2-digit" }); };
 const toast = (m) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; app.appendChild(t); setTimeout(() => t.remove(), 2600); };
 const ico = (p) => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + p + '"/></svg>';
+const SRCH = "M20 20l-4-4M11 4a7 7 0 100 14 7 7 0 000-14z";
 const IC = { chats: "M4 5h16v11H9l-5 4z", status: "M12 3a9 9 0 100 18 9 9 0 000-18zM12 9a3 3 0 100 6 3 3 0 000-6z", calls: "M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z", singles: "M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z", me: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" };
 
 async function api(p, m, b) {
@@ -163,7 +168,7 @@ function listHtml() {
     if (q) return top + '<div class="empty"><b>No matches</b>Try another name.</div>';
     return top + '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
   }
-  return top + L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 48) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>").join("");
+  return top + L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 52, x.online) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>").join("");
 }
 function menuHtml() {
   if (!V.menu) return "";
@@ -183,18 +188,32 @@ function statusTab() {
     '<div class="sec">Updates from contacts</div>' + (oth.length ? oth.map((x) => r(x, 0)).join("") : '<p class="mut" style="padding:0 16px">No updates yet. People see your status after you add them as a contact; you see theirs after they add you.</p>') +
     '<div class="sec">Status privacy</div><div class="cd"><span class="mut">Ghost view, “My contacts except…” and “Only share with…” arrive in the next update.</span></div>';
 }
+const rowGo = (p, t, sb) => '<button class="row" data-a="pg" data-p="' + p + '"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span style="color:var(--mu);font-size:22px">›</span></button>';
+const rowSoon = (t, sb) => '<div class="row" style="opacity:.75;cursor:default"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span class="note" style="font-weight:700">Soon</span></div>';
 function meTab() {
-  return '<div style="text-align:center;padding:12px">' + av(U.name, 96) + '<h2 style="margin:8px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><button class="btn" data-a="savep">Save profile</button></div>' +
-    '<div class="sec">Account</div><div class="cd"><div>Linked devices: <b>1 of 4</b> (this device)</div><div>Trust score: <b>100%</b></div><button class="btn o" data-a="bls">Blocked contacts (' + BL.length + ')</button><button class="btn o" data-a="legal">Legal</button></div><div class="cd"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + "</button></div>";
+  return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 16px 8px">' + av(U.name, 84) + '<h2 style="margin:6px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div><div class="mut" style="text-align:center">' + esc(U.about) + '</div><button class="btn o" style="margin-top:8px" data-a="pg" data-p="edit">Edit profile</button></div>' +
+    '<div class="sec">ACCOUNT</div>' + rowGo("priv", "Privacy", "Last seen, blocked contacts") + rowGo("acct", "Account status", "Trust score 100%") + rowGo("dev", "Linked devices", "1 of 4 · this device") +
+    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + rowSoon("Profile photo", "Add a photo and choose who sees it") + rowSoon("Disappearing messages", "24 hours or 7 days") + rowSoon("Chat lock", "Fingerprint or PIN") + rowSoon("Backup", "Back up your chats") + rowSoon("Notifications", "Sounds and alerts") +
+    '<div class="sec">LEGAL AND HELP</div>' + rowGo("terms", "Terms of Service", "Last updated: November 2026") + rowGo("privacy", "Privacy Policy", "How we handle your data") + rowGo("rules", "Community Rules", "What is allowed on Orivoclass") + rowGo("about", "About Us", "Who we are") + rowGo("help", "Help and contact", "Questions and support") +
+    '<div class="cd" style="margin-top:16px"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + "</button></div>";
+}
+function topbar() {
+  const T4 = [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
+  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="My profile" style="padding:0">' + av(U.name, 40) + '</button><h1 style="text-align:center;color:var(--ink);font-size:20px">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
+    T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div>";
 }
 function main() {
   const t = V.tab; let b = "", f = "";
-  if (t == "chats") { b = strip() + '<input id="q" class="srch" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '"><div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + listHtml() + "</div>"; f = '<button class="fab" data-a="cov" aria-label="New chat">+</button>'; }
+  if (t == "chats") {
+    b = (V.sq ? '<input id="q" class="srch" style="margin-top:12px" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '">' : "") + strip() +
+      '<div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + listHtml() + "</div>";
+    f = '<button class="fab" data-a="cov" aria-label="New chat">+</button>';
+  }
   else if (t == "status") b = statusTab();
   else if (t == "calls") b = soon("Calls are coming soon", "Voice and video calls arrive in a later update.");
   else if (t == "singles") b = soon("Singles are coming soon", "18+ only. Profiles are shown by town, never exact distance. A chat opens only when both people like each other.");
   else b = meTab();
-  return '<div class="hd"><h1>' + ({ chats: "Orivoclass", status: "Status", calls: "Calls", singles: "Singles", me: "Me" })[t] + '</h1></div><div class="body">' + b + "</div>" + f + nav();
+  return topbar() + '<div class="body">' + b + "</div>" + f;
 }
 function bodyHtml(x, me) {
   if (!x.view_once) return (x.forwarded ? '<div class="q">Forwarded</div>' : "") + esc(x.body);
@@ -218,9 +237,67 @@ async function send() {
   try { await api("/messages", "POST", { to: V.cid, body: t, reply: rp, once }); await loadMsgs(true); loadCH().catch(() => {}); } catch (e) { toast(e.message); i.value = t; }
   i.focus();
 }
+const LEGAL = {
+  terms: ["Terms of Service", [
+    ["Using Orivoclass", "By creating an account you agree to these terms. You must be old enough to use the service in your country, and at least 18 to use Singles."],
+    ["Your account", "You are responsible for your password and for everything done with your account. Give us a real phone number and keep your details up to date."],
+    ["Acceptable use", "Do not use Orivoclass for spam, scams, harassment, threats, illegal content or anything that harms others. See the Community Rules for details."],
+    ["Content", "You own what you send. You allow us to store and deliver it so the service can work."],
+    ["Suspension", "We may warn, restrict or suspend accounts that break the rules, following the steps in the Community Rules. You can appeal."],
+    ["Changes and contact", "We may update these terms and will show the new date at the top. Questions: [YOUR SUPPORT EMAIL]."]]],
+  privacy: ["Privacy Policy", [
+    ["What we collect", "Your name, phone number, the messages you send and receive, contacts you add, status updates, online and last seen time, blocks and reports."],
+    ["Messages are not end-to-end encrypted yet", "Right now messages are stored on our servers so the service can deliver them. End-to-end encryption is planned. We will tell you when it is available."],
+    ["How long we keep things", "Status updates disappear after 24 hours. View once messages are erased after they are opened. Deleting a chat removes it from your side."],
+    ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
+    ["Your choices", "You can choose who sees your last seen, block people and report abuse. To delete your account, contact us."],
+    ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
+  rules: ["Community Rules", [
+    ["Be respectful", "No insults, harassment, threats or hate. Do not send nude or sexual images to people who did not ask for them."],
+    ["No spam or scams", "No mass messages, fake offers, scam links or pretending to be someone else."],
+    ["Keep Singles safe", "Singles is for adults only. Be honest, respectful and never share other people’s private details."],
+    ["Step 1: Warning", "A message tells you what went wrong. Nothing else changes."],
+    ["Step 2: Soft restriction (24 hours)", "You cannot send View Once messages, post in Singles or add people to groups. Normal chats keep working."],
+    ["Step 3: Resting period (3 or 7 days)", "For serious or repeated breaks, such as porn on status, scam links or many reports. You can appeal once."],
+    ["Step 4: Permanent ban", "Only for child abuse, threats, hacking and doxxing. Cases of child abuse are also reported to the authorities."],
+    ["Trust score", "Your trust score starts at 100%. It drops when your account is reported and confirmed to have broken the rules."]]],
+  about: ["About Us", [
+    ["Orivoclass", "A private messaging app built so conversations stay between the people in them."],
+    ["What we care about", "Privacy first, simple design and fair rules that give people a second chance."],
+    ["Version", "Web version 0.4. More features are on the way."],
+    ["Contact", "[YOUR SUPPORT EMAIL]"]]]
+};
+const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
+const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
+function pageOv() {
+  const p = V.pg; let t = "", b = "";
+  if (LEGAL[p]) {
+    t = LEGAL[p][0]; b = docHtml(LEGAL[p][1]);
+    if (p == "terms") b += '<div class="cd"><label class="chk"><input type="checkbox" id="lg"' + (agreed() ? " checked" : "") + '> I agree to the Terms of Service and Privacy Policy</label><button class="btn" data-a="accept">Accept</button></div>';
+  } else if (p == "edit") {
+    t = "Edit profile";
+    b = '<div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save</button></div>';
+  } else if (p == "priv") {
+    t = "Privacy";
+    b = '<div class="cd"><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><span class="note">“My contacts except…” comes in a later update.</span></div>' +
+      '<div class="cd"><b>Blocked contacts</b><span class="mut">People you block cannot see your status or last seen, and cannot reach you.</span><button class="btn o" data-a="bls">Blocked contacts (' + BL.length + ')</button></div>' +
+      '<div class="cd"><b>Coming soon</b><span class="mut">Who can see your profile photo and status, and read receipts control.</span></div>';
+  } else if (p == "acct") {
+    t = "Account status";
+    b = '<div class="cd" style="align-items:center;text-align:center"><span class="mut">Trust score</span><span style="font-size:44px;font-weight:700;color:var(--ok)">100%</span><span class="mut">Your account is in good standing. No restrictions.</span></div><div class="cd"><span class="mut">Warnings, restrictions and appeals will be applied once the admin tools are ready. Read the Community Rules to see how they will work.</span><button class="btn o" data-a="pg" data-p="rules">Community Rules</button></div>';
+  } else if (p == "dev") {
+    t = "Linked devices";
+    b = '<div class="cd"><b>1 of 4 devices</b><span class="mut">This browser is signed in to your account.</span></div><div class="cd"><b>Link a new device</b><span class="mut">Linking with a QR code and a 6-digit code is coming soon. You will be able to use up to 4 devices and log out of each one separately.</span></div>';
+  } else if (p == "help") {
+    t = "Help and contact";
+    b = '<div class="cd"><b>Contact us</b><span class="mut">[YOUR SUPPORT EMAIL]</span></div><div class="cd"><b>I forgot my password</b><span class="mut">Account recovery is coming soon.</span></div><div class="cd"><b>Report someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Report.</span></div><div class="cd"><b>Block someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Block.</span></div>';
+  }
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Back">←</button><h1>' + t + '</h1></div><div class="body">' + b + "</div></div>";
+}
 function overlays() {
   const o = V.ov;
   if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><div class="cd"><label>Phone number of a Orivoclass user<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Only people who already have a Orivoclass account can be added.</p>') + "</div></div>";
+  if (o == "pg") return pageOv();
   if (o == "rep") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Report</h1></div><div class="body"><div class="cd"><span class="mut">Tell us what happened. We attach the last few messages this person sent you. View once messages are never included.</span><label>Reason<select id="rr">' + ["Spam", "Harassment or insults", "Unsolicited nudes", "Scam or fake links", "Other"].map((r) => "<option>" + r + "</option>").join("") + '</select></label><label>Details (optional)<textarea id="rn" rows="3" maxlength="500"></textarea></label><button class="btn" data-a="sendrep">Send report</button></div></div></div>';
   if (o == "bls") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Blocked contacts</h1></div><div class="body">' + (BL.length ? BL.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" style="color:var(--ac);font-size:13px;padding:0 10px" data-a="unbl" data-id="' + c.id + '">Unblock</button></div>').join("") : '<p class="mut" style="padding:16px">You have not blocked anyone.</p>') + "</div></div>";
   if (o == "fwd") return '<div class="ov"><div class="hd"><button class="ib" data-a="cfw" aria-label="Close">←</button><h1>Forward to…</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<button class="row" data-a="dofwd" data-id="' + c.id + '">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + "</small></span></button>").join("") : '<p class="mut" style="padding:8px 16px">Add a contact first.</p>') + "</div></div>";
@@ -242,6 +319,7 @@ app.addEventListener("click", async (e) => {
     if (a == "mode") { V.mode = V.mode == "signup" ? "login" : "signup"; return render(); }
     if (a == "auth") return auth();
     if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } return; }
+    if (a == "sq") { if (V.tab != "chats") { V.tab = "chats"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
     if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = []; msKey = ""; PR = null; render(); loadPr().catch(() => {}); return loadMsgs(true); }
@@ -277,6 +355,8 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "rep") { V.menu = false; V.ov = "rep"; return render(); }
     if (a == "sendrep") { await api("/reports", "POST", { user_id: V.cid, reason: $("rr").value, note: $("rn").value }); V.ov = null; render(); return toast("Report sent. Thank you."); }
+    if (a == "pg") { V.pg = b.dataset.p; V.ov = "pg"; return render(); }
+    if (a == "accept") { if (!$("lg").checked) return toast("Please tick I agree"); try { localStorage.setItem("bv.agreed", "1"); } catch (e) {} V.ov = null; render(); return toast("Thank you. Terms accepted."); }
     if (a == "bls") { V.ov = "bls"; return render(); }
     if (a == "unbl") { await api("/blocks/" + id, "DELETE"); await loadBL(); return render(); }
     if (a == "delchat") { await api("/chats/" + V.cid, "DELETE"); await loadCH(); V.menu = false; V.scr = null; render(); return toast("Chat deleted"); }
@@ -288,12 +368,15 @@ app.addEventListener("click", async (e) => {
     if (a == "vs") { V.ov = "view"; V.vid = id; return render(); }
     if (a == "cv") { V.ov = null; return render(); }
     if (a == "ds") { await api("/status/" + id, "DELETE"); await loadST(); return render(); }
-    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value, seen_privacy: $("sp").value }); U = j.user; render(); return toast("Profile saved"); }
+    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value }); U = j.user; V.ov = null; render(); return toast("Profile saved"); }
     if (a == "legal") { V.ov = "legal"; return render(); }
     if (a == "logout") { if (!V.lo) { V.lo = true; return render(); } return logout(); }
   } catch (err) { toast(err.message); }
 });
 app.addEventListener("input", (e) => { if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); } else if (e.target.id == "msg" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); } });
+app.addEventListener("change", async (e) => {
+  if (e.target.id == "sp") { try { const j = await api("/me", "PUT", { name: U.name, about: U.about, seen_privacy: e.target.value }); U = j.user; toast("Saved"); } catch (err) { toast(err.message); } }
+});
 app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); send(); } });
 (async function init() {
   if (T) { try { U = await api("/me"); await loadAll(); start(); } catch (e) { if (!T) U = null; } }
