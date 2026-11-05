@@ -22,6 +22,17 @@ app.use(express.json({ limit: "100kb" }));
 app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
 const authLimit = rateLimit({ windowMs: 15 * 60000, max: 20 });
 
+const typing = new Map();
+const isTyping = (from, to) => Date.now() - (typing.get(from + ">" + to) || 0) < 6000;
+setInterval(() => { for (const [k, t] of typing) if (Date.now() - t > 60000) typing.delete(k); }, 60000);
+// Decides what a viewer may see about another user's online status and last seen.
+function presence(row, inTheirContacts) {
+  const p = row.seen_privacy || "everyone";
+  const hidden = p === "nobody" || (p === "contacts" && !inTheirContacts);
+  if (hidden || !row.last_seen) return { hidden: true, online: false, last_seen: null };
+  return { hidden: false, online: Date.now() - new Date(row.last_seen).getTime() < 30000, last_seen: row.last_seen };
+}
+
 const wrap = (fn) => (req, res) =>
   Promise.resolve(fn(req, res)).catch((e) => {
     console.error(e);
@@ -31,13 +42,14 @@ const need = (req, res, next) => {
   const h = req.headers.authorization || "";
   try {
     req.uid = jwt.verify(h.replace(/^Bearer /, ""), JWT_SECRET).uid;
+    db.query("UPDATE users SET last_seen=now() WHERE id=$1 AND (last_seen IS NULL OR last_seen < now() - interval '10 seconds')", [req.uid]).catch(() => {});
     next();
   } catch {
     res.status(401).json({ error: "Please log in again." });
   }
 };
 const isId = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ""));
-const pub = (u) => ({ id: u.id, name: u.name, phone: u.phone, about: u.about });
+const pub = (u) => ({ id: u.id, name: u.name, phone: u.phone, about: u.about, seen_privacy: u.seen_privacy });
 const sign = (u) => jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: "30d" });
 const phoneOf = (p) => "+" + String(p || "").replace(/\D/g, "");
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
@@ -83,7 +95,8 @@ app.put("/api/me", need, wrap(async (req, res) => {
   const name = String(req.body.name || "").trim().slice(0, 60);
   const about = String(req.body.about || "").trim().slice(0, 140);
   if (!name) return bad(res, "Name cannot be empty.");
-  const r = await db.query("UPDATE users SET name=$2, about=$3 WHERE id=$1 RETURNING *", [req.uid, name, about]);
+  const sp = ["everyone", "contacts", "nobody"].includes(req.body.seen_privacy) ? req.body.seen_privacy : null;
+  const r = await db.query("UPDATE users SET name=$2, about=$3, seen_privacy=COALESCE($4, seen_privacy) WHERE id=$1 RETURNING *", [req.uid, name, about, sp]);
   res.json({ user: pub(r.rows[0]) });
 }));
 
@@ -121,18 +134,22 @@ app.get("/api/chats", need, wrap(async (req, res) => {
          SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, body, from_id, created_at
          FROM messages WHERE (from_id=$1 AND NOT del_from) OR (to_id=$1 AND NOT del_to)
        ) x ORDER BY peer, id DESC)
-     SELECT m.*, u.phone, COALESCE(NULLIF(c.alias,''), u.name) AS display
+     SELECT m.*, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), u.name) AS display,
+            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs
      FROM m JOIN users u ON u.id = m.peer
      LEFT JOIN contacts c ON c.owner=$1 AND c.contact=m.peer
      ORDER BY m.id DESC`, [req.uid]);
-  res.json({ chats: r.rows });
+  res.json({
+    chats: r.rows.map((x) => ({ ...x, ...presence(x, x.theirs), typing: isTyping(x.peer, req.uid), seen_privacy: undefined, theirs: undefined })),
+  });
 }));
 
 app.get("/api/messages/:peer", need, wrap(async (req, res) => {
   if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  await db.query("UPDATE messages SET read_at=now() WHERE to_id=$1 AND from_id=$2 AND read_at IS NULL AND NOT del_to", [req.uid, req.params.peer]);
   const r = await db.query(
     `SELECT * FROM (
-       SELECT id, from_id, to_id, body, reply, reaction, created_at FROM messages
+       SELECT id, from_id, to_id, body, reply, reaction, read_at, created_at FROM messages
        WHERE (from_id=$1 AND to_id=$2 AND NOT del_from) OR (from_id=$2 AND to_id=$1 AND NOT del_to)
        ORDER BY id DESC LIMIT 200) t ORDER BY id`, [req.uid, req.params.peer]);
   res.json({ messages: r.rows });
@@ -149,6 +166,22 @@ app.post("/api/messages", need, wrap(async (req, res) => {
     "INSERT INTO messages(from_id,to_id,body,reply) VALUES($1,$2,$3,$4) RETURNING id",
     [req.uid, req.body.to, body, reply]);
   res.json({ id: r.rows[0].id });
+}));
+
+app.post("/api/typing/:peer", need, (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  typing.set(req.uid + ">" + req.params.peer, Date.now());
+  res.json({ ok: true });
+});
+
+app.get("/api/presence/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  const r = await db.query(
+    `SELECT u.last_seen, u.seen_privacy,
+            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=u.id AND k.contact=$2) AS theirs
+     FROM users u WHERE u.id=$1`, [req.params.peer, req.uid]);
+  if (!r.rows[0]) return bad(res, "Not found.", 404);
+  res.json({ ...presence(r.rows[0], r.rows[0].theirs), typing: isTyping(req.params.peer, req.uid) });
 }));
 
 app.post("/api/messages/:id/react", need, wrap(async (req, res) => {
@@ -195,7 +228,10 @@ CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), 
 CREATE TABLE IF NOT EXISTS contacts(owner uuid REFERENCES users(id) ON DELETE CASCADE, contact uuid REFERENCES users(id) ON DELETE CASCADE, alias text, PRIMARY KEY(owner,contact));
 CREATE TABLE IF NOT EXISTS messages(id bigserial PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, reply text, reaction text, del_from boolean NOT NULL DEFAULT false, del_to boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS msg_pair ON messages(from_id,to_id,id);
-CREATE TABLE IF NOT EXISTS statuses(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, color text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());`;
+CREATE TABLE IF NOT EXISTS statuses(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, color text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamptz;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS seen_privacy text NOT NULL DEFAULT 'everyone';
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at timestamptz;`;
 
 db.query(schema)
   .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Belvia API running")))
