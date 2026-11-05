@@ -26,9 +26,9 @@ const typing = new Map();
 const isTyping = (from, to) => Date.now() - (typing.get(from + ">" + to) || 0) < 6000;
 setInterval(() => { for (const [k, t] of typing) if (Date.now() - t > 60000) typing.delete(k); }, 60000);
 // Decides what a viewer may see about another user's online status and last seen.
-function presence(row, inTheirContacts) {
+function presence(row, inTheirContacts, blocked) {
   const p = row.seen_privacy || "everyone";
-  const hidden = p === "nobody" || (p === "contacts" && !inTheirContacts);
+  const hidden = blocked || p === "nobody" || (p === "contacts" && !inTheirContacts);
   if (hidden || !row.last_seen) return { hidden: true, online: false, last_seen: null };
   return { hidden: false, online: Date.now() - new Date(row.last_seen).getTime() < 30000, last_seen: row.last_seen };
 }
@@ -131,16 +131,19 @@ app.get("/api/chats", need, wrap(async (req, res) => {
   const r = await db.query(
     `WITH m AS (
        SELECT DISTINCT ON (peer) peer, id, body, from_id, created_at FROM (
-         SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, body, from_id, created_at
+         SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, CASE WHEN view_once THEN 'View once message' ELSE body END AS body, from_id, created_at
          FROM messages WHERE (from_id=$1 AND NOT del_from) OR (to_id=$1 AND NOT del_to)
        ) x ORDER BY peer, id DESC)
      SELECT m.*, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), u.name) AS display,
-            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs
+            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs,
+            COALESCE(p.pinned, false) AS pinned, COALESCE(p.archived, false) AS archived,
+            EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=m.peer) OR (b.blocker=m.peer AND b.blocked=$1)) AS blk
      FROM m JOIN users u ON u.id = m.peer
      LEFT JOIN contacts c ON c.owner=$1 AND c.contact=m.peer
+     LEFT JOIN chat_prefs p ON p.owner=$1 AND p.peer=m.peer
      ORDER BY m.id DESC`, [req.uid]);
   res.json({
-    chats: r.rows.map((x) => ({ ...x, ...presence(x, x.theirs), typing: isTyping(x.peer, req.uid), seen_privacy: undefined, theirs: undefined })),
+    chats: r.rows.map((x) => ({ ...x, ...presence(x, x.theirs, x.blk), typing: !x.blk && isTyping(x.peer, req.uid), seen_privacy: undefined, theirs: undefined, blk: undefined })),
   });
 }));
 
@@ -149,7 +152,7 @@ app.get("/api/messages/:peer", need, wrap(async (req, res) => {
   await db.query("UPDATE messages SET read_at=now() WHERE to_id=$1 AND from_id=$2 AND read_at IS NULL AND NOT del_to", [req.uid, req.params.peer]);
   const r = await db.query(
     `SELECT * FROM (
-       SELECT id, from_id, to_id, body, reply, reaction, read_at, created_at FROM messages
+       SELECT id, from_id, to_id, CASE WHEN view_once THEN NULL ELSE body END AS body, view_once, opened_at, forwarded, reply, reaction, read_at, created_at FROM messages
        WHERE (from_id=$1 AND to_id=$2 AND NOT del_from) OR (from_id=$2 AND to_id=$1 AND NOT del_to)
        ORDER BY id DESC LIMIT 200) t ORDER BY id`, [req.uid, req.params.peer]);
   res.json({ messages: r.rows });
@@ -162,9 +165,13 @@ app.post("/api/messages", need, wrap(async (req, res) => {
   if (!isId(req.body.to) || req.body.to === req.uid) return bad(res, "Invalid recipient.");
   const ok = await db.query("SELECT 1 FROM users WHERE id=$1", [req.body.to]);
   if (!ok.rowCount) return bad(res, "Recipient not found.", 404);
+  const bl = (await db.query("SELECT blocker FROM blocks WHERE (blocker=$1 AND blocked=$2) OR (blocker=$2 AND blocked=$1)", [req.uid, req.body.to])).rows;
+  if (bl.some((x) => x.blocker === req.uid)) return bad(res, "Unblock this person to send messages.", 403);
+  const hideFromThem = bl.length > 0; // if they blocked you, the message is saved for you but never delivered
   const r = await db.query(
-    "INSERT INTO messages(from_id,to_id,body,reply) VALUES($1,$2,$3,$4) RETURNING id",
-    [req.uid, req.body.to, body, reply]);
+    "INSERT INTO messages(from_id,to_id,body,reply,view_once,forwarded,del_to) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+    [req.uid, req.body.to, body, reply, !!req.body.once && !req.body.fwd, !!req.body.fwd, hideFromThem]);
+  await db.query("UPDATE chat_prefs SET archived=false WHERE (owner=$1 AND peer=$2) OR (owner=$2 AND peer=$1)", [req.uid, req.body.to]);
   res.json({ id: r.rows[0].id });
 }));
 
@@ -178,10 +185,22 @@ app.get("/api/presence/:peer", need, wrap(async (req, res) => {
   if (!isId(req.params.peer)) return bad(res, "Invalid id.");
   const r = await db.query(
     `SELECT u.last_seen, u.seen_privacy,
-            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=u.id AND k.contact=$2) AS theirs
+            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=u.id AND k.contact=$2) AS theirs,
+            EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$2 AND b.blocked=u.id) OR (b.blocker=u.id AND b.blocked=$2)) AS blk
      FROM users u WHERE u.id=$1`, [req.params.peer, req.uid]);
   if (!r.rows[0]) return bad(res, "Not found.", 404);
-  res.json({ ...presence(r.rows[0], r.rows[0].theirs), typing: isTyping(req.params.peer, req.uid) });
+  res.json({ ...presence(r.rows[0], r.rows[0].theirs, r.rows[0].blk), typing: !r.rows[0].blk && isTyping(req.params.peer, req.uid) });
+}));
+
+// View once: the text is returned a single time, then erased from the database.
+app.post("/api/messages/:id/open", need, wrap(async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
+  const r = await db.query(
+    `WITH old AS (SELECT body FROM messages WHERE id=$1 AND to_id=$2 AND view_once AND opened_at IS NULL),
+          upd AS (UPDATE messages SET opened_at=now(), body='' WHERE id=$1 AND to_id=$2 AND view_once AND opened_at IS NULL RETURNING id)
+     SELECT old.body FROM old`, [req.params.id, req.uid]);
+  if (!r.rows[0]) return bad(res, "This message was already opened.", 410);
+  res.json({ body: r.rows[0].body });
 }));
 
 app.post("/api/messages/:id/react", need, wrap(async (req, res) => {
@@ -191,6 +210,47 @@ app.post("/api/messages/:id/react", need, wrap(async (req, res) => {
     [req.params.id, req.uid, emoji]);
   res.json({ ok: true });
 }));
+
+// ---- Block and report ----
+app.get("/api/blocks", need, wrap(async (req, res) => {
+  const r = await db.query("SELECT u.id, u.name, u.phone FROM blocks b JOIN users u ON u.id=b.blocked WHERE b.blocker=$1 ORDER BY u.name", [req.uid]);
+  res.json({ blocks: r.rows });
+}));
+app.post("/api/blocks/:id", need, wrap(async (req, res) => {
+  if (!isId(req.params.id) || req.params.id === req.uid) return bad(res, "Invalid id.");
+  await db.query("INSERT INTO blocks(blocker,blocked) SELECT $1, id FROM users WHERE id=$2 ON CONFLICT DO NOTHING", [req.uid, req.params.id]);
+  res.json({ ok: true });
+}));
+app.delete("/api/blocks/:id", need, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  await db.query("DELETE FROM blocks WHERE blocker=$1 AND blocked=$2", [req.uid, req.params.id]);
+  res.json({ ok: true });
+}));
+const REASONS = ["Spam", "Harassment or insults", "Unsolicited nudes", "Scam or fake links", "Other"];
+const reportLimit = rateLimit({ windowMs: 60 * 60000, max: 20 });
+app.post("/api/reports", need, reportLimit, wrap(async (req, res) => {
+  const uid2 = req.body.user_id;
+  if (!isId(uid2) || uid2 === req.uid) return bad(res, "Invalid report.");
+  const reason = REASONS.includes(req.body.reason) ? req.body.reason : "Other";
+  const note = String(req.body.note || "").trim().slice(0, 500);
+  // Evidence: the last messages this person sent to the reporter. View once messages are never included.
+  const m = await db.query(
+    "SELECT id, body, created_at FROM messages WHERE from_id=$1 AND to_id=$2 AND NOT view_once AND NOT del_to ORDER BY id DESC LIMIT 5",
+    [uid2, req.uid]);
+  await db.query("INSERT INTO reports(reporter,reported,reason,note,evidence) VALUES($1,$2,$3,$4,$5)", [req.uid, uid2, reason, note, JSON.stringify(m.rows)]);
+  res.json({ ok: true });
+}));
+
+const setPref = (col) => wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  await db.query(
+    `INSERT INTO chat_prefs(owner,peer,${col}) VALUES($1,$2,$3)
+     ON CONFLICT (owner,peer) DO UPDATE SET ${col} = EXCLUDED.${col}`,
+    [req.uid, req.params.peer, !!req.body.value]);
+  res.json({ ok: true });
+});
+app.post("/api/chats/:peer/pin", need, setPref("pinned"));
+app.post("/api/chats/:peer/archive", need, setPref("archived"));
 
 app.delete("/api/chats/:peer", need, wrap(async (req, res) => {
   if (!isId(req.params.peer)) return bad(res, "Invalid id.");
@@ -206,6 +266,7 @@ app.get("/api/status", need, wrap(async (req, res) => {
      FROM statuses s JOIN users u ON u.id = s.user_id
      WHERE s.created_at > now() - interval '24 hours'
        AND (s.user_id=$1 OR EXISTS (SELECT 1 FROM contacts c WHERE c.owner=s.user_id AND c.contact=$1))
+       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))
      ORDER BY s.created_at DESC`, [req.uid]);
   res.json({ status: r.rows });
 }));
@@ -231,7 +292,13 @@ CREATE INDEX IF NOT EXISTS msg_pair ON messages(from_id,to_id,id);
 CREATE TABLE IF NOT EXISTS statuses(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, color text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamptz;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS seen_privacy text NOT NULL DEFAULT 'everyone';
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at timestamptz;`;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at timestamptz;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS view_once boolean NOT NULL DEFAULT false;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS opened_at timestamptz;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded boolean NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS blocks(blocker uuid REFERENCES users(id) ON DELETE CASCADE, blocked uuid REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(blocker,blocked));
+CREATE TABLE IF NOT EXISTS reports(id bigserial PRIMARY KEY, reporter uuid REFERENCES users(id) ON DELETE CASCADE, reported uuid REFERENCES users(id) ON DELETE CASCADE, reason text NOT NULL, note text, evidence jsonb, status text NOT NULL DEFAULT 'open', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS chat_prefs(owner uuid REFERENCES users(id) ON DELETE CASCADE, peer uuid REFERENCES users(id) ON DELETE CASCADE, pinned boolean NOT NULL DEFAULT false, archived boolean NOT NULL DEFAULT false, PRIMARY KEY(owner,peer));`;
 
 db.query(schema)
   .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Belvia API running")))
