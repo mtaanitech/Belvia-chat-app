@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Belvia</title>
 <style>
-:root{--bg:#F8F5EF;--sf:#EFEAE0;--wh:#fff;--ink:#1D1A2E;--mu:#5C5873;--ln:#E4DFD3;--ac:#5A3FD6;--on:#fff;--cr:#C23B27;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#14112A;--sf:#221E3D;--wh:#1A1733;--ink:#F3F0FA;--mu:#B3AECB;--ln:#332F52;--ac:#9B87FF;--on:#14112A;--cr:#FF8C75}}
+:root{--bg:#F8F5EF;--sf:#EFEAE0;--wh:#fff;--ink:#1D1A2E;--mu:#5C5873;--ln:#E4DFD3;--ac:#5A3FD6;--on:#fff;--cr:#C23B27;--ok:#1F7A5A;--tk:#8FD3FF;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#14112A;--sf:#221E3D;--wh:#1A1733;--ink:#F3F0FA;--mu:#B3AECB;--ln:#332F52;--ac:#9B87FF;--on:#14112A;--cr:#FF8C75;--ok:#4ADE80;--tk:#0A4C8A}}
 *{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
 #app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .wrap{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px}.pad{padding:44px 22px 22px}.center{align-items:center;justify-content:center;text-align:center}
@@ -43,6 +43,7 @@ nav{display:flex;border-top:1px solid var(--ln);background:var(--bg)}nav button{
 .sv{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;font-size:26px;font-weight:700;color:#fff;border:0;width:100%}
 .sw{display:flex;gap:8px}.sw button{width:40px;height:40px;border-radius:50%;border:3px solid transparent}.sw button.on{border-color:var(--ink)}
 .toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;max-width:90%}
+.rd{color:var(--tk);font-weight:700}
 </style>
 </head>
 <body>
@@ -53,7 +54,7 @@ const API = "https://YOUR-API-URL";
 const COL = ["#5A3FD6", "#C23B27", "#0F766E", "#B45309", "#1D4ED8"];
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
-let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "";
+let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0;
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -89,7 +90,28 @@ async function loadMsgs(sc) {
   const k = JSON.stringify(j.messages);
   if (k !== msKey) { const last = MS.length ? MS[MS.length - 1].id : 0; MS = j.messages; msKey = k; const nl = MS.length ? MS[MS.length - 1].id : 0; upd(sc || nl != last); }
 }
-function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") await loadMsgs(false); else if (V.tab == "chats" && !V.ov) { await loadCH(); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} }, 4000); }
+function lastSeenText(p) {
+  if (!p) return "";
+  if (p.typing) return "typing...";
+  if (p.online) return "Online";
+  if (p.hidden || !p.last_seen) return "Last seen recently";
+  const d = new Date(p.last_seen), n = new Date(), y = new Date(n); y.setDate(n.getDate() - 1);
+  const c = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() == n.toDateString()) return "Last seen today at " + c;
+  if (d.toDateString() == y.toDateString()) return "Last seen yesterday at " + c;
+  return "Last seen on " + d.toLocaleDateString([], { day: "2-digit", month: "2-digit" }) + " at " + c;
+}
+function prHtml() {
+  if (!PR) return "";
+  const g = PR.online || PR.typing;
+  return '<span style="color:' + (g ? "var(--ok)" : "var(--mu)") + '">' + (g ? "● " : "") + esc(lastSeenText(PR)) + "</span>";
+}
+async function loadPr() {
+  const id = V.cid; const j = await api("/presence/" + id);
+  if (V.scr != "chat" || V.cid != id) return;
+  PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
+}
+function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.tab == "chats" && !V.ov) { await loadCH(); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} }, 3000); }
 
 function welcome() {
   const s = V.mode == "signup";
@@ -133,7 +155,7 @@ function listHtml() {
     if (q) return '<div class="empty"><b>No matches</b>Try another name.</div>';
     return '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
   }
-  return L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 48) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.from_id == U.id ? "You: " : "") + esc(x.body) + "</small></span><small>" + tm(x.created_at) + "</small></button>").join("");
+  return L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 48) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + "</small></button>").join("");
 }
 function strip() {
   const mine = ST.some((s) => s.user_id == U.id);
@@ -149,7 +171,7 @@ function statusTab() {
     '<div class="sec">Status privacy</div><div class="cd"><span class="mut">Ghost view, “My contacts except…” and “Only share with…” arrive in the next update.</span></div>';
 }
 function meTab() {
-  return '<div style="text-align:center;padding:12px">' + av(U.name, 96) + '<h2 style="margin:8px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save profile</button></div>' +
+  return '<div style="text-align:center;padding:12px">' + av(U.name, 96) + '<h2 style="margin:8px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><button class="btn" data-a="savep">Save profile</button></div>' +
     '<div class="sec">Account</div><div class="cd"><div>Linked devices: <b>1 of 4</b> (this device)</div><div>Trust score: <b>100%</b></div><button class="btn o" data-a="legal">Legal</button></div><div class="cd"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + "</button></div>";
 }
 function main() {
@@ -163,13 +185,13 @@ function main() {
 }
 function msgsHtml() {
   if (!MS.length) return '<div class="empty"><b>No messages yet</b>Say hello.</div>';
-  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="sel" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + tm(x.created_at) + (me ? " ✓" : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '<button data-a="copy" data-m="' + x.id + '">Copy</button></div>' : ""); }).join("");
+  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="sel" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + tm(x.created_at) + (me ? (x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '<button data-a="copy" data-m="' + x.id + '">Copy</button></div>' : ""); }).join("");
 }
 const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
 function peer() { return CT.find((c) => c.id == V.cid) || CH.find((c) => c.peer == V.cid) && { id: V.cid, name: CH.find((c) => c.peer == V.cid).display, phone: CH.find((c) => c.peer == V.cid).phone }; }
 function chatView() {
   const c = peer() || { name: "Chat", phone: "" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.name, 40) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small class="mut" style="display:block">' + esc(c.phone) + '</small></div><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delchat" aria-label="Delete chat">Delete</button></div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.name, 40) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delchat" aria-label="Delete chat">Delete</button></div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
 }
 function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
 async function send() {
@@ -200,7 +222,7 @@ app.addEventListener("click", async (e) => {
     if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
-    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; MS = []; msKey = ""; render(); return loadMsgs(true); }
+    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; MS = []; msKey = ""; PR = null; render(); loadPr().catch(() => {}); return loadMsgs(true); }
     if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); loadCH().then(() => { const l = $("lst"); if (l) l.innerHTML = listHtml(); }).catch(() => {}); return; }
     if (a == "send") return send();
     if (a == "sel") { V.sel = V.sel == m ? null : m; return upd(false); }
@@ -218,12 +240,12 @@ app.addEventListener("click", async (e) => {
     if (a == "vs") { V.ov = "view"; V.vid = id; return render(); }
     if (a == "cv") { V.ov = null; return render(); }
     if (a == "ds") { await api("/status/" + id, "DELETE"); await loadST(); return render(); }
-    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value }); U = j.user; render(); return toast("Profile saved"); }
+    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value, seen_privacy: $("sp").value }); U = j.user; render(); return toast("Profile saved"); }
     if (a == "legal") { V.ov = "legal"; return render(); }
     if (a == "logout") { if (!V.lo) { V.lo = true; return render(); } return logout(); }
   } catch (err) { toast(err.message); }
 });
-app.addEventListener("input", (e) => { if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); } });
+app.addEventListener("input", (e) => { if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); } else if (e.target.id == "msg" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); } });
 app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); send(); } });
 (async function init() {
   if (T) { try { U = await api("/me"); await loadAll(); start(); } catch (e) { if (!T) U = null; } }
