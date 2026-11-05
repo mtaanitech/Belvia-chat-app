@@ -54,9 +54,9 @@ const API = "https://YOUR-API-URL";
 const COL = ["#5A3FD6", "#C23B27", "#0F766E", "#B45309", "#1D4ED8"];
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
-let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0;
+let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
-let V = { tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
+let V = { once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const ini = (n) => ((n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("") || "?").toUpperCase();
@@ -79,11 +79,12 @@ async function api(p, m, b) {
   if (!r.ok) throw new Error(j.error || "Something went wrong.");
   return j;
 }
-function logout() { T = ""; U = null; CT = []; CH = []; MS = []; ST = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false }); render(); }
+function logout() { T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false }); render(); }
 const loadCT = async () => { CT = (await api("/contacts")).contacts; };
 const loadCH = async () => { CH = (await api("/chats")).chats; };
 const loadST = async () => { ST = (await api("/status")).status; };
-const loadAll = () => Promise.all([loadCT(), loadCH(), loadST()]);
+const loadBL = async () => { BL = (await api("/blocks")).blocks; };
+const loadAll = () => Promise.all([loadCT(), loadCH(), loadST(), loadBL()]);
 async function loadMsgs(sc) {
   const id = V.cid; const j = await api("/messages/" + id);
   if (V.scr != "chat" || V.cid != id) return;
@@ -146,16 +147,28 @@ async function auth() {
 
 function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
 function listHtml() {
-  let L = CH.slice(); const q = V.q.trim().toLowerCase();
+  const q = V.q.trim().toLowerCase();
+  const nArch = CH.filter((x) => x.archived).length;
+  let L = CH.filter((x) => !!x.archived == V.arch);
   if (q) L = L.filter((x) => x.display.toLowerCase().indexOf(q) > -1);
   if (V.f != "all") L = [];
+  L.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  let top = "";
+  if (V.arch) top = '<button class="row" data-a="arch" style="min-height:48px"><b>← Back to chats</b></button>';
+  else if (nArch && !q && V.f == "all") top = '<button class="row" data-a="arch" style="min-height:48px"><span class="t"><b>Archived</b></span><small>' + nArch + "</small></button>";
   if (!L.length) {
-    if (V.f == "unread") return '<div class="empty"><b>Nothing unread</b>Read receipts arrive in the next update.</div>';
-    if (V.f == "groups") return '<div class="empty"><b>Groups are coming soon</b>Group chats arrive in a later update.</div>';
-    if (q) return '<div class="empty"><b>No matches</b>Try another name.</div>';
-    return '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
+    if (V.arch) return top + '<div class="empty"><b>No archived chats</b>Archive a chat from its ⋮ menu.</div>';
+    if (V.f == "unread") return top + '<div class="empty"><b>Nothing unread</b>Unread counts arrive in the next update.</div>';
+    if (V.f == "groups") return top + '<div class="empty"><b>Groups are coming soon</b>Group chats arrive in a later update.</div>';
+    if (q) return top + '<div class="empty"><b>No matches</b>Try another name.</div>';
+    return top + '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
   }
-  return L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 48) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + "</small></button>").join("");
+  return top + L.map((x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 48) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>").join("");
+}
+function menuHtml() {
+  if (!V.menu) return "";
+  const c = CH.find((x) => x.peer == V.cid), bl = BL.some((x) => x.id == V.cid);
+  return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end">' + (c ? '<button data-a="pin">' + (c.pinned ? "Unpin" : "Pin") + '</button><button data-a="archive">' + (c.archived ? "Unarchive" : "Archive") + "</button>" : "") + '<button data-a="blk">' + (bl ? "Unblock" : "Block") + '</button><button data-a="rep">Report</button><button data-a="delchat" style="color:var(--cr)">Delete chat</button></div>';
 }
 function strip() {
   const mine = ST.some((s) => s.user_id == U.id);
@@ -172,7 +185,7 @@ function statusTab() {
 }
 function meTab() {
   return '<div style="text-align:center;padding:12px">' + av(U.name, 96) + '<h2 style="margin:8px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><button class="btn" data-a="savep">Save profile</button></div>' +
-    '<div class="sec">Account</div><div class="cd"><div>Linked devices: <b>1 of 4</b> (this device)</div><div>Trust score: <b>100%</b></div><button class="btn o" data-a="legal">Legal</button></div><div class="cd"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + "</button></div>";
+    '<div class="sec">Account</div><div class="cd"><div>Linked devices: <b>1 of 4</b> (this device)</div><div>Trust score: <b>100%</b></div><button class="btn o" data-a="bls">Blocked contacts (' + BL.length + ')</button><button class="btn o" data-a="legal">Legal</button></div><div class="cd"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + "</button></div>";
 }
 function main() {
   const t = V.tab; let b = "", f = "";
@@ -183,26 +196,35 @@ function main() {
   else b = meTab();
   return '<div class="hd"><h1>' + ({ chats: "Belvia", status: "Status", calls: "Calls", singles: "Singles", me: "Me" })[t] + '</h1></div><div class="body">' + b + "</div>" + f + nav();
 }
+function bodyHtml(x, me) {
+  if (!x.view_once) return (x.forwarded ? '<div class="q">Forwarded</div>' : "") + esc(x.body);
+  if (me) return "View once · " + (x.opened_at ? "Opened" : "Not opened yet");
+  return x.opened_at ? "View once · Opened" : "View once message · tap to open";
+}
 function msgsHtml() {
   if (!MS.length) return '<div class="empty"><b>No messages yet</b>Say hello.</div>';
-  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="sel" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + tm(x.created_at) + (me ? (x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '<button data-a="copy" data-m="' + x.id + '">Copy</button></div>' : ""); }).join("");
+  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + tm(x.created_at) + (me ? (x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '</div>' : ""); }).join("");
 }
 const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
 function peer() { return CT.find((c) => c.id == V.cid) || CH.find((c) => c.peer == V.cid) && { id: V.cid, name: CH.find((c) => c.peer == V.cid).display, phone: CH.find((c) => c.peer == V.cid).phone }; }
 function chatView() {
   const c = peer() || { name: "Chat", phone: "" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.name, 40) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delchat" aria-label="Delete chat">Delete</button></div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.name, 40) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
 }
 function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
 async function send() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
-  const rp = V.reply; i.value = ""; V.reply = null; V.sel = null; upd(false);
-  try { await api("/messages", "POST", { to: V.cid, body: t, reply: rp }); await loadMsgs(true); loadCH().catch(() => {}); } catch (e) { toast(e.message); i.value = t; }
+  const rp = V.reply, once = V.once; i.value = ""; V.reply = null; V.sel = null; V.once = false; const oc = $("onc"); if (oc) oc.classList.remove("on"); upd(false);
+  try { await api("/messages", "POST", { to: V.cid, body: t, reply: rp, once }); await loadMsgs(true); loadCH().catch(() => {}); } catch (e) { toast(e.message); i.value = t; }
   i.focus();
 }
 function overlays() {
   const o = V.ov;
   if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><div class="cd"><label>Phone number of a Belvia user<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Only people who already have a Belvia account can be added.</p>') + "</div></div>";
+  if (o == "rep") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Report</h1></div><div class="body"><div class="cd"><span class="mut">Tell us what happened. We attach the last few messages this person sent you. View once messages are never included.</span><label>Reason<select id="rr">' + ["Spam", "Harassment or insults", "Unsolicited nudes", "Scam or fake links", "Other"].map((r) => "<option>" + r + "</option>").join("") + '</select></label><label>Details (optional)<textarea id="rn" rows="3" maxlength="500"></textarea></label><button class="btn" data-a="sendrep">Send report</button></div></div></div>';
+  if (o == "bls") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Blocked contacts</h1></div><div class="body">' + (BL.length ? BL.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" style="color:var(--ac);font-size:13px;padding:0 10px" data-a="unbl" data-id="' + c.id + '">Unblock</button></div>').join("") : '<p class="mut" style="padding:16px">You have not blocked anyone.</p>') + "</div></div>";
+  if (o == "fwd") return '<div class="ov"><div class="hd"><button class="ib" data-a="cfw" aria-label="Close">←</button><h1>Forward to…</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<button class="row" data-a="dofwd" data-id="' + c.id + '">' + av(c.name, 44) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + "</small></span></button>").join("") : '<p class="mut" style="padding:8px 16px">Add a contact first.</p>') + "</div></div>";
+  if (o == "vo") return '<button class="sv" style="background:#1D1A2E" data-a="cvo">' + esc(V.vo) + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400;padding:0 24px">Tap to close. This message is now deleted for good.</small></button>';
   if (o == "sc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New status</h1></div><div class="body"><div class="cd"><label>Your update<textarea id="stx" rows="4" maxlength="140" placeholder="What’s on your mind?">' + esc(V.draft) + '</textarea></label><div class="sw">' + COL.map((c) => '<button data-a="col" data-c="' + c + '" class="' + (V.col == c ? "on" : "") + '" style="background:' + c + '" aria-label="Colour ' + c + '"></button>').join("") + '</div><button class="btn" data-a="post">Post status</button></div></div></div>';
   if (o == "legal") { const T2 = [["Terms of Service", "Draft text. Use Belvia respectfully and lawfully."], ["Privacy Policy", "Draft text. Explains what Belvia collects and why."], ["Community Rules", "Draft text. No spam, scams, threats or abuse."], ["About Us", "Belvia is a private messaging app."]]; return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Legal</h1></div><div class="body"><div class="cd"><span class="mut">Last updated: November 2026. Draft text, to be reviewed before launch.</span>' + T2.map((x) => "<div><b>" + x[0] + '</b><br><span class="mut">' + x[1] + "</span></div>").join("") + "</div></div></div>"; }
   if (o == "view") { const x = ST.find((s) => s.id == V.vid); if (x) return '<button class="sv" style="background:' + x.color + '" data-a="cv">' + esc(x.body) + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400">' + (x.user_id == U.id ? "Your status" : esc(x.name)) + " · tap to close</small></button>"; }
@@ -222,16 +244,42 @@ app.addEventListener("click", async (e) => {
     if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
-    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; MS = []; msKey = ""; PR = null; render(); loadPr().catch(() => {}); return loadMsgs(true); }
+    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = []; msKey = ""; PR = null; render(); loadPr().catch(() => {}); return loadMsgs(true); }
     if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); loadCH().then(() => { const l = $("lst"); if (l) l.innerHTML = listHtml(); }).catch(() => {}); return; }
     if (a == "send") return send();
     if (a == "sel") { V.sel = V.sel == m ? null : m; return upd(false); }
     if (a == "norep") { V.reply = null; return upd(false); }
     const x = MS.find((z) => z.id == m);
-    if (a == "reply" && x) { V.reply = x.body.slice(0, 80); V.sel = null; upd(false); const i = $("msg"); if (i) i.focus(); return; }
+    if (a == "reply" && x) { V.reply = x.view_once ? "View once message" : x.body.slice(0, 80); V.sel = null; upd(false); const i = $("msg"); if (i) i.focus(); return; }
     if (a == "react" && x) { V.sel = null; upd(false); await api("/messages/" + m + "/react", "POST", { emoji: x.reaction == b.dataset.e ? null : b.dataset.e }); return loadMsgs(false); }
     if (a == "copy" && x) { V.sel = null; upd(false); if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(x.body).then(() => toast("Copied"), () => toast("Copy is not available")); } else toast("Copy is not available"); return; }
-    if (a == "delchat") { await api("/chats/" + V.cid, "DELETE"); await loadCH(); V.scr = null; render(); return toast("Chat deleted"); }
+    if (a == "menu") { V.menu = !V.menu; const mn = $("mn"); if (mn) mn.innerHTML = menuHtml(); return; }
+    if (a == "pin" || a == "archive") {
+      const c = CH.find((x) => x.peer == V.cid); if (!c) return;
+      const on = a == "pin" ? !c.pinned : !c.archived;
+      await api("/chats/" + V.cid + "/" + a, "POST", { value: on }); await loadCH(); V.menu = false;
+      if (a == "archive" && on) { V.scr = null; render(); return toast("Chat archived"); }
+      const mn = $("mn"); if (mn) mn.innerHTML = menuHtml();
+      return toast(a == "pin" ? (on ? "Chat pinned" : "Chat unpinned") : "Chat unarchived");
+    }
+    if (a == "arch") { V.arch = !V.arch; return render(); }
+    if (a == "once") { V.once = !V.once; b.classList.toggle("on", V.once); return; }
+    if (a == "vo") { const j = await api("/messages/" + m + "/open", "POST"); V.vo = j.body; V.ov = "vo"; render(); return; }
+    if (a == "cvo") { V.ov = null; V.vo = ""; render(); return loadMsgs(false); }
+    if (a == "fwd" && x && !x.view_once) { V.fw = x.body; V.ov = "fwd"; V.sel = null; return render(); }
+    if (a == "cfw") { V.ov = null; return render(); }
+    if (a == "dofwd") { await api("/messages", "POST", { to: id, body: V.fw, fwd: true }); V.ov = null; render(); return toast("Message forwarded"); }
+    if (a == "blk") {
+      const was = BL.some((z) => z.id == V.cid);
+      await api("/blocks/" + V.cid, was ? "DELETE" : "POST"); await loadBL(); V.menu = false;
+      const mn = $("mn"); if (mn) mn.innerHTML = menuHtml();
+      return toast(was ? "Unblocked" : "Blocked. They can’t see your status or last seen, and can’t reach you.");
+    }
+    if (a == "rep") { V.menu = false; V.ov = "rep"; return render(); }
+    if (a == "sendrep") { await api("/reports", "POST", { user_id: V.cid, reason: $("rr").value, note: $("rn").value }); V.ov = null; render(); return toast("Report sent. Thank you."); }
+    if (a == "bls") { V.ov = "bls"; return render(); }
+    if (a == "unbl") { await api("/blocks/" + id, "DELETE"); await loadBL(); return render(); }
+    if (a == "delchat") { await api("/chats/" + V.cid, "DELETE"); await loadCH(); V.menu = false; V.scr = null; render(); return toast("Chat deleted"); }
     if (a == "addc") { const er = $("ce"), p = $("cp").value.trim(); if (p.replace(/\D/g, "").length < 9) { er.textContent = "Enter a valid phone number."; return; } try { await api("/contacts", "POST", { phone: p, alias: $("cn").value.trim() }); await loadCT(); render(); toast("Contact added"); } catch (err) { er.textContent = err.message; } return; }
     if (a == "delc") { await api("/contacts/" + id, "DELETE"); await loadCT(); return render(); }
     if (a == "sc") { V.ov = "sc"; V.draft = ""; return render(); }
