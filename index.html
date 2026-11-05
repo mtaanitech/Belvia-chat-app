@@ -54,7 +54,7 @@ const API = "https://orivoclass.onrender.com";
 const COL = ["#5A3FD6", "#C23B27", "#0F766E", "#B45309", "#1D4ED8"];
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
-let T = "", U = null, CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -84,7 +84,7 @@ async function api(p, m, b) {
   if (!r.ok) throw new Error(j.error || "Something went wrong.");
   return j;
 }
-function logout() { T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false }); render(); }
+function logout() { T = ""; U = null; RC = ""; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
 const loadCT = async () => { CT = (await api("/contacts")).contacts; };
 const loadCH = async () => { CH = (await api("/chats")).chats; };
 const loadST = async () => { ST = (await api("/status")).status; };
@@ -119,19 +119,63 @@ async function loadPr() {
 }
 function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.tab == "chats" && !V.ov) { await loadCH(); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} }, 3000); }
 
+// ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
+function lineOf(cc, ph) {
+  if (cc.replace(/\D/g, "") != "254") return "";
+  let n = ph.replace(/\D/g, ""); if (n[0] == "0") n = n.slice(1);
+  if (n.length < 3) return "";
+  const p2 = +n.slice(0, 2), p3 = +n.slice(0, 3);
+  if (n[0] == "1") return p3 >= 110 && p3 <= 115 ? "Safaricom" : p3 >= 100 && p3 <= 102 ? "Airtel" : "";
+  if ([70, 71, 72, 79].includes(p2) || [740, 741, 742, 743, 745, 746, 748, 757, 758, 759, 768, 769].includes(p3)) return "Safaricom";
+  if (p2 == 73 || p2 == 78 || (p3 >= 750 && p3 <= 756)) return "Airtel";
+  if (p2 == 77) return "Telkom";
+  return "";
+}
+function showLine() {
+  const e = $("ln"); if (!e) return;
+  const l = lineOf($("cc").value, $("ph").value);
+  e.textContent = l ? "Line: " + l : "";
+}
+
 function welcome() {
   const s = V.mode == "signup";
   return '<div class="wrap pad"><div class="logo">Orivoclass</div><p class="mut">' + (s ? "Private messaging. Create your account to start." : "Welcome back. Log in to continue.") + "</p>" +
     (s ? '<label>Your name<input id="nm" placeholder="e.g. Juma Otieno" autocomplete="name"></label>' : "") +
     '<div class="row2"><label style="width:96px">Code<input id="cc" value="+254" inputmode="tel"></label><label style="flex:1">Phone number<input id="ph" inputmode="tel" placeholder="712 345 678" autocomplete="tel-national"></label></div>' +
+    '<p id="ln" class="note" style="margin-top:-8px"></p>' +
     '<label>Password<input id="pw" type="password" placeholder="At least 8 characters" autocomplete="' + (s ? "new-password" : "current-password") + '"></label>' +
     (s ? '<p class="note">Phone verification by SMS code is added in the next update. Until then, keep your password private.</p><label class="chk"><input type="checkbox" id="ag"> I agree to the Terms of Service and Privacy Policy</label>' : "") +
-    '<button class="btn" data-a="auth">' + (s ? "Create account" : "Log in") + '</button><p id="err" class="err"></p><button class="lnk" data-a="mode">' + (s ? "I already have an account" : "Create a new account") + "</button></div>";
+    '<button class="btn" data-a="auth">' + (s ? "Create account" : "Log in") + '</button><p id="err" class="err"></p><button class="lnk" data-a="mode">' + (s ? "I already have an account" : "Create a new account") + "</button>" + (s ? "" : '<button class="lnk" data-a="forgot">Forgot password?</button>') + "</div>";
 }
 function setup() { return '<div class="wrap center"><div class="spin"></div><h2 style="margin:0">Setting up your account</h2><p id="st" class="mut">Creating your profile…</p></div>'; }
+function codeView() {
+  return '<div class="wrap pad"><div class="logo">Your code</div><p class="mut">This is your personal recovery code. Save it somewhere safe. You need it if you forget your password. It is shown only once.</p>' +
+    '<div class="cd" style="align-items:center"><b style="font-size:22px;letter-spacing:2px;user-select:all">' + esc(RC) + '</b><button class="btn o" data-a="copycode">Copy code</button></div>' +
+    '<label>Paste your code here to confirm<input id="rcp" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX"></label>' +
+    '<button class="btn" data-a="codeok">Continue</button><p id="err" class="err"></p></div>';
+}
+function recoverView() {
+  return '<div class="wrap pad"><div class="logo">Orivoclass</div><p class="mut">Enter your number, your recovery code and a new password.</p>' +
+    '<div class="row2"><label style="width:96px">Code<input id="cc" value="+254" inputmode="tel"></label><label style="flex:1">Phone number<input id="ph" inputmode="tel" placeholder="712 345 678"></label></div>' +
+    '<p id="ln" class="note" style="margin-top:-8px"></p>' +
+    '<label>Recovery code<input id="rc2" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX"></label>' +
+    '<label>New password<input id="pw" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label>' +
+    '<button class="btn" data-a="recover">Reset password</button><p id="err" class="err"></p><button class="lnk" data-a="tologin">Back to log in</button></div>';
+}
+const cleanPh = () => { let p = ($("cc").value + $("ph").value).replace(/\D/g, ""); if (p.startsWith("2540")) p = "254" + p.slice(4); return p; };
+async function recover() {
+  const er = $("err"), ph = cleanPh(), pw = $("pw").value;
+  if (ph.length < 9 || ph.length > 15) { er.textContent = "Enter a valid phone number."; return; }
+  if (pw.length < 8) { er.textContent = "Password must be at least 8 characters."; return; }
+  try {
+    const j = await api("/recover", "POST", { phone: ph, code: $("rc2").value, password: pw });
+    T = j.token; U = j.user; RC = j.recovery_code; try { localStorage.setItem("bv.t", T); } catch (e) {}
+    await loadAll(); V.mode = "login"; V.scr = "code"; render();
+  } catch (e) { const x = $("err"); if (x) x.textContent = e.message; }
+}
 async function auth() {
   const s = V.mode == "signup", er = $("err");
-  const nm = s ? $("nm").value.trim() : "", ph = ($("cc").value + $("ph").value).replace(/\D/g, ""), pw = $("pw").value;
+  const nm = s ? $("nm").value.trim() : "", ph = cleanPh(), pw = $("pw").value;
   if (s && !nm) { er.textContent = "Please enter your name."; return; }
   if (ph.length < 9 || ph.length > 15) { er.textContent = "Enter a valid phone number."; return; }
   if (pw.length < 8) { er.textContent = "Password must be at least 8 characters."; return; }
@@ -145,6 +189,7 @@ async function auth() {
       const m = ["Creating your profile…", "Preparing secure storage…", "Almost ready…"]; let i = 0;
       const t = setInterval(() => { i = Math.min(i + 1, 2); const e = $("st"); if (e) e.textContent = m[i]; }, 900);
       await Promise.all([loadAll(), new Promise((r) => setTimeout(r, 2700))]); clearInterval(t);
+      RC = j.recovery_code; V.scr = "code"; render(); return;
     } else await loadAll();
     V.scr = null; V.tab = "chats"; render(); start();
   } catch (e) { const x = $("err"); if (x) x.textContent = e.message; else { V.scr = null; render(); toast(e.message); } }
@@ -290,7 +335,7 @@ function pageOv() {
     b = '<div class="cd"><b>1 of 4 devices</b><span class="mut">This browser is signed in to your account.</span></div><div class="cd"><b>Link a new device</b><span class="mut">Linking with a QR code and a 6-digit code is coming soon. You will be able to use up to 4 devices and log out of each one separately.</span></div>';
   } else if (p == "help") {
     t = "Help and contact";
-    b = '<div class="cd"><b>Contact us</b><span class="mut">[YOUR SUPPORT EMAIL]</span></div><div class="cd"><b>I forgot my password</b><span class="mut">Account recovery is coming soon.</span></div><div class="cd"><b>Report someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Report.</span></div><div class="cd"><b>Block someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Block.</span></div>';
+    b = '<div class="cd"><b>Contact us</b><span class="mut">[YOUR SUPPORT EMAIL]</span></div><div class="cd"><b>I forgot my password</b><span class="mut">Log out, then tap “Forgot password?” on the log in screen and use your recovery code.</span></div><div class="cd"><b>Report someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Report.</span></div><div class="cd"><b>Block someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Block.</span></div>';
   }
   return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Back">←</button><h1>' + t + '</h1></div><div class="body">' + b + "</div></div>";
 }
@@ -308,8 +353,13 @@ function overlays() {
   return "";
 }
 function render() {
-  let h; if (!U && V.scr != "setup") h = welcome(); else if (V.scr == "setup") h = setup(); else if (V.scr == "chat") h = chatView(); else h = main();
-  app.innerHTML = h + (U ? overlays() : "");
+  let h;
+  if (!U && V.scr != "setup") h = V.mode == "recover" ? recoverView() : welcome();
+  else if (V.scr == "setup") h = setup();
+  else if (V.scr == "code") h = codeView();
+  else if (V.scr == "chat") h = chatView();
+  else h = main();
+  app.innerHTML = h + (U && V.scr != "code" ? overlays() : "");
   if (U && V.scr == "chat") { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
@@ -317,6 +367,15 @@ app.addEventListener("click", async (e) => {
   const a = b.dataset.a, id = b.dataset.id, m = b.dataset.m;
   try {
     if (a == "mode") { V.mode = V.mode == "signup" ? "login" : "signup"; return render(); }
+    if (a == "forgot") { V.mode = "recover"; return render(); }
+    if (a == "tologin") { V.mode = "login"; return render(); }
+    if (a == "recover") return recover();
+    if (a == "copycode") { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(RC).then(() => toast("Copied"), () => toast("Copy is not available")); else toast("Copy is not available"); return; }
+    if (a == "codeok") {
+      const n = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (n($("rcp").value) !== n(RC)) { $("err").textContent = "The code does not match. Copy it and paste it here."; return; }
+      RC = ""; V.scr = null; V.tab = "chats"; render(); start(); return;
+    }
     if (a == "auth") return auth();
     if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } return; }
     if (a == "sq") { if (V.tab != "chats") { V.tab = "chats"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
@@ -373,7 +432,11 @@ app.addEventListener("click", async (e) => {
     if (a == "logout") { if (!V.lo) { V.lo = true; return render(); } return logout(); }
   } catch (err) { toast(err.message); }
 });
-app.addEventListener("input", (e) => { if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); } else if (e.target.id == "msg" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); } });
+app.addEventListener("input", (e) => {
+  if (e.target.id == "ph" || e.target.id == "cc") showLine();
+  if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); }
+  else if (e.target.id == "msg" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
+});
 app.addEventListener("change", async (e) => {
   if (e.target.id == "sp") { try { const j = await api("/me", "PUT", { name: U.name, about: U.about, seen_privacy: e.target.value }); U = j.user; toast("Saved"); } catch (err) { toast(err.message); } }
 });
