@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Orivoclass Admin</title>
+<style>
+:root{--bg:#121022;--sf:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Roboto,sans-serif}
+main{max-width:820px;margin:0 auto;padding:20px 16px 60px}h1{margin:0 0 4px;color:var(--ac)}h2{margin:28px 0 10px}
+.mu{color:var(--mu)}.card{background:var(--sf);border-radius:16px;padding:14px;margin:10px 0;display:flex;flex-direction:column;gap:8px}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--ln);border-radius:12px;padding:10px 12px;width:100%}
+button{font:inherit;cursor:pointer;border:0;border-radius:20px;padding:9px 14px;font-weight:700;background:var(--ac);color:var(--on)}
+button.o{background:none;border:1.5px solid var(--ac);color:var(--ac)}button.d{background:var(--cr)}button.g{background:var(--ok)}
+.row{display:flex;flex-wrap:wrap;gap:8px}.ev{border-left:3px solid var(--ln);padding-left:10px;font-size:13px;color:var(--mu);white-space:pre-wrap;overflow-wrap:anywhere}
+.err{color:var(--cr);min-height:1.2em}small{color:var(--mu)}
+</style>
+</head>
+<body>
+<main id="m"></main>
+<script>
+// Same address as in index.html. The admin key is the ADMIN_KEY you set on Render. It is kept in memory only.
+const API = "https://orivoclass.onrender.com";
+let KEY = "";
+const m = document.getElementById("m");
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fd = (x) => new Date(x).toLocaleString();
+async function call(path, method, body) {
+  const r = await fetch(API + "/api/admin" + path, { method: method || "GET", headers: { "Content-Type": "application/json", "x-admin-key": KEY }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Something went wrong.");
+  return j;
+}
+function loginView() {
+  m.innerHTML = '<h1>Orivoclass Admin</h1><p class="mu">Enter your admin key.</p><div class="card"><input id="k" type="password" placeholder="Admin key" autocomplete="off"><button id="go">Open</button><div class="err" id="e"></div></div>';
+  document.getElementById("go").onclick = async () => {
+    KEY = document.getElementById("k").value;
+    try { await load(); } catch (e) { KEY = ""; document.getElementById("e").textContent = e.message; }
+  };
+}
+async function load() {
+  const [r, a] = await Promise.all([call("/reports"), call("/appeals")]);
+  draw(r.reports, a.appeals);
+}
+function draw(reports, appeals) {
+  let h = '<h1>Orivoclass Admin</h1><p class="mu">Open reports and appeals.</p><h2>Reports (' + reports.length + ')</h2>';
+  if (!reports.length) h += '<p class="mu">No open reports.</p>';
+  h += reports.map((x) => '<div class="card" data-r="' + x.id + '"><div><b>' + esc(x.reported_name) + "</b> " + esc(x.reported_phone) + (x.banned ? " · <b>BANNED</b>" : "") + '</div><small>Trust ' + x.trust_score + "% · " + x.total_reports + " report(s) · " + x.past_sanctions + " earlier sanction(s)</small><div>Reason: <b>" + esc(x.reason) + "</b>" + (x.note ? " — " + esc(x.note) : "") + "</div><small>Reported by " + esc(x.reporter_name) + " " + esc(x.reporter_phone) + " · " + fd(x.created_at) + "</small>" +
+    (x.evidence && x.evidence.length ? '<div class="ev"><b>Last messages sent to the reporter:</b>\n' + x.evidence.map((e) => esc(e.body)).join("\n— ") + "</div>" : '<small>No message evidence.</small>') +
+    '<textarea rows="2" maxlength="300" placeholder="Message the user will see (what went wrong). Optional."></textarea><div class="row"><button class="o" data-act="dismiss">Dismiss</button><button data-act="warning">Warning</button><button data-act="restriction">Restrict 24h</button><button data-act="rest3" class="d">Rest 3 days</button><button data-act="rest7" class="d">Rest 7 days</button><button data-act="ban" class="d">Permanent ban</button></div></div>').join("");
+  h += "<h2>Appeals (" + appeals.length + ")</h2>";
+  if (!appeals.length) h += '<p class="mu">No pending appeals.</p>';
+  h += appeals.map((x) => '<div class="card" data-a="' + x.id + '"><div><b>' + esc(x.name) + "</b> " + esc(x.phone) + '</div><small>' + esc(x.kind) + " · trust " + x.trust_score + "% · " + fd(x.appealed_at) + "</small><div>Original reason: " + esc(x.reason) + '</div><div class="ev">' + esc(x.appeal_text) + '</div><div class="row"><button class="g" data-dec="accept">Accept (lift it)</button><button class="o" data-dec="reject">Reject</button></div></div>').join("");
+  h += '<p><button class="o" id="rf">Refresh</button></p><div class="err" id="e"></div>';
+  m.innerHTML = h;
+  document.getElementById("rf").onclick = () => load().catch(fail);
+  m.querySelectorAll("[data-act]").forEach((b) => b.onclick = async () => {
+    const c = b.closest("[data-r]"), act = b.dataset.act;
+    if (act != "dismiss" && !confirm("Apply: " + b.textContent + "?")) return;
+    try { await call("/reports/" + c.dataset.r, "POST", { action: act, message: c.querySelector("textarea").value }); await load(); } catch (e) { fail(e); }
+  });
+  m.querySelectorAll("[data-dec]").forEach((b) => b.onclick = async () => {
+    const c = b.closest("[data-a]");
+    try { await call("/appeals/" + c.dataset.a, "POST", { decision: b.dataset.dec }); await load(); } catch (e) { fail(e); }
+  });
+}
+function fail(e) { const x = document.getElementById("e"); if (x) x.textContent = e.message; }
+loginView();
+</script>
+</body>
+</html>
