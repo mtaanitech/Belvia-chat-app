@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orivoclass</title>
 <style>
-:root{--bg:#121022;--sf:#1D1A35;--wh:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#FFFFFF;--sf:#F3F1FB;--wh:#FFFFFF;--ink:#1B1830;--mu:#6B6788;--ln:#E4E1F2;--ac:#6C4DFF;--on:#FFFFFF;--cr:#D64A31;--ok:#0E9F6E;--tk:#CFE8FF;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html[data-theme="dark"]{--bg:#121022;--sf:#1D1A35;--wh:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;background:var(--sf);font-size:12px;font-weight:600;color:var(--mu)}
+.cov{width:56px;height:36px;border-radius:12px;border:3px solid transparent;flex:none}.cov.on{border-color:var(--ink)}
 *{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
 #app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .wrap{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px}.pad{padding:44px 22px 22px}.center{align-items:center;justify-content:center;text-align:center}
@@ -54,7 +57,14 @@ const API = "https://orivoclass.onrender.com";
 const COL = ["#5A3FD6", "#C23B27", "#0F766E", "#B45309", "#1D4ED8"];
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+const PAL = [["#6C4DFF", "#9B87FF"], ["#2563EB", "#6EA0FF"], ["#0E8F63", "#3DD9A0"], ["#D6336C", "#FF7AA8"], ["#D9480F", "#FFA066"], ["#0F766E", "#4FD1C5"]];
+const COV = [["#6C4DFF", "#B79CFF"], ["#2563EB", "#6EE7F9"], ["#0E8F63", "#A7F3D0"], ["#D6336C", "#FFC0A8"], ["#D9480F", "#FFD166"], ["#0F766E", "#99F6E4"], ["#7C3AED", "#F0ABFC"], ["#1F2937", "#6B7280"]];
+const MOODS = ["", "😊", "😎", "🔥", "💜", "🌍", "🎵", "📚", "⚽", "🙏"];
+const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gradient(circle at 18% 25%,rgba(255,255,255,.35) 0 14%,transparent 15%),radial-gradient(circle at 82% 70%,rgba(255,255,255,.25) 0 20%,transparent 21%),radial-gradient(circle at 60% 15%,rgba(255,255,255,.18) 0 9%,transparent 10%),linear-gradient(135deg," + c[0] + "," + c[1] + ")"; };
+const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
+function applyTheme() { const t = TH(), d = t.m == "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
+applyTheme();
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -84,7 +94,7 @@ async function api(p, m, b) {
   if (!r.ok) { const er = new Error(j.error || "Something went wrong."); er.data = j; throw er; }
   return j;
 }
-function logout() { T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
+function logout() { T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
 // ---- Chat lock: a 6-digit PIN protects the app on this phone. The login token is stored encrypted with the PIN. ----
 let HID = 0;
 const LK = () => { try { return JSON.parse(localStorage.getItem("bv.lk") || "null"); } catch (e) { return null; } };
@@ -128,7 +138,7 @@ async function unlock() {
 function lockNow() {
   if (!lockOn() || !U) return;
   clearInterval(timer); clearInterval(WT);
-  T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; LR = null; NT = null; DC = ""; RC = "";
+  T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; LR = null; NT = null; DC = ""; RC = "";
   V.scr = "lock"; V.ov = null; V.menu = false; render();
 }
 document.addEventListener("visibilitychange", () => {
@@ -164,6 +174,77 @@ function bkvHtml() {
     b = '<div class="msgs" style="overflow:visible">' + c.messages.map((m) => '<div class="b ' + (m.me ? "me" : "") + '">' + (m.reply ? '<div class="q">' + esc(m.reply) + "</div>" : "") + esc(m.body) + '<div class="mt">' + fd(m.at) + "</div></div>").join("") + "</div>";
   }
   return '<div class="ov"><div class="hd"><button class="ib" data-a="bkback" aria-label="Back">←</button><h1>' + esc(t) + '</h1></div><div class="body">' + b + "</div></div>";
+}
+function profileHead() {
+  const since = U.created_at ? new Date(U.created_at).toLocaleDateString([], { month: "short", year: "numeric" }) : "";
+  const bd = [];
+  if (since) bd.push("🗓 Member since " + since);
+  if ((U.trust == null ? 100 : U.trust) >= 90) bd.push("🛡 Trusted account");
+  bd.push("👥 " + CT.length + (CT.length == 1 ? " contact" : " contacts"));
+  if (GL.length) bd.push("💬 " + GL.length + (GL.length == 1 ? " group" : " groups"));
+  return '<div style="position:relative;margin-bottom:46px"><div style="height:120px;background:' + coverBg(U.cover) + '"></div><div style="position:absolute;left:50%;bottom:-46px;transform:translateX(-50%);padding:4px;border-radius:50%;background:conic-gradient(var(--ac),#ff8fb1,#ffd166,var(--ac))"><div style="padding:3px;border-radius:50%;background:var(--bg);display:flex">' + av(U.name, 84, false, U.id) + '</div></div></div>' +
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px 8px"><h2 style="margin:0;text-align:center">' + esc(U.name) + (U.mood ? " " + esc(U.mood) : "") + '</h2><div class="mut">' + esc(U.phone) + '</div><div class="mut" style="text-align:center">' + esc(U.about) + '</div><div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:4px">' + bd.map((x) => '<span class="pill">' + esc(x) + "</span>").join("") + '</div><button class="btn o" style="margin-top:8px" data-a="pg" data-p="edit">Edit profile</button></div>';
+}
+// ---- Singles: one shared room for everyone, with daily limits ----
+async function loadDeck() { if (!SGP || !SGP.active) { SGD = []; return; } const j = await api("/singles/deck"); SGD = j.profiles; SGL = j.limits; }
+async function loadSG() {
+  const j = await api("/singles/me"); SGP = j.profile; SGL = j.limits || {};
+  if (SGP) { await loadDeck(); SGM = (await api("/singles/matches")).matches; }
+}
+const sgGrad = (n) => { const c = COV[(n || "").length % COV.length]; return "linear-gradient(135deg," + c[0] + "," + c[1] + ")"; };
+function sgAvatar(p) {
+  return p && p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:96px;height:96px;border-radius:50%;object-fit:cover">' : '<span class="av" style="width:96px;height:96px;font-size:34px;background:' + sgGrad(p ? p.nick : "") + ';color:#fff">' + esc(ini(p ? p.nick : "?")) + "</span>";
+}
+function sgCard(p) {
+  return '<div class="cd" style="padding:0;overflow:hidden">' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">' : '<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>") +
+    '<div style="padding:14px;display:flex;flex-direction:column;gap:6px"><b style="font-size:22px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<span class="mut">📍 ' + esc(p.town) + "</span>" : "") + (p.bio ? "<span>" + esc(p.bio) + "</span>" : "") + "</div></div>";
+}
+function singlesTab() {
+  if (!SGP) return '<div class="cd" style="align-items:center;text-align:center"><div style="font-size:44px">💜</div><b style="font-size:20px">Singles</b><span class="mut">Meet other singles on Orivoclass. 18+ only. It is one shared room for everyone, with daily limits so it stays calm. A chat opens only when you both like each other.</span><button class="btn" data-a="sgnew">Create my Singles profile</button><span class="note">Your phone number and real name are never shown.</span></div>';
+  const L = SGL || {};
+  const chips = '<div class="chips">' + [["discover", "Discover"], ["matches", "Matches" + (SGM.length ? " (" + SGM.length + ")" : "")], ["me", "My profile"]].map((x) => '<button class="chip ' + (SGt == x[0] ? "on" : "") + '" data-a="sgt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>";
+  let b = "";
+  if (SGt == "discover") {
+    if (!SGP.active) b = '<div class="empty"><b>Your profile is hidden</b>Show it again to meet people.<button class="btn" data-a="sgtoggle">Show my profile</button></div>';
+    else if (SGD.length) b = sgCard(SGD[0]) + '<div class="row2" style="padding:0 16px"><button class="btn o" style="flex:1" data-a="sgpass">✕ Pass</button><button class="btn" style="flex:1" data-a="sglike">♥ Like</button></div><p class="note" style="text-align:center;padding:8px 16px 0">New profiles left today: ' + (L.views_left || 0) + " · Likes left: " + (L.likes_left || 0) + '</p><div style="text-align:center"><button class="lnk" data-a="sgrep">Report this profile</button></div>';
+    else if (!L.views_left) b = '<div class="empty"><b>That is all for today</b>You have seen today’s profiles. Come back tomorrow. The daily limit keeps Singles calm for everyone.</div>';
+    else b = '<div class="empty"><b>No one new right now</b>Check again later.<button class="btn o" data-a="sgref">Refresh</button></div>';
+  } else if (SGt == "matches") {
+    b = SGM.length ? SGM.map((x) => '<button class="row" data-a="sgopen" data-id="' + x.user_id + '"><span class="av" style="width:52px;height:52px;font-size:18px;background:' + sgGrad(x.nick) + ';color:#fff">' + esc(ini(x.nick)) + '</span><span class="t"><b>' + esc(x.nick) + ", " + x.age + "</b><small>" + (x.last_body ? esc((x.last_from == U.id ? "You: " : "") + x.last_body) : "You matched. Say hello!") + "</small></span></button>").join("") : '<div class="empty"><b>No matches yet</b>When you and someone like each other, they show up here.</div>';
+  } else {
+    b = sgCard(SGP) + '<div class="cd"><button class="btn" data-a="sgedit">Edit profile and photo</button><button class="btn o" data-a="sgtoggle">' + (SGP.active ? "Hide my profile" : "Show my profile") + '</button><button class="btn d" data-a="sgdel">Delete my Singles profile</button></div><p class="note" style="padding:0 20px 8px">Each day you can see up to ' + (L.view_cap || 30) + " new profiles and send " + (L.like_cap || 15) + " likes. Each profile is shown to a limited number of people and can receive a limited number of likes a day.</p>";
+  }
+  return chips + b;
+}
+function sgpHtml() {
+  const e = SGP || {}, isNew = !SGP;
+  const sel = (id, opts, cur) => '<select id="' + id + '">' + opts.map((o) => '<option value="' + o[0] + '"' + (cur == o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>' + (isNew ? "Singles profile" : "Edit profile") + '</h1></div><div class="body">' +
+    (isNew ? "" : '<div class="cd" style="align-items:center"><div id="sgav">' + sgAvatar(e) + '</div><input id="sgf" type="file" accept="image/*" style="display:none"><button class="btn o" data-a="sgpick">' + (e.photo ? "Change photo" : "Add photo") + "</button>" + (e.photo ? '<button class="lnk" data-a="sgrmphoto">Remove photo</button>' : "") + '<span class="note">New photos are checked by our team.</span></div>') +
+    '<div class="cd"><label>Nickname (not your real name)<input id="sgn" maxlength="20" value="' + esc(e.nick || "") + '"></label>' + (isNew ? '<label>Date of birth (you must be 18 or older)<input id="sgb" type="date"></label>' : '<span class="note">Age: ' + e.age + "</span>") +
+    "<label>I am" + sel("sgg", [["woman", "Woman"], ["man", "Man"], ["other", "Other"]], e.gender || "woman") + "</label><label>Show me" + sel("sgs", [["everyone", "Everyone"], ["women", "Women"], ["men", "Men"]], e.show_me || "everyone") + '</label><div class="row2"><label style="flex:1">Age from<input id="sga" type="number" min="18" max="99" value="' + (e.age_min || 18) + '"></label><label style="flex:1">to<input id="sgz" type="number" min="18" max="99" value="' + (e.age_max || 99) + '"></label></div>' +
+    '<label>Town (optional)<input id="sgtw" maxlength="40" value="' + esc(e.town || "") + '"></label><label>About me<textarea id="sgbio" rows="3" maxlength="200">' + esc(e.bio || "") + "</textarea></label>" +
+    (isNew ? '<label class="chk"><input type="checkbox" id="sgok"> I am 18 or older and I accept the Community Rules</label>' : "") + '<span class="note">Do not put phone numbers or emails here.</span><button class="btn" data-a="sgsave">Save</button></div></div></div>';
+}
+async function loadSChat(sc) {
+  const id = V.cid; let j;
+  try { j = await api("/singles/chat/" + id); }
+  catch (e) { if (/not matched/i.test(e.message) && V.scr == "schat") { V.scr = null; V.ov = null; render(); toast("This chat is no longer available."); } return; }
+  if (V.scr != "schat" || V.cid != id) return;
+  SGPEER = j.peer;
+  const k = JSON.stringify(j.messages);
+  if (k !== sgKey) { const last = SGCM.length ? SGCM[SGCM.length - 1].id : 0; SGCM = j.messages; sgKey = k; const nl = SGCM.length ? SGCM[SGCM.length - 1].id : 0; upd(sc || nl != last); }
+}
+const smsgsHtml = () => SGCM.length ? SGCM.map((x) => '<div class="b ' + (x.from_id == U.id ? "me" : "") + '">' + esc(x.body) + '<div class="mt">' + tm(x.created_at) + "</div></div>").join("") : '<div class="empty"><b>You matched!</b>Say hello.</div>';
+function schatView() {
+  const p = SGPEER || SGM.find((x) => x.user_id == V.cid) || { nick: "Chat" };
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button><span class="av" style="width:40px;height:40px;font-size:14px;background:' + sgGrad(p.nick) + ';color:#fff">' + esc(ini(p.nick)) + '</span><div style="flex:1;min-width:0"><b>' + esc(p.nick) + '</b><small class="mut" style="display:block">Singles' + (p.age ? " · " + p.age : "") + '</small></div><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="msgs" id="msgs">' + smsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="sgsend">Send</button></div>';
+}
+async function sendS() {
+  const i = $("msg"), t = i.value.trim(); if (!t) return;
+  i.value = "";
+  try { await api("/singles/chat/" + V.cid, "POST", { body: t }); await loadSChat(true); } catch (e) { toast(e.message); i.value = t; }
+  i.focus();
 }
 async function doLogout() { try { await api("/logout", "POST"); } catch (e) {} logout(); }
 function waitView() {
@@ -273,7 +354,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } } catch (e) {} }, 3000); }
+function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -398,6 +479,7 @@ function listHtml() {
 }
 function menuHtml() {
   if (!V.menu) return "";
+  if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
   if (V.scr == "gchat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="ginfo">Group info</button><button data-a="dm">Disappearing</button><button data-a="gleave" style="color:var(--cr)">Leave group</button></div>';
   const c = CH.find((x) => x.peer == V.cid), bl = BL.some((x) => x.id == V.cid);
   return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end">' + (c ? '<button data-a="pin">' + (c.pinned ? "Unpin" : "Pin") + '</button><button data-a="archive">' + (c.archived ? "Unarchive" : "Archive") + "</button>" : "") + '<button data-a="dm">Disappearing</button><button data-a="blk">' + (bl ? "Unblock" : "Block") + '</button><button data-a="rep">Report</button><button data-a="delchat" style="color:var(--cr)">Delete chat</button></div>';
@@ -412,15 +494,15 @@ function statusTab() {
   const mine = ST.filter((s) => s.user_id == U.id), oth = ST.filter((s) => s.user_id != U.id);
   const r = (x, own) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="vs" data-id="' + x.id + '"><span class="av" style="width:44px;height:44px;background:' + x.color + ';color:#fff;font-size:13px">Aa</span><span class="t"><b>' + esc(own ? x.body.slice(0, 40) : x.name) + "</b><small>" + (own ? "" : esc(x.body.slice(0, 40)) + " · ") + tm(x.created_at) + (own ? " · " + (x.views || 0) + (x.views == 1 ? " view" : " views") : "") + "</small></span></button>" + (own ? '<button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="ds" data-id="' + x.id + '">Delete</button>' : "") + "</div>";
   return '<div class="cd"><b>My status</b><span class="mut">Share a text update. It disappears after 24 hours.</span><button class="btn" data-a="sc">Add status</button></div>' + mine.map((x) => r(x, 1)).join("") +
-    '<div class="sec">Updates from contacts</div>' + (oth.length ? oth.map((x) => r(x, 0)).join("") : '<p class="mut" style="padding:0 16px">No updates yet. People see your status after you add them as a contact; you see theirs after they add you.</p>') +
+    '<div class="sec">Updates from contacts</div>' + (oth.length ? oth.map((x) => r(x, 0)).join("") : '<p class="mut" style="padding:0 16px">No updates yet.</p>') +
     '<div class="sec">Status privacy</div><div class="cd"><span class="mut">Ghost view, “My contacts except…” and “Only share with…” arrive in the next update.</span></div>';
 }
 const rowGo = (p, t, sb) => '<button class="row" data-a="pg" data-p="' + p + '"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span style="color:var(--mu);font-size:22px">›</span></button>';
 const rowSoon = (t, sb) => '<div class="row" style="opacity:.75;cursor:default"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span class="note" style="font-weight:700">Soon</span></div>';
 function meTab() {
-  return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 16px 8px">' + av(U.name, 84, false, U.id) + '<h2 style="margin:6px 0 0">' + esc(U.name) + '</h2><div class="mut">' + esc(U.phone) + '</div><div class="mut" style="text-align:center">' + esc(U.about) + '</div><button class="btn o" style="margin-top:8px" data-a="pg" data-p="edit">Edit profile</button></div>' +
+  return profileHead() +
     '<div class="sec">ACCOUNT</div>' + rowGo("priv", "Privacy", "Last seen, blocked contacts") + rowGo("acct", "Account status", "Trust score " + (U.trust == null ? 100 : U.trust) + "%") + rowGo("dev", "Linked devices", "Devices logged in to your account") +
-    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + rowGo("photo", "Profile photo", "Add a photo and choose who sees it") + rowGo("dm", "Disappearing messages", "Set inside each chat") + rowGo("lock", "Chat lock", lockOn() ? "On · PIN" : "Off") + rowGo("backup", "Backup", "Download a copy of your chats") + rowGo("notif", "Notifications", "Messages, status and views") +
+    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + rowGo("theme", "Appearance", "Light or dark, and your colour") + rowGo("photo", "Profile photo", "Add a photo and choose who sees it") + rowGo("dm", "Disappearing messages", "Set inside each chat") + rowGo("lock", "Chat lock", lockOn() ? "On · PIN" : "Off") + rowGo("backup", "Backup", "Download a copy of your chats") + rowGo("notif", "Notifications", "Messages, status and views") +
     '<div class="sec">LEGAL AND HELP</div>' + rowGo("terms", "Terms of Service", "Last updated: November 2026") + rowGo("privacy", "Privacy Policy", "How we handle your data") + rowGo("rules", "Community Rules", "What is allowed on Orivoclass") + rowGo("about", "About Us", "Who we are") + rowGo("help", "Help and contact", "Questions and support") +
     '<div class="cd" style="margin-top:16px"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="btn d" data-a="pg" data-p="del">Delete my account</button></div>';
 }
@@ -438,7 +520,7 @@ function main() {
   }
   else if (t == "status") b = statusTab();
   else if (t == "calls") b = soon("Calls are coming soon", "Voice and video calls arrive in a later update.");
-  else if (t == "singles") b = soon("Singles are coming soon", "18+ only. Profiles are shown by town, never exact distance. A chat opens only when both people like each other.");
+  else if (t == "singles") b = singlesTab();
   else b = meTab();
   return topbar() + '<div class="body">' + b + "</div>" + f;
 }
@@ -501,7 +583,7 @@ function ginfoHtml() {
     '<div class="sec">MEMBERS</div>' + g.members.map((m) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(m.name, 44, false, m.id) + '<span class="t"><b>' + esc(m.id == U.id ? "You" : m.name) + "</b><small>" + (m.role == "admin" ? "Admin" : "Member") + "</small></span></div>" + (ad && m.id != U.id && m.role != "admin" ? '<button class="ib" style="color:var(--ac);font-size:13px;padding:0 8px" data-a="gmk" data-id="' + m.id + '">Make admin</button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 8px" data-a="grm" data-id="' + m.id + '">Remove</button>' : "") + "</div>").join("") +
     '<div class="cd" style="margin-top:12px"><button class="btn d" data-a="gleave">Leave group</button></div></div></div>';
 }
-function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = V.scr == "gchat" ? gmsgsHtml() : msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
+function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = V.scr == "gchat" ? gmsgsHtml() : V.scr == "schat" ? smsgsHtml() : msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
 async function send() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
   const rp = V.reply, once = V.once; i.value = ""; V.reply = null; V.sel = null; V.once = false; const oc = $("onc"); if (oc) oc.classList.remove("on"); upd(false);
@@ -521,6 +603,7 @@ const LEGAL = {
     ["Messages are not end-to-end encrypted yet", "Right now messages are stored on our servers so the service can deliver them. End-to-end encryption is planned. We will tell you when it is available."],
     ["How long we keep things", "Status updates disappear after 24 hours. View once messages are erased after they are opened. Deleting a chat removes it from your side. Groups: people see a group\u2019s messages only from the time they joined, and if you delete your account you are removed from your groups and the messages you sent there are erased. Disappearing messages are deleted from our servers after the time chosen for that chat."],
     ["Suspended and banned accounts", "If an account is banned or suspended, its phone number stays on a block list so the ban cannot be avoided, even if the account is deleted. Everything else is erased when you delete your account."],
+    ["Singles", "If you create a Singles profile we keep your nickname, date of birth, gender, what you are looking for, town, short description, photo, likes, matches and Singles messages. Your phone number and real name are never shown there. New Singles photos are checked by our team. If you delete your Singles profile all of this is erased."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
     ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
@@ -552,7 +635,7 @@ function pageOv() {
     if (p == "terms") b += '<div class="cd"><label class="chk"><input type="checkbox" id="lg"' + (agreed() ? " checked" : "") + '> I agree to the Terms of Service and Privacy Policy</label><button class="btn" data-a="accept">Accept</button></div>';
   } else if (p == "edit") {
     t = "Edit profile";
-    b = '<div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save</button></div>';
+    b = '<div id="cvp" style="height:96px;border-radius:18px;margin:6px 16px;background:' + coverBg(EDT.cover) + '"></div><div class="cd"><b>Cover</b><div class="sw" style="flex-wrap:wrap">' + COV.map((c, i) => '<button class="cov ' + (EDT.cover == i ? "on" : "") + '" data-a="cvsel" data-i="' + i + '" style="background:' + coverBg(i) + '" aria-label="Cover ' + (i + 1) + '"></button>').join("") + '</div><b>Mood</b><div class="chips" style="padding:0;flex-wrap:wrap">' + MOODS.map((e) => '<button class="chip ' + (EDT.mood == e ? "on" : "") + '" data-a="mdsel" data-v="' + e + '">' + (e || "None") + "</button>").join("") + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save</button></div>';
   } else if (p == "priv") {
     t = "Privacy";
     b = '<div class="cd"><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><span class="note">“My contacts except…” comes in a later update.</span></div>' +
@@ -564,6 +647,10 @@ function pageOv() {
   } else if (p == "photo") {
     t = "Profile photo";
     b = '<div class="cd" style="align-items:center">' + av(U.name, 120, false, U.id) + '<input id="pf" type="file" accept="image/*" style="display:none"><button class="btn" data-a="pick">' + (PH[U.id] ? "Change photo" : "Add photo") + "</button>" + (PH[U.id] ? '<button class="btn d" data-a="rmphoto">Remove photo</button>' : "") + '</div><div class="cd"><label>Who can see my photo<select id="pp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.photo_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + "</select></label></div>";
+  } else if (p == "theme") {
+    t = "Appearance";
+    const th = TH();
+    b = '<div class="cd"><b>Mode</b><div class="row2"><button class="btn ' + (th.m == "light" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="light">White</button><button class="btn ' + (th.m == "dark" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="dark">Dark</button></div></div><div class="cd"><b>Colour</b><div class="sw" style="flex-wrap:wrap">' + PAL.map((c, i) => '<button data-a="thc" data-i="' + i + '" class="' + (th.a == i ? "on" : "") + '" style="background:' + c[th.m == "dark" ? 1 : 0] + '" aria-label="Colour ' + (i + 1) + '"></button>').join("") + '</div><span class="note">This is saved on this phone only.</span></div>';
   } else if (p == "notif") {
     t = "Notifications";
     const N = NOTIF || {};
@@ -603,11 +690,13 @@ function overlays() {
   if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><button class="row" data-a="newgrp"><span class="av" style="width:44px;height:44px;background:var(--ac);color:var(--on);font-size:20px">👥</span><span class="t"><b>New group</b><small>Chat with several contacts</small></span></button><div class="cd"><label>Phone number of a Orivoclass user<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Only people who already have a Orivoclass account can be added.</p>') + "</div></div>";
   if (o == "apl") return '<div class="ov"><div class="hd"><button class="ib" data-a="aplcancel" aria-label="Close">←</button><h1>Appeal</h1></div><div class="body"><div class="cd"><span class="mut">Tell us why this decision should be changed. You can appeal once.</span><label>Your message<textarea id="apt" rows="5" maxlength="500"></textarea></label><button class="btn" data-a="aplsend">Send appeal</button></div></div></div>';
   if (o == "dmo") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Disappearing messages</h1></div><div class="body"><div class="cd"><span class="mut">New messages in this chat will be deleted after the time you choose. This applies to both people. Messages sent before stay.</span>' + [[0, "Off"], [86400, "24 hours"], [604800, "7 days"]].map((x) => '<button class="btn ' + (TT == x[0] ? "" : "o") + '" data-a="dmset" data-s="' + x[0] + '">' + x[1] + "</button>").join("") + "</div></div></div>";
-  if (o == "vws") return '<div class="ov"><div class="hd"><button class="ib" data-a="vwback" aria-label="Back">←</button><h1>Viewed by</h1></div><div class="body">' + (VW.length ? VW.map((v) => '<div class="row">' + av(v.name, 44, false, v.id) + '<span class="t"><b>' + esc(v.name) + "</b><small>" + tm(v.viewed_at) + "</small></span></div>").join("") : '<p class="mut" style="padding:16px">No one has viewed this status yet. People see it only if you added them as a contact.</p>') + "</div></div>";
+  if (o == "vws") return '<div class="ov"><div class="hd"><button class="ib" data-a="vwback" aria-label="Back">←</button><h1>Viewed by</h1></div><div class="body">' + (VW.length ? VW.map((v) => '<div class="row">' + av(v.name, 44, false, v.id) + '<span class="t"><b>' + esc(v.name) + "</b><small>" + tm(v.viewed_at) + "</small></span></div>").join("") : '<p class="mut" style="padding:16px">No one has viewed this status yet.</p>') + "</div></div>";
   if (o == "bkv") return bkvHtml();
   if (o == "ng") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New group</h1></div><div class="body"><div class="cd"><label>Group name<input id="gnm" maxlength="40" placeholder="e.g. Family"></label><span class="mut">Choose members from your contacts (up to 29).</span>' + (CT.length ? CT.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") : '<span class="mut">Add contacts first.</span>') + '<button class="btn" data-a="mkgrp">Create group</button></div></div></div>';
   if (o == "ginfo" && GI) return ginfoHtml();
   if (o == "gadd" && GI) { const inG = new Set(GI.members.map((m) => m.id)), cand = CT.filter((c) => !inG.has(c.id)); return '<div class="ov"><div class="hd"><button class="ib" data-a="gaddback" aria-label="Back">←</button><h1>Add members</h1></div><div class="body"><div class="cd">' + (cand.length ? cand.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") + '<button class="btn" data-a="gadd">Add</button>' : '<span class="mut">All your contacts are already in this group.</span>') + "</div></div></div>"; }
+  if (o == "sgp") return sgpHtml();
+  if (o == "sgmatch" && SGMP) return '<div class="ov"><div class="wrap pad center"><div style="font-size:56px">💜</div><div class="logo">It’s a match!</div><p class="mut">You and ' + esc(SGMP.nick) + ' like each other.</p><button class="btn" style="width:100%" data-a="sgsay">Say hello</button><button class="btn o" style="width:100%" data-a="cov">Keep browsing</button></div></div>';
   if (o == "pg") return pageOv();
   if (o == "rep") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Report</h1></div><div class="body"><div class="cd"><span class="mut">Tell us what happened. We attach the last few messages this person sent you. View once messages are never included.</span><label>Reason<select id="rr">' + ["Spam", "Harassment or insults", "Unsolicited nudes", "Scam or fake links", "Other"].map((r) => "<option>" + r + "</option>").join("") + '</select></label><label>Details (optional)<textarea id="rn" rows="3" maxlength="500"></textarea></label><button class="btn" data-a="sendrep">Send report</button></div></div></div>';
   if (o == "bls") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Blocked contacts</h1></div><div class="body">' + (BL.length ? BL.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" style="color:var(--ac);font-size:13px;padding:0 10px" data-a="unbl" data-id="' + c.id + '">Unblock</button></div>').join("") : '<p class="mut" style="padding:16px">You have not blocked anyone.</p>') + "</div></div>";
@@ -628,12 +717,13 @@ function render() {
   else if (V.scr == "setup") h = setup();
   else if (V.scr == "code") h = codeView();
   else if (V.scr == "gchat") h = gchatView();
+  else if (V.scr == "schat") h = schatView();
   else if (V.scr == "chat") h = chatView();
   else h = main();
   app.innerHTML = h + (U && V.scr != "code" ? overlays() : "");
   if (U && LR) drawLR();
   if (U && NT) drawNT();
-  if (U && (V.scr == "chat" || V.scr == "gchat")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
+  if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-a]"); if (!b) return;
@@ -644,6 +734,34 @@ app.addEventListener("click", async (e) => {
     if (a == "tologin") { V.mode = "login"; return render(); }
     if (a == "recover") return recover();
     if (a == "otpgo") return otpGo();
+    if (a == "sgnew" || a == "sgedit") { V.ov = "sgp"; return render(); }
+    if (a == "sgt") { SGt = b.dataset.t; if (SGt == "matches") { try { SGM = (await api("/singles/matches")).matches; } catch (e) {} } return render(); }
+    if (a == "sgref") { await loadDeck(); return render(); }
+    if (a == "sgsave") {
+      const body = { nick: $("sgn").value, gender: $("sgg").value, show_me: $("sgs").value, age_min: +$("sga").value, age_max: +$("sgz").value, town: $("sgtw").value, bio: $("sgbio").value };
+      if (!SGP) { body.birth_date = $("sgb").value; body.accept = $("sgok").checked; }
+      await api("/singles/me", "PUT", body); await loadSG(); V.ov = null; SGt = "discover"; render(); return toast("Profile saved");
+    }
+    if (a == "sgpick") { const f = $("sgf"); if (f) f.click(); return; }
+    if (a == "sgrmphoto") { await api("/singles/photo", "DELETE"); SGP.photo = null; return render(); }
+    if (a == "sgtoggle") { await api("/singles/me", "PUT", { nick: SGP.nick, gender: SGP.gender, show_me: SGP.show_me, age_min: SGP.age_min, age_max: SGP.age_max, town: SGP.town, bio: SGP.bio, active: !SGP.active }); await loadSG(); return render(); }
+    if (a == "sgdel") { if (!confirm("Delete your Singles profile? Your matches and chats there will be erased.")) return; await api("/singles/me", "DELETE"); SGP = null; SGD = []; SGM = []; render(); return toast("Singles profile deleted"); }
+    if (a == "sglike" || a == "sgpass") {
+      const p = SGD[0]; if (!p) return;
+      const j = await api("/singles/like/" + p.user_id, "POST", { like: a == "sglike" });
+      SGD.shift(); if (!SGD.length) await loadDeck();
+      if (j.match) { SGMP = p; SGM = (await api("/singles/matches")).matches; V.ov = "sgmatch"; }
+      else if (a == "sglike") SGL = Object.assign({}, SGL, { likes_left: Math.max(0, (SGL.likes_left || 1) - 1) });
+      return render();
+    }
+    if (a == "sgrep") { const p = SGD[0]; if (!p) return; V.cid = p.user_id; V.rpS = true; V.ov = "rep"; return render(); }
+    if (a == "sgopen" || a == "sgsay") { const pid = a == "sgsay" ? SGMP.user_id : id; V.cid = pid; V.scr = "schat"; V.ov = null; V.menu = false; SGCM = []; sgKey = ""; SGPEER = SGM.find((x) => x.user_id == pid) || null; render(); return loadSChat(true); }
+    if (a == "sgsend") return sendS();
+    if (a == "unmatch") { if (!confirm("Unmatch? The chat will be deleted for both of you.")) return; await api("/singles/match/" + V.cid, "DELETE"); SGM = SGM.filter((x) => x.user_id != V.cid); V.scr = null; V.menu = false; render(); return toast("Unmatched"); }
+    if (a == "cvsel") { EDT.cover = +b.dataset.i; document.querySelectorAll('[data-a="cvsel"]').forEach((x) => x.classList.toggle("on", x.dataset.i == EDT.cover)); const pv = $("cvp"); if (pv) pv.style.background = coverBg(EDT.cover); return; }
+    if (a == "mdsel") { EDT.mood = b.dataset.v; document.querySelectorAll('[data-a="mdsel"]').forEach((x) => x.classList.toggle("on", x.dataset.v == EDT.mood)); return; }
+    if (a == "thm") { const t = TH(); t.m = b.dataset.v; localStorage.setItem("bv.th", JSON.stringify(t)); applyTheme(); return render(); }
+    if (a == "thc") { const t = TH(); t.a = +b.dataset.i; localStorage.setItem("bv.th", JSON.stringify(t)); applyTheme(); return render(); }
     if (a == "newgrp") { V.ov = "ng"; return render(); }
     if (a == "mkgrp") {
       const ids = [...document.querySelectorAll(".gm:checked")].map((c) => c.value), nm = $("gnm").value.trim();
@@ -722,12 +840,12 @@ app.addEventListener("click", async (e) => {
       RC = ""; V.scr = null; V.tab = "chats"; render(); start(); return;
     }
     if (a == "auth") return auth();
-    if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } return; }
+    if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } if (V.tab == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } render(); } return; }
     if (a == "sq") { if (V.tab != "chats") { V.tab = "chats"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
     if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = []; msKey = ""; PR = null; TT = 0; render(); loadPr().catch(() => {}); return loadMsgs(true); }
-    if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); Promise.all([loadCH(), loadGL()]).then(() => { const l = $("lst"); if (l) l.innerHTML = listHtml(); }).catch(() => {}); return; }
+    if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); if (V.tab == "singles") api("/singles/matches").then((j) => { SGM = j.matches; render(); }).catch(() => {}); Promise.all([loadCH(), loadGL()]).then(() => { const l = $("lst"); if (l) l.innerHTML = listHtml(); }).catch(() => {}); return; }
     if (a == "send") return send();
     if (a == "sel") { V.sel = V.sel == m ? null : m; return upd(false); }
     if (a == "norep") { V.reply = null; return upd(false); }
@@ -758,8 +876,8 @@ app.addEventListener("click", async (e) => {
       return toast(was ? "Unblocked" : "Blocked. They can’t see your status or last seen, and can’t reach you.");
     }
     if (a == "rep") { V.menu = false; V.ov = "rep"; return render(); }
-    if (a == "sendrep") { await api("/reports", "POST", { user_id: V.cid, reason: $("rr").value, note: $("rn").value }); V.ov = null; render(); return toast("Report sent. Thank you."); }
-    if (a == "pg") { V.pg = b.dataset.p; V.ov = "pg"; if (V.pg == "dev") { try { DEVS = (await api("/sessions")).sessions; } catch (e) { DEVS = []; } } if (V.pg == "acct") { try { ACC = await api("/account"); U.trust = ACC.trust; } catch (e) { ACC = null; } } if (V.pg == "notif") { try { NOTIF = await api("/notifications"); PUSH = pushState(NOTIF); } catch (e) { NOTIF = null; PUSH = "off"; } } if (V.pg == "backup") { BKE = null; } return render(); }
+    if (a == "sendrep") { await api("/reports", "POST", { user_id: V.cid, reason: $("rr").value, note: $("rn").value, singles: V.scr == "schat" || !!V.rpS }); V.rpS = false; V.ov = null; render(); return toast("Report sent. Thank you."); }
+    if (a == "pg") { V.pg = b.dataset.p; V.ov = "pg"; if (V.pg == "dev") { try { DEVS = (await api("/sessions")).sessions; } catch (e) { DEVS = []; } } if (V.pg == "acct") { try { ACC = await api("/account"); U.trust = ACC.trust; } catch (e) { ACC = null; } } if (V.pg == "notif") { try { NOTIF = await api("/notifications"); PUSH = pushState(NOTIF); } catch (e) { NOTIF = null; PUSH = "off"; } } if (V.pg == "backup") { BKE = null; } if (V.pg == "edit") { EDT = { cover: U.cover || 0, mood: U.mood || "" }; } return render(); }
     if (a == "rmdev") { await api("/sessions/" + id, "DELETE"); DEVS = (await api("/sessions")).sessions; render(); return toast("Device logged out"); }
     if (a == "rmothers") { await api("/sessions/logout-others", "POST"); DEVS = (await api("/sessions")).sessions; render(); return toast("Other devices logged out"); }
     if (a == "accept") { if (!$("lg").checked) return toast("Please tick I agree"); try { localStorage.setItem("bv.agreed", "1"); } catch (e) {} V.ov = null; render(); return toast("Thank you. Terms accepted."); }
@@ -774,7 +892,7 @@ app.addEventListener("click", async (e) => {
     if (a == "vs") { V.ov = "view"; V.vid = id; const sx = ST.find((z) => z.id == id); if (sx && sx.user_id != U.id) api("/status/" + id + "/view", "POST").catch(() => {}); return render(); }
     if (a == "cv") { V.ov = null; return render(); }
     if (a == "ds") { await api("/status/" + id, "DELETE"); await loadST(); return render(); }
-    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value }); U = j.user; V.ov = null; render(); return toast("Profile saved"); }
+    if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value, cover: EDT.cover, mood: EDT.mood }); U = j.user; V.ov = null; render(); return toast("Profile saved"); }
     if (a == "legal") { V.ov = "legal"; return render(); }
     if (a == "logout") { if (!V.lo) { V.lo = true; return render(); } return doLogout(); }
   } catch (err) { toast(err.message); }
@@ -785,6 +903,7 @@ app.addEventListener("input", (e) => {
   else if (e.target.id == "msg" && V.scr == "chat" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
 });
 app.addEventListener("change", async (e) => {
+  if (e.target.id == "sgf" && e.target.files && e.target.files[0]) { try { const d = await shrink(e.target.files[0]); await api("/singles/photo", "PUT", { photo: d }); SGP.photo = d; const el = $("sgav"); if (el) el.innerHTML = sgAvatar(SGP); toast("Photo saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "nfm" || e.target.id == "nfs" || e.target.id == "nfv") { try { await api("/notifications", "PUT", { msg: $("nfm").checked, status: $("nfs").checked, views: $("nfv").checked }); NOTIF = await api("/notifications"); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "bkf" && e.target.files && e.target.files[0]) { try { const o = JSON.parse(await e.target.files[0].text()); if (o.type == "enc" && o.blob) { BKE = o; render(); return toast("Enter the backup password"); } if (o.type == "plain" && o.data && o.data.chats) { BK = o.data; BKI = null; V.ov = "bkv"; render(); return; } throw 0; } catch (err) { toast("That is not an Orivoclass backup."); } return; }
   if (e.target.id == "lpb" && lockOn()) { try { localStorage.setItem("bv.lk", JSON.stringify({ a: +e.target.value })); toast("Saved"); } catch (err) {} return; }
@@ -792,7 +911,7 @@ app.addEventListener("change", async (e) => {
   if (e.target.id == "pp") { try { const j = await api("/me", "PUT", { name: U.name, about: U.about, photo_privacy: e.target.value }); U = j.user; toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "sp") { try { const j = await api("/me", "PUT", { name: U.name, about: U.about, seen_privacy: e.target.value }); U = j.user; toast("Saved"); } catch (err) { toast(err.message); } }
 });
-app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); V.scr == "gchat" ? sendG() : send(); } if (e.key == "Enter" && e.target.id == "lpin") { e.preventDefault(); unlock(); } });
+app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); V.scr == "gchat" ? sendG() : V.scr == "schat" ? sendS() : send(); } if (e.key == "Enter" && e.target.id == "lpin") { e.preventDefault(); unlock(); } });
 (async function init() {
   if (!T && lockOn()) { V.scr = "lock"; render(); return; }
   if (T) { try { U = await api("/me"); await loadAll(); start(); } catch (e) { if (!T) U = null; } }
