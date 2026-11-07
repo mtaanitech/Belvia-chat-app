@@ -72,7 +72,7 @@ const need = (req, res, next) => {
   }).catch(() => res.status(500).json({ error: "Server error" }));
 };
 const isId = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ""));
-const pub = (u) => ({ id: u.id, name: u.name, phone: u.phone, about: u.about, seen_privacy: u.seen_privacy, photo_privacy: u.photo_privacy, trust: u.trust_score });
+const pub = (u) => ({ id: u.id, name: u.name, phone: u.phone, about: u.about, seen_privacy: u.seen_privacy, photo_privacy: u.photo_privacy, trust: u.trust_score, cover: u.cover, mood: u.mood, created_at: u.created_at });
 const deviceName = (req) => {
   const ua = String(req.headers["user-agent"] || "");
   const os = /Android/i.test(ua) ? "Android" : /iPhone|iPad|iOS/i.test(ua) ? "iPhone/iPad" : /Windows/i.test(ua) ? "Windows" : /Mac OS/i.test(ua) ? "Mac" : /Linux/i.test(ua) ? "Linux" : "Unknown device";
@@ -292,7 +292,9 @@ app.put("/api/me", need, wrap(async (req, res) => {
   if (!name) return bad(res, "Name cannot be empty.");
   const sp = ["everyone", "contacts", "nobody"].includes(req.body.seen_privacy) ? req.body.seen_privacy : null;
   const pp = ["everyone", "contacts", "nobody"].includes(req.body.photo_privacy) ? req.body.photo_privacy : null;
-  const r = await db.query("UPDATE users SET name=$2, about=$3, seen_privacy=COALESCE($4, seen_privacy), photo_privacy=COALESCE($5, photo_privacy) WHERE id=$1 RETURNING *", [req.uid, name, about, sp, pp]);
+  const cv = Number.isInteger(req.body.cover) && req.body.cover >= 0 && req.body.cover < 8 ? req.body.cover : null;
+  const md = typeof req.body.mood === "string" ? [...req.body.mood].slice(0, 2).join("") : null;
+  const r = await db.query("UPDATE users SET name=$2, about=$3, seen_privacy=COALESCE($4, seen_privacy), photo_privacy=COALESCE($5, photo_privacy), cover=COALESCE($6, cover), mood=COALESCE($7, mood) WHERE id=$1 RETURNING *", [req.uid, name, about, sp, pp, cv, md]);
   res.json({ user: pub(r.rows[0]) });
 }));
 
@@ -483,10 +485,10 @@ app.post("/api/reports", need, reportLimit, wrap(async (req, res) => {
   const uid2 = req.body.user_id;
   if (!isId(uid2) || uid2 === req.uid) return bad(res, "Invalid report.");
   const reason = REASONS.includes(req.body.reason) ? req.body.reason : "Other";
-  const note = String(req.body.note || "").trim().slice(0, 500);
+  const note = (req.body.singles === true ? "[Singles] " : "") + String(req.body.note || "").trim().slice(0, 500);
   // Evidence: the last messages this person sent to the reporter. View once messages are never included.
   const m = await db.query(
-    "SELECT id, body, created_at FROM messages WHERE from_id=$1 AND to_id=$2 AND NOT view_once AND NOT del_to AND (expires_at IS NULL OR expires_at > now()) ORDER BY id DESC LIMIT 5",
+    req.body.singles === true ? "SELECT id, body, created_at FROM singles_messages WHERE from_id=$1 AND to_id=$2 ORDER BY id DESC LIMIT 5" : "SELECT id, body, created_at FROM messages WHERE from_id=$1 AND to_id=$2 AND NOT view_once AND NOT del_to AND (expires_at IS NULL OR expires_at > now()) ORDER BY id DESC LIMIT 5",
     [uid2, req.uid]);
   await db.query("INSERT INTO reports(reporter,reported,reason,note,evidence) VALUES($1,$2,$3,$4,$5)", [req.uid, uid2, reason, note, JSON.stringify(m.rows)]);
   res.json({ ok: true });
@@ -648,6 +650,19 @@ app.post("/api/admin/reports/:id", adminLimit, adminOnly, wrap(async (req, res) 
   }
   res.json({ ok: true });
 }));
+app.get("/api/admin/singles/photos", adminLimit, adminOnly, wrap(async (req, res) => {
+  const r = await db.query("SELECT user_id, nick, photo, date_part('year', age(birth_date))::int AS age FROM singles WHERE photo_review AND photo IS NOT NULL ORDER BY updated_at LIMIT 30");
+  res.json({ photos: r.rows });
+}));
+app.post("/api/admin/singles/:uid", adminLimit, adminOnly, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  const act = String(req.body.action || "");
+  if (act === "approve") await db.query("UPDATE singles SET photo_review=false WHERE user_id=$1", [req.params.uid]);
+  else if (act === "remove") await db.query("UPDATE singles SET photo=NULL, photo_review=false WHERE user_id=$1", [req.params.uid]);
+  else if (act === "hide") await db.query("UPDATE singles SET active=false, photo_review=false WHERE user_id=$1", [req.params.uid]);
+  else return bad(res, "Unknown action.");
+  res.json({ ok: true });
+}));
 app.get("/api/admin/appeals", adminLimit, adminOnly, wrap(async (req, res) => {
   const r = await db.query("SELECT s.id, s.kind, s.reason, s.appeal_text, s.appealed_at, s.until, u.name, u.phone, u.trust_score FROM sanctions s JOIN users u ON u.id=s.user_id WHERE s.appeal_status='pending' ORDER BY s.appealed_at LIMIT 100");
   res.json({ appeals: r.rows });
@@ -757,6 +772,175 @@ app.get("/api/backup", need, backupLimit, wrap(async (req, res) => {
     exported_at: new Date(), me, chats: Object.values(chats), groups,
     statuses: st.rows.map((x) => ({ body: x.body, created_at: x.created_at, views: vs.rows.filter((v) => String(v.status_id) === String(x.id)).map((v) => ({ name: v.name, at: v.viewed_at })) })),
   });
+}));
+
+// ---- Singles: ONE shared room for everyone, with limits on how much people see and how much they can be reached ----
+const SG = { VIEW_CAP: 30, LIKE_CAP: 15, EXPOSURE_CAP: 40, REACH_CAP: 20 }; // per day (Nairobi time)
+const DAY = "(now() AT TIME ZONE 'Africa/Nairobi')::date";
+const LIKE_DAY = "(created_at AT TIME ZONE 'Africa/Nairobi')::date";
+const looksLikeContact = (t) => /(\d[\s().\-]*){8,}/.test(t) || /@\w+\.\w+/.test(t);
+const SG_COLS = "s.user_id, s.nick, s.gender, s.show_me, s.age_min, s.age_max, s.town, s.bio, s.photo, s.active, date_part('year', age(s.birth_date))::int AS age";
+const sgBlocked = (a, b) => db.query("SELECT 1 FROM blocks WHERE (blocker=$1 AND blocked=$2) OR (blocker=$2 AND blocked=$1)", [a, b]).then((r) => r.rowCount > 0);
+async function sgLimits(uid) {
+  const v = (await db.query(`SELECT count(*)::int AS n FROM singles_views WHERE viewer=$1 AND day=${DAY}`, [uid])).rows[0].n;
+  const l = (await db.query(`SELECT count(*)::int AS n FROM singles_likes WHERE liker=$1 AND ${LIKE_DAY}=${DAY}`, [uid])).rows[0].n;
+  return { views_left: Math.max(0, SG.VIEW_CAP - v), likes_left: Math.max(0, SG.LIKE_CAP - l), view_cap: SG.VIEW_CAP, like_cap: SG.LIKE_CAP };
+}
+async function sgProfile(uid) { return (await db.query(`SELECT ${SG_COLS} FROM singles s WHERE s.user_id=$1`, [uid])).rows[0] || null; }
+setInterval(() => db.query("DELETE FROM singles_views WHERE day < (now() AT TIME ZONE 'Africa/Nairobi')::date - 2").catch(() => {}), 3600000);
+
+app.get("/api/singles/me", need, wrap(async (req, res) => res.json({ profile: await sgProfile(req.uid), limits: await sgLimits(req.uid) })));
+
+app.put("/api/singles/me", need, wrap(async (req, res) => {
+  if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot change your Singles profile for now.", 403);
+  const b = req.body || {};
+  const nick = String(b.nick || "").trim().slice(0, 20), town = String(b.town || "").trim().slice(0, 40), bio = String(b.bio || "").trim().slice(0, 200);
+  if (nick.length < 2) return bad(res, "Your nickname needs at least 2 characters.");
+  if ([nick, town, bio].some(looksLikeContact)) return bad(res, "Please do not put phone numbers or emails in your profile.");
+  if (!["man", "woman", "other"].includes(b.gender)) return bad(res, "Choose who you are.");
+  const show = ["everyone", "men", "women"].includes(b.show_me) ? b.show_me : "everyone";
+  const amin = Math.max(18, Math.min(99, parseInt(b.age_min, 10) || 18)), amax = Math.max(amin, Math.min(99, parseInt(b.age_max, 10) || 99));
+  const exists = (await db.query("SELECT 1 FROM singles WHERE user_id=$1", [req.uid])).rowCount > 0;
+  if (!exists) {
+    if ((await db.query("SELECT 1 FROM singles_blocked WHERE user_id=$1 AND (until IS NULL OR until > now())", [req.uid])).rowCount) return bad(res, "Singles is not available for this account right now.", 403);
+    const bd = new Date(String(b.birth_date || "") + "T00:00:00Z");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.birth_date || "")) || isNaN(bd)) return bad(res, "Enter your date of birth.");
+    const now = new Date(); let age = now.getUTCFullYear() - bd.getUTCFullYear();
+    if (now.getUTCMonth() < bd.getUTCMonth() || (now.getUTCMonth() === bd.getUTCMonth() && now.getUTCDate() < bd.getUTCDate())) age--;
+    if (age < 18) { await db.query("INSERT INTO singles_blocked(user_id,until,reason) VALUES($1,NULL,'underage') ON CONFLICT (user_id) DO UPDATE SET until=NULL, reason='underage'", [req.uid]); return bad(res, "Singles is for adults only (18+).", 403); }
+    if (age > 99) return bad(res, "Enter a valid date of birth.");
+    if (b.accept !== true) return bad(res, "Please confirm that you are 18 or older.");
+    await db.query("INSERT INTO singles(user_id,nick,birth_date,gender,show_me,age_min,age_max,town,bio) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [req.uid, nick, b.birth_date, b.gender, show, amin, amax, town, bio]);
+  } else {
+    await db.query("UPDATE singles SET nick=$2, gender=$3, show_me=$4, age_min=$5, age_max=$6, town=$7, bio=$8, active=$9, updated_at=now() WHERE user_id=$1", [req.uid, nick, b.gender, show, amin, amax, town, bio, b.active !== false]);
+  }
+  res.json({ profile: await sgProfile(req.uid) });
+}));
+
+app.put("/api/singles/photo", need, wrap(async (req, res) => {
+  if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot change your Singles profile for now.", 403);
+  const p = String(req.body.photo || "");
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+\/]+={0,2})$/.exec(p);
+  if (!m || p.length > 90000) return bad(res, "Please choose a smaller picture.");
+  const buf = Buffer.from(m[1], "base64");
+  if (buf.length < 100 || buf[0] !== 0xff || buf[1] !== 0xd8) return bad(res, "That is not a JPEG picture.");
+  const r = await db.query("UPDATE singles SET photo=$2, photo_review=true, updated_at=now() WHERE user_id=$1 RETURNING user_id", [req.uid, p]);
+  if (!r.rowCount) return bad(res, "Create your Singles profile first.", 404);
+  res.json({ ok: true });
+}));
+app.delete("/api/singles/photo", need, wrap(async (req, res) => {
+  await db.query("UPDATE singles SET photo=NULL, photo_review=false WHERE user_id=$1", [req.uid]);
+  res.json({ ok: true });
+}));
+
+// Deleting the profile erases everything about it. You cannot create a new one for 24 hours (so limits cannot be reset by deleting).
+app.delete("/api/singles/me", need, wrap(async (req, res) => {
+  await db.query("DELETE FROM singles_messages WHERE from_id=$1 OR to_id=$1", [req.uid]);
+  await db.query("DELETE FROM singles_matches WHERE a=$1 OR b=$1", [req.uid]);
+  await db.query("DELETE FROM singles_likes WHERE liker=$1 OR liked=$1", [req.uid]);
+  await db.query("DELETE FROM singles_passes WHERE user_id=$1 OR profile=$1", [req.uid]);
+  await db.query("DELETE FROM singles_views WHERE viewer=$1 OR profile=$1", [req.uid]);
+  await db.query("DELETE FROM singles WHERE user_id=$1", [req.uid]);
+  await db.query("INSERT INTO singles_blocked(user_id,until,reason) VALUES($1, now() + interval '24 hours', 'deleted') ON CONFLICT (user_id) DO UPDATE SET until=CASE WHEN singles_blocked.until IS NULL THEN NULL ELSE EXCLUDED.until END", [req.uid]);
+  res.json({ ok: true });
+}));
+
+app.get("/api/singles/deck", need, wrap(async (req, res) => {
+  const me = (await db.query("SELECT *, date_part('year', age(birth_date))::int AS age FROM singles WHERE user_id=$1", [req.uid])).rows[0];
+  if (!me) return bad(res, "Create your Singles profile first.", 404);
+  const lim = await sgLimits(req.uid);
+  if (!me.active) return res.json({ profiles: [], limits: lim });
+  const q = await db.query(
+    `SELECT s.user_id, s.nick, s.gender, s.town, s.bio, s.photo, date_part('year', age(s.birth_date))::int AS age,
+            EXISTS (SELECT 1 FROM singles_views v WHERE v.viewer=$1 AND v.profile=s.user_id AND v.day=${DAY}) AS seen_today
+     FROM singles s JOIN users u ON u.id=s.user_id
+     WHERE s.user_id<>$1 AND s.active AND NOT u.banned AND (u.rest_until IS NULL OR u.rest_until < now())
+       AND ($2::text='everyone' OR ($2::text='men' AND s.gender='man') OR ($2::text='women' AND s.gender='woman'))
+       AND (s.show_me='everyone' OR (s.show_me='men' AND $3::text='man') OR (s.show_me='women' AND $3::text='woman'))
+       AND date_part('year', age(s.birth_date)) BETWEEN $4::int AND $5::int
+       AND $6::int BETWEEN s.age_min AND s.age_max
+       AND NOT EXISTS (SELECT 1 FROM singles_likes l WHERE l.liker=$1 AND l.liked=s.user_id)
+       AND NOT EXISTS (SELECT 1 FROM singles_passes p WHERE p.user_id=$1 AND p.profile=s.user_id)
+       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=s.user_id) OR (b.blocker=s.user_id AND b.blocked=$1))
+       AND (EXISTS (SELECT 1 FROM singles_views v WHERE v.viewer=$1 AND v.profile=s.user_id AND v.day=${DAY})
+            OR (SELECT count(*) FROM singles_views v WHERE v.profile=s.user_id AND v.day=${DAY}) < $7::int)
+       AND (SELECT count(*) FROM singles_likes l WHERE l.liked=s.user_id AND (l.created_at AT TIME ZONE 'Africa/Nairobi')::date=${DAY}) < $8::int
+     ORDER BY seen_today DESC, (SELECT count(*) FROM singles_views v WHERE v.profile=s.user_id AND v.day=${DAY}) ASC, random()
+     LIMIT 60`, [req.uid, me.show_me, me.gender, me.age_min, me.age_max, me.age, SG.EXPOSURE_CAP, SG.REACH_CAP]);
+  let left = lim.views_left; const out = [];
+  for (const r of q.rows) {
+    if (out.length >= 10) break;
+    if (r.seen_today) out.push(r);
+    else if (left > 0) { out.push(r); left--; await db.query(`INSERT INTO singles_views(day,viewer,profile) VALUES(${DAY},$1,$2) ON CONFLICT DO NOTHING`, [req.uid, r.user_id]); }
+  }
+  res.json({ profiles: out.map(({ seen_today, ...p }) => p), limits: { ...lim, views_left: left } });
+}));
+
+app.post("/api/singles/like/:id", need, wrap(async (req, res) => {
+  if (!isId(req.params.id) || req.params.id.toLowerCase() === req.uid) return bad(res, "Invalid id.");
+  const target = req.params.id.toLowerCase();
+  if (!(await sgProfile(req.uid))) return bad(res, "Create your Singles profile first.", 404);
+  const t = (await db.query("SELECT 1 FROM singles WHERE user_id=$1 AND active", [target])).rowCount;
+  if (!t || (await sgBlocked(req.uid, target))) return bad(res, "This profile is no longer available.", 404);
+  if (req.body.like !== true) {
+    await db.query("INSERT INTO singles_passes(user_id,profile) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.uid, target]);
+    return res.json({ ok: true });
+  }
+  if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot use Singles for now.", 403);
+  if ((await sgLimits(req.uid)).likes_left <= 0) return bad(res, "You have used today's likes. Come back tomorrow.", 429);
+  const got = (await db.query(`SELECT count(*)::int AS n FROM singles_likes WHERE liked=$1 AND ${LIKE_DAY}=${DAY}`, [target])).rows[0].n;
+  if (got >= SG.REACH_CAP) return bad(res, "This person has received a lot of attention today. Try again tomorrow.", 429);
+  await db.query("INSERT INTO singles_likes(liker,liked) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.uid, target]);
+  const back = (await db.query("SELECT 1 FROM singles_likes WHERE liker=$1 AND liked=$2", [target, req.uid])).rowCount > 0;
+  if (back) {
+    const [a, b] = pair(req.uid, target);
+    await db.query("INSERT INTO singles_matches(a,b) VALUES($1,$2) ON CONFLICT DO NOTHING", [a, b]);
+    if (webpush) { notify(target, "msg", { title: "Singles", body: "You have a new match", tag: "sgm" }); }
+  }
+  res.json({ ok: true, match: back });
+}));
+
+app.get("/api/singles/matches", need, wrap(async (req, res) => {
+  const r = await db.query(
+    `SELECT s.user_id, s.nick, date_part('year', age(s.birth_date))::int AS age, l.body AS last_body, l.from_id AS last_from, l.created_at AS last_at, mt.created_at AS matched_at
+     FROM singles_matches mt JOIN singles s ON s.user_id = CASE WHEN mt.a=$1 THEN mt.b ELSE mt.a END
+     LEFT JOIN LATERAL (SELECT body, from_id, created_at FROM singles_messages m WHERE (m.from_id=$1 AND m.to_id=s.user_id) OR (m.from_id=s.user_id AND m.to_id=$1) ORDER BY m.id DESC LIMIT 1) l ON true
+     WHERE (mt.a=$1 OR mt.b=$1) AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=s.user_id) OR (b.blocker=s.user_id AND b.blocked=$1))
+     ORDER BY COALESCE(l.created_at, mt.created_at) DESC`, [req.uid]);
+  res.json({ matches: r.rows });
+}));
+
+async function sgCanChat(uid, peer) {
+  const [a, b] = pair(uid, peer);
+  if (!(await db.query("SELECT 1 FROM singles_matches WHERE a=$1 AND b=$2", [a, b])).rowCount) return false;
+  return !(await sgBlocked(uid, peer));
+}
+app.get("/api/singles/chat/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  const peer = req.params.peer.toLowerCase();
+  if (!(await sgCanChat(req.uid, peer))) return bad(res, "You are not matched with this person.", 403);
+  const p = await sgProfile(peer);
+  const m = await db.query("SELECT * FROM (SELECT id, from_id, body, created_at FROM singles_messages WHERE (from_id=$1 AND to_id=$2) OR (from_id=$2 AND to_id=$1) ORDER BY id DESC LIMIT 200) t ORDER BY id", [req.uid, peer]);
+  res.json({ peer: p ? { user_id: p.user_id, nick: p.nick, age: p.age } : null, messages: m.rows });
+}));
+app.post("/api/singles/chat/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  const peer = req.params.peer.toLowerCase();
+  if (!(await sgCanChat(req.uid, peer))) return bad(res, "You are not matched with this person.", 403);
+  const body = String(req.body.body || "").trim().slice(0, 2000);
+  if (!body) return bad(res, "Message is empty.");
+  await db.query("INSERT INTO singles_messages(from_id,to_id,body) VALUES($1,$2,$3)", [req.uid, peer, body]);
+  if (webpush) notify(peer, "msg", { title: "Singles", body: "New message", tag: "sg" + req.uid });
+  res.json({ ok: true });
+}));
+app.delete("/api/singles/match/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  const peer = req.params.peer.toLowerCase(), [a, b] = pair(req.uid, peer);
+  await db.query("DELETE FROM singles_matches WHERE a=$1 AND b=$2", [a, b]);
+  await db.query("DELETE FROM singles_messages WHERE (from_id=$1 AND to_id=$2) OR (from_id=$2 AND to_id=$1)", [req.uid, peer]);
+  await db.query("DELETE FROM singles_likes WHERE (liker=$1 AND liked=$2) OR (liker=$2 AND liked=$1)", [req.uid, peer]);
+  await db.query("INSERT INTO singles_passes(user_id,profile) VALUES($1,$2),($2,$1) ON CONFLICT DO NOTHING", [req.uid, peer]);
+  res.json({ ok: true });
 }));
 
 // ---- Groups ----
@@ -957,6 +1141,8 @@ CREATE TABLE IF NOT EXISTS chat_settings(user_a uuid REFERENCES users(id) ON DEL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_msg boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_status boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_views boolean NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS cover int NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mood text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS status_views(status_id bigint REFERENCES statuses(id) ON DELETE CASCADE, viewer_id uuid REFERENCES users(id) ON DELETE CASCADE, viewed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(status_id,viewer_id));
 CREATE TABLE IF NOT EXISTS push_subs(endpoint text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, session_id uuid REFERENCES sessions(id) ON DELETE CASCADE, p256dh text NOT NULL, auth text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS chat_groups(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, created_by uuid REFERENCES users(id) ON DELETE SET NULL, ttl int NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now());
@@ -964,6 +1150,14 @@ CREATE TABLE IF NOT EXISTS group_members(group_id uuid REFERENCES chat_groups(id
 CREATE INDEX IF NOT EXISTS gm_user ON group_members(user_id);
 CREATE TABLE IF NOT EXISTS group_messages(id bigserial PRIMARY KEY, group_id uuid NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL DEFAULT 'text', target_id uuid REFERENCES users(id) ON DELETE CASCADE, body text, reply text, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz);
 CREATE INDEX IF NOT EXISTS gmsg_group ON group_messages(group_id,id);
+CREATE TABLE IF NOT EXISTS singles(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, nick text NOT NULL, birth_date date NOT NULL, gender text NOT NULL, show_me text NOT NULL DEFAULT 'everyone', age_min int NOT NULL DEFAULT 18, age_max int NOT NULL DEFAULT 99, town text, bio text, photo text, photo_review boolean NOT NULL DEFAULT false, active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS singles_views(day date NOT NULL, viewer uuid REFERENCES users(id) ON DELETE CASCADE, profile uuid REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(day,viewer,profile));
+CREATE TABLE IF NOT EXISTS singles_likes(liker uuid REFERENCES users(id) ON DELETE CASCADE, liked uuid REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(liker,liked));
+CREATE TABLE IF NOT EXISTS singles_passes(user_id uuid REFERENCES users(id) ON DELETE CASCADE, profile uuid REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(user_id,profile));
+CREATE TABLE IF NOT EXISTS singles_matches(a uuid REFERENCES users(id) ON DELETE CASCADE, b uuid REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(a,b));
+CREATE TABLE IF NOT EXISTS singles_messages(id bigserial PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS sgmsg_pair ON singles_messages(from_id,to_id,id);
+CREATE TABLE IF NOT EXISTS singles_blocked(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, until timestamptz, reason text);
 CREATE TABLE IF NOT EXISTS sanctions(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, reason text NOT NULL, report_id bigint, penalty int NOT NULL DEFAULT 0, until timestamptz, seen boolean NOT NULL DEFAULT false, appeal_status text, appeal_text text, appealed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS blocked_phones(phone text PRIMARY KEY, until timestamptz, reason text, created_at timestamptz NOT NULL DEFAULT now());`;
 
