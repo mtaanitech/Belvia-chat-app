@@ -40,10 +40,10 @@ function loginView() {
   };
 }
 async function load() {
-  const [r, a] = await Promise.all([call("/reports"), call("/appeals")]);
-  draw(r.reports, a.appeals);
+  const [r, a, p] = await Promise.all([call("/reports"), call("/appeals"), call("/singles/photos")]);
+  draw(r.reports, a.appeals, p.photos);
 }
-function draw(reports, appeals) {
+function draw(reports, appeals, photos) {
   let h = '<h1>Orivoclass Admin</h1><p class="mu">Open reports and appeals.</p><h2>Reports (' + reports.length + ')</h2>';
   if (!reports.length) h += '<p class="mu">No open reports.</p>';
   h += reports.map((x) => '<div class="card" data-r="' + x.id + '"><div><b>' + esc(x.reported_name) + "</b> " + esc(x.reported_phone) + (x.banned ? " · <b>BANNED</b>" : "") + '</div><small>Trust ' + x.trust_score + "% · " + x.total_reports + " report(s) · " + x.past_sanctions + " earlier sanction(s)</small><div>Reason: <b>" + esc(x.reason) + "</b>" + (x.note ? " — " + esc(x.note) : "") + "</div><small>Reported by " + esc(x.reporter_name) + " " + esc(x.reporter_phone) + " · " + fd(x.created_at) + "</small>" +
@@ -52,6 +52,9 @@ function draw(reports, appeals) {
   h += "<h2>Appeals (" + appeals.length + ")</h2>";
   if (!appeals.length) h += '<p class="mu">No pending appeals.</p>';
   h += appeals.map((x) => '<div class="card" data-a="' + x.id + '"><div><b>' + esc(x.name) + "</b> " + esc(x.phone) + '</div><small>' + esc(x.kind) + " · trust " + x.trust_score + "% · " + fd(x.appealed_at) + "</small><div>Original reason: " + esc(x.reason) + '</div><div class="ev">' + esc(x.appeal_text) + '</div><div class="row"><button class="g" data-dec="accept">Accept (lift it)</button><button class="o" data-dec="reject">Reject</button></div></div>').join("");
+  h += "<h2>Singles photos to check (" + photos.length + ")</h2>";
+  if (!photos.length) h += '<p class="mu">No new photos.</p>';
+  h += photos.map((x) => '<div class="card" data-p="' + x.user_id + '"><div class="row"><img src="' + esc(x.photo) + '" alt="" style="width:140px;height:140px;object-fit:cover;border-radius:12px"><div><b>' + esc(x.nick) + "</b>, " + x.age + '<br><small>Remove it if it shows nudity, violence, a minor, or someone else’s identity.</small></div></div><div class="row"><button class="g" data-ph="approve">Looks fine</button><button class="d" data-ph="remove">Remove photo</button><button class="o" data-ph="hide">Hide profile</button></div></div>').join("");
   h += '<p><button class="o" id="rf">Refresh</button></p><div class="err" id="e"></div>';
   m.innerHTML = h;
   document.getElementById("rf").onclick = () => load().catch(fail);
@@ -59,6 +62,10 @@ function draw(reports, appeals) {
     const c = b.closest("[data-r]"), act = b.dataset.act;
     if (act != "dismiss" && !confirm("Apply: " + b.textContent + "?")) return;
     try { await call("/reports/" + c.dataset.r, "POST", { action: act, message: c.querySelector("textarea").value }); await load(); } catch (e) { fail(e); }
+  });
+  m.querySelectorAll("[data-ph]").forEach((b) => b.onclick = async () => {
+    const c = b.closest("[data-p]");
+    try { await call("/singles/" + c.dataset.p, "POST", { action: b.dataset.ph }); await load(); } catch (e) { fail(e); }
   });
   m.querySelectorAll("[data-dec]").forEach((b) => b.onclick = async () => {
     const c = b.closest("[data-a]");
