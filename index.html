@@ -64,7 +64,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -94,7 +94,7 @@ async function api(p, m, b) {
   if (!r.ok) { const er = new Error(j.error || "Something went wrong."); er.data = j; throw er; }
   return j;
 }
-function logout() { T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
+function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
 // ---- Chat lock: a 6-digit PIN protects the app on this phone. The login token is stored encrypted with the PIN. ----
 let HID = 0;
 const LK = () => { try { return JSON.parse(localStorage.getItem("bv.lk") || "null"); } catch (e) { return null; } };
@@ -136,7 +136,7 @@ async function unlock() {
   catch (e) { if (!T) return; T = ""; U = null; const x = $("err"); if (x) x.textContent = e.message; }
 }
 function lockNow() {
-  if (!lockOn() || !U) return;
+  if (!lockOn() || !U || CALL) return;
   clearInterval(timer); clearInterval(WT);
   T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; LR = null; NT = null; DC = ""; RC = "";
   V.scr = "lock"; V.ov = null; V.menu = false; render();
@@ -246,6 +246,117 @@ async function sendS() {
   try { await api("/singles/chat/" + V.cid, "POST", { body: t }); await loadSChat(true); } catch (e) { toast(e.message); i.value = t; }
   i.focus();
 }
+// ---- Calls (voice and video) ----
+const fmtDur = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
+const loadCalls = async () => { CALLS = (await api("/calls")).calls; };
+const callName = (id) => { const c = CT.find((x) => x.id == id); if (c) return c.name; const h = CH.find((x) => x.peer == id); return h ? h.display : "Unknown"; };
+async function iceServers() { try { return (await api("/calls/ice")).iceServers; } catch (e) { return [{ urls: "stun:stun.l.google.com:19302" }]; } }
+const sendSig = (kind, payload) => api("/calls/" + CALL.id + "/signal", "POST", { kind, payload: JSON.stringify(payload) });
+function attachMedia() {
+  if (!CALL) return;
+  const rA = $("rA"), rV = $("rV"), lV = $("lV");
+  if (rA && CALL.remote) rA.srcObject = CALL.remote;
+  if (rV && CALL.remote) rV.srcObject = CALL.remote;
+  if (lV && CALL.local) lV.srcObject = CALL.local;
+}
+function drawCall() {
+  const c = CALL; let b = $("callbox");
+  if (!c) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement("div"); b.id = "callbox"; b.className = "ov"; b.style.zIndex = 40; b.style.background = "#0F0D1C"; b.style.color = "#fff"; app.appendChild(b); }
+  const st = c.status == "calling" ? "Calling…" : c.status == "ringing" ? "Ringing…" : c.status == "incoming" ? "Incoming " + c.kind + " call" : c.status == "connecting" ? "Connecting…" : "";
+  const btn = 'class="btn o" style="color:#fff;border-color:#fff"';
+  b.innerHTML = '<audio id="rA" autoplay playsinline></audio>' + (c.kind == "video" ? '<video id="rV" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000"></video><video id="lV" autoplay playsinline muted style="position:absolute;right:12px;top:12px;width:96px;height:128px;object-fit:cover;border-radius:12px;background:#222;z-index:2"></video>' : "") +
+    '<div style="position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;text-shadow:0 1px 6px rgba(0,0,0,.6)">' + (c.kind == "video" && c.status == "connected" ? "" : av(c.peer.name, 96, false, c.peer.id)) + '<div style="font-size:24px;font-weight:700">' + esc(c.peer.name) + '</div><div id="cst" style="opacity:.85">' + (c.status == "connected" ? fmtDur(Date.now() - c.t0) : st) + "</div></div>" +
+    '<div style="position:relative;z-index:3;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;padding:0 16px 36px">' +
+    (c.status == "incoming" ? '<button class="btn" style="background:#E5484D;color:#fff;min-width:120px" data-a="calldec">Decline</button><button class="btn" style="background:#30A46C;color:#fff;min-width:120px" data-a="callacc">Accept</button>'
+      : "<button " + btn + ' data-a="callmute">' + (c.muted ? "Unmute" : "Mute") + "</button>" + (c.kind == "video" ? "<button " + btn + ' data-a="callcam">' + (c.cam ? "Camera off" : "Camera on") + "</button>" : "") + '<button class="btn" style="background:#E5484D;color:#fff;min-width:110px" data-a="callend">End</button>') + "</div>";
+  attachMedia();
+}
+function endCallUi() {
+  const c = CALL; if (!c) return;
+  clearInterval(c.timer); clearInterval(c.clock);
+  try { if (c.pc) c.pc.close(); } catch (e) {}
+  try { if (c.local) c.local.getTracks().forEach((t) => t.stop()); } catch (e) {}
+  CALL = null; const b = $("callbox"); if (b) b.remove();
+  try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
+  if (U && V.tab == "calls" && !V.scr) loadCalls().then(() => render()).catch(() => {});
+}
+async function hangup() { const c = CALL; if (!c) return; if (c.id) { try { await api("/calls/" + c.id + "/end", "POST"); } catch (e) {} } endCallUi(); }
+async function setupPc() {
+  const pc = new RTCPeerConnection({ iceServers: await iceServers() });
+  CALL.pc = pc; CALL.ice = CALL.ice || []; CALL.remote = new MediaStream();
+  CALL.local.getTracks().forEach((t) => pc.addTrack(t, CALL.local));
+  pc.ontrack = (e) => { CALL.remote.addTrack(e.track); attachMedia(); };
+  pc.onicecandidate = (e) => { if (e.candidate && CALL) sendSig("ice", e.candidate.toJSON()).catch(() => {}); };
+  pc.onconnectionstatechange = () => {
+    if (!CALL || CALL.pc !== pc) return;
+    if (pc.connectionState == "connected" && !CALL.t0) {
+      CALL.t0 = Date.now(); CALL.status = "connected"; drawCall();
+      CALL.clock = setInterval(() => { const e = $("cst"); if (e && CALL && CALL.t0) e.textContent = fmtDur(Date.now() - CALL.t0); }, 1000);
+    }
+    if (pc.connectionState == "failed") { toast("The call could not connect."); hangup(); }
+  };
+}
+async function flushIce() { const c = CALL; for (const x of c.ice.splice(0)) { try { await c.pc.addIceCandidate(x); } catch (e) {} } }
+async function handleSig(sg) {
+  const c = CALL, pc = c && c.pc; if (!pc) return;
+  const d = JSON.parse(sg.payload);
+  if (sg.kind == "offer" && c.role == "in") { await pc.setRemoteDescription(d); await flushIce(); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await sendSig("answer", pc.localDescription); }
+  else if (sg.kind == "answer" && c.role == "out") { await pc.setRemoteDescription(d); await flushIce(); }
+  else if (sg.kind == "ice") { if (pc.remoteDescription) { try { await pc.addIceCandidate(d); } catch (e) {} } else c.ice.push(d); }
+}
+async function pollCallSig() {
+  const c = CALL; if (!c || !c.id || c.polling) return; c.polling = true;
+  try {
+    const j = await api("/calls/" + c.id + "/signals?since=" + c.since);
+    if (CALL !== c) return;
+    if (c.role == "out" && c.status == "ringing" && j.status == "active") { c.status = "connecting"; drawCall(); }
+    for (const sg of j.signals) { c.since = Math.max(c.since, sg.id); await handleSig(sg); }
+    if (j.status != "active" && j.status != "ringing") {
+      const nm = c.peer.name; endCallUi();
+      toast(j.status == "declined" ? nm + " declined the call." : j.status == "missed" ? "No answer." : j.status == "busy" ? nm + " is on another call." : "Call ended.");
+    }
+  } catch (e) {} finally { c.polling = false; }
+}
+function startCallPoll() { CALL.timer = setInterval(pollCallSig, 1000); pollCallSig(); }
+async function startCall(peerId, kind, name) {
+  if (CALL) return toast("You are already in a call.");
+  if (!navigator.mediaDevices || !window.RTCPeerConnection) return toast("This browser cannot make calls.");
+  CALL = { id: null, role: "out", kind, peer: { id: peerId, name }, status: "calling", since: 0, ice: [], muted: false, cam: kind == "video", pc: null, local: null, t0: 0 };
+  drawCall();
+  try { CALL.local = await navigator.mediaDevices.getUserMedia({ audio: true, video: kind == "video" ? { facingMode: "user" } : false }); }
+  catch (e) { endCallUi(); return toast(kind == "video" ? "Allow the microphone and camera to make video calls." : "Allow the microphone to make calls."); }
+  const c = CALL; let j;
+  try { j = await api("/calls", "POST", { to: peerId, kind }); } catch (e) { endCallUi(); return toast(e.message); }
+  if (CALL !== c) { try { await api("/calls/" + j.id + "/end", "POST"); } catch (e) {} return; }
+  if (j.busy) { endCallUi(); return toast(name + " is on another call."); }
+  c.id = j.id; c.status = "ringing"; drawCall();
+  try { await setupPc(); const off = await c.pc.createOffer(); await c.pc.setLocalDescription(off); await sendSig("offer", c.pc.localDescription); }
+  catch (e) { toast("Could not start the call."); return hangup(); }
+  startCallPoll();
+}
+function incomingCall(x) {
+  CALL = { id: x.id, role: "in", kind: x.kind, peer: { id: x.from_id, name: x.name }, status: "incoming", since: 0, ice: [], muted: false, cam: x.kind == "video", pc: null, local: null, t0: 0 };
+  drawCall(); try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+}
+async function acceptCall() {
+  const c = CALL; if (!c || c.role != "in" || c.status != "incoming") return;
+  try { c.local = await navigator.mediaDevices.getUserMedia({ audio: true, video: c.kind == "video" ? { facingMode: "user" } : false }); }
+  catch (e) { try { await api("/calls/" + c.id + "/answer", "POST", { accept: false }); } catch (x) {} endCallUi(); return toast("Allow the microphone to answer calls."); }
+  try { await api("/calls/" + c.id + "/answer", "POST", { accept: true }); } catch (e) { endCallUi(); return toast("The call has ended."); }
+  c.status = "connecting"; drawCall();
+  try { await setupPc(); } catch (e) { toast("Could not start the call."); return hangup(); }
+  startCallPoll();
+}
+const callLabel = (x) => {
+  const dur = x.answered_at && x.ended_at ? fmtDur(new Date(x.ended_at) - new Date(x.answered_at)) : "";
+  if (x.status == "ended") return dur || "Ended"; if (x.status == "missed") return x.outgoing ? "No answer" : "Missed"; if (x.status == "declined") return "Declined"; if (x.status == "busy") return "Busy";
+  return x.status == "active" ? "In call" : "Ringing";
+};
+function callsTab() {
+  const rows = CALLS.map((x) => { const miss = !x.outgoing && x.status == "missed"; const nm = esc(x.peer_name); return '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(x.peer_name, 52, false, x.peer_id) + '<span class="t"><b' + (miss ? ' style="color:var(--cr)"' : "") + ">" + nm + "</b><small>" + (x.outgoing ? "↗" : "↙") + " " + (x.kind == "video" ? "Video" : "Voice") + " · " + callLabel(x) + " · " + tm(x.created_at) + '</small></span></div><button class="ib" data-a="callv" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Video call">🎥</button></div>'; }).join("");
+  return '<div class="cd"><b>Calls</b><span class="mut">Voice and video calls with your contacts.</span><button class="btn" data-a="newcall">Call a contact</button></div>' + (rows || '<div class="empty"><b>No calls yet</b>Open a chat and tap 📞 or 🎥. You can call people who have saved your number.</div>');
+}
 async function doLogout() { try { await api("/logout", "POST"); } catch (e) {} logout(); }
 function waitView() {
   return '<div class="wrap pad center"><div class="spin"></div><h2 style="margin:0">Waiting for approval</h2><p class="mut">We asked your other device. Open Orivoclass there and tap “Yes, it’s me”. This request expires in 5 minutes.</p><button class="btn o" style="width:100%" data-a="waitcancel">Cancel</button><button class="lnk" data-a="waitrec">I can’t use my other device</button></div>';
@@ -354,7 +465,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } } catch (e) {} }, 3000); }
+function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -458,10 +569,10 @@ function listHtml() {
   const q = V.q.trim().toLowerCase();
   const nArch = CH.filter((x) => x.archived).length;
   let L = CH.filter((x) => !!x.archived == V.arch), G = V.arch ? [] : GL.slice();
-  if (q) { L = L.filter((x) => x.display.toLowerCase().indexOf(q) > -1); G = G.filter((g) => g.name.toLowerCase().indexOf(q) > -1); }
+  if (q) { L = L.filter((x) => (x.display + " " + (x.pname || "")).toLowerCase().indexOf(q) > -1); G = G.filter((g) => g.name.toLowerCase().indexOf(q) > -1); }
   if (V.f == "unread") { L = []; G = []; }
   if (V.f == "groups") L = [];
-  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.display, 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>";
+  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>";
   const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
   items.sort((a, b) => b.pin - a.pin || b.t - a.t);
@@ -519,7 +630,7 @@ function main() {
     f = '<button class="fab" data-a="cov" aria-label="New chat">+</button>';
   }
   else if (t == "status") b = statusTab();
-  else if (t == "calls") b = soon("Calls are coming soon", "Voice and video calls arrive in a later update.");
+  else if (t == "calls") b = callsTab();
   else if (t == "singles") b = singlesTab();
   else b = meTab();
   return topbar() + '<div class="body">' + b + "</div>" + f;
@@ -534,10 +645,14 @@ function msgsHtml() {
   return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + (me ? (x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '</div>' : ""); }).join("");
 }
 const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
-function peer() { return CT.find((c) => c.id == V.cid) || CH.find((c) => c.peer == V.cid) && { id: V.cid, name: CH.find((c) => c.peer == V.cid).display, phone: CH.find((c) => c.peer == V.cid).phone }; }
+function peer() {
+  const c = CT.find((x) => x.id == V.cid); if (c) return Object.assign({ saved: true }, c);
+  const h = CH.find((x) => x.peer == V.cid);
+  return h ? { id: V.cid, name: h.display, phone: h.phone, saved: !!h.saved, pname: h.pname } : null;
+}
 function chatView() {
   const c = peer() || { name: "Chat", phone: "" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.name, 40, false, c.id) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.saved === false && c.pname ? c.pname : c.name, 40, false, c.id) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b>' + (c.saved === false && c.pname ? ' <small class="mut">~' + esc(c.pname) + '</small>' : '') + '<small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">🎥</button><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div>' + (c.saved === false ? '<div class="rp"><span>Not in your contacts</span><button class="lnk" style="min-height:36px" data-a="saveper">Add</button></div>' : "") + '<div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
 }
 async function loadGInfo() { GI = await api("/groups/" + V.gid); const e = $("gsub"); if (e) e.textContent = GI.members.length + " members"; }
 async function loadGMsgs(sc) {
@@ -604,6 +719,7 @@ const LEGAL = {
     ["How long we keep things", "Status updates disappear after 24 hours. View once messages are erased after they are opened. Deleting a chat removes it from your side. Groups: people see a group\u2019s messages only from the time they joined, and if you delete your account you are removed from your groups and the messages you sent there are erased. Disappearing messages are deleted from our servers after the time chosen for that chat."],
     ["Suspended and banned accounts", "If an account is banned or suspended, its phone number stays on a block list so the ban cannot be avoided, even if the account is deleted. Everything else is erased when you delete your account."],
     ["Singles", "If you create a Singles profile we keep your nickname, date of birth, gender, what you are looking for, town, short description, photo, likes, matches and Singles messages. Your phone number and real name are never shown there. New Singles photos are checked by our team. If you delete your Singles profile all of this is erased."],
+    ["Calls", "Voice and video calls go directly between the two phones when possible, or through a relay that only passes encrypted data. We do not record calls. To connect a call, your phone\u2019s network address is shared with the other phone. We keep a call history (who, when and how long) for 90 days. You can only call people who have saved your number."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
     ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
@@ -656,7 +772,7 @@ function pageOv() {
     const N = NOTIF || {};
     b = !N.available
       ? '<div class="cd"><b>Not set up yet</b><span class="mut">Notifications need to be switched on in the server settings first.</span></div>'
-      : '<div class="cd"><b>This device</b><span class="mut">' + (PUSH == "unsupported" ? "This browser does not support notifications." : PUSH == "on" ? "Notifications are on for this device." : "Notifications are off for this device.") + "</span>" + (PUSH == "unsupported" ? "" : PUSH == "on" ? '<button class="btn o" data-a="pushoff">Turn off on this device</button>' : '<button class="btn" data-a="pushon">Turn on notifications</button>') + '</div><div class="cd"><b>Tell me about</b><label class="chk"><input type="checkbox" id="nfm"' + (N.msg ? " checked" : "") + '> New messages</label><label class="chk"><input type="checkbox" id="nfs"' + (N.status ? " checked" : "") + '> Status updates from my contacts</label><label class="chk"><input type="checkbox" id="nfv"' + (N.views ? " checked" : "") + '> When someone views my status</label><span class="note">Notifications show who it is from, never the message text. Sound and vibration follow your phone settings.</span></div>';
+      : '<div class="cd"><b>This device</b><span class="mut">' + (PUSH == "unsupported" ? "This browser does not support notifications." : PUSH == "on" ? "Notifications are on for this device." : "Notifications are off for this device.") + "</span>" + (PUSH == "unsupported" ? "" : PUSH == "on" ? '<button class="btn o" data-a="pushoff">Turn off on this device</button>' : '<button class="btn" data-a="pushon">Turn on notifications</button>') + '</div><div class="cd"><b>Tell me about</b><label class="chk"><input type="checkbox" id="nfm"' + (N.msg ? " checked" : "") + '> New messages</label><label class="chk"><input type="checkbox" id="nfs"' + (N.status ? " checked" : "") + '> Status updates from my contacts</label><label class="chk"><input type="checkbox" id="nfv"' + (N.views ? " checked" : "") + '> When someone views my status</label><label class="chk"><input type="checkbox" id="nfc"' + (N.calls !== false ? " checked" : "") + '> Incoming calls</label><span class="note">Notifications show who it is from, never the message text. Sound and vibration follow your phone settings.</span></div>';
   } else if (p == "backup") {
     t = "Backup";
     b = '<div class="cd"><b>Download a backup</b><span class="mut">Saves your chats and your status updates (with who viewed them) as a file on this phone. View Once messages and disappearing messages that already expired are not included.</span><label>Password for the file (optional, at least 8 characters)<input id="bkp" type="password" autocomplete="new-password"></label><button class="btn" data-a="bkdl">Download backup</button><span class="note">Without a password, anyone who gets the file can read your chats.</span></div>' +
@@ -687,7 +803,7 @@ function pageOv() {
 }
 function overlays() {
   const o = V.ov;
-  if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><button class="row" data-a="newgrp"><span class="av" style="width:44px;height:44px;background:var(--ac);color:var(--on);font-size:20px">👥</span><span class="t"><b>New group</b><small>Chat with several contacts</small></span></button><div class="cd"><label>Phone number of a Orivoclass user<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Only people who already have a Orivoclass account can be added.</p>') + "</div></div>";
+  if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><button class="row" data-a="newgrp"><span class="av" style="width:44px;height:44px;background:var(--ac);color:var(--on);font-size:20px">👥</span><span class="t"><b>New group</b><small>Chat with several contacts</small></span></button><div class="cd"><label>Friend’s phone number<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Type a friend’s phone number above. If they are not on Orivoclass yet, you can invite them.</p>') + "</div></div>";
   if (o == "apl") return '<div class="ov"><div class="hd"><button class="ib" data-a="aplcancel" aria-label="Close">←</button><h1>Appeal</h1></div><div class="body"><div class="cd"><span class="mut">Tell us why this decision should be changed. You can appeal once.</span><label>Your message<textarea id="apt" rows="5" maxlength="500"></textarea></label><button class="btn" data-a="aplsend">Send appeal</button></div></div></div>';
   if (o == "dmo") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Disappearing messages</h1></div><div class="body"><div class="cd"><span class="mut">New messages in this chat will be deleted after the time you choose. This applies to both people. Messages sent before stay.</span>' + [[0, "Off"], [86400, "24 hours"], [604800, "7 days"]].map((x) => '<button class="btn ' + (TT == x[0] ? "" : "o") + '" data-a="dmset" data-s="' + x[0] + '">' + x[1] + "</button>").join("") + "</div></div></div>";
   if (o == "vws") return '<div class="ov"><div class="hd"><button class="ib" data-a="vwback" aria-label="Back">←</button><h1>Viewed by</h1></div><div class="body">' + (VW.length ? VW.map((v) => '<div class="row">' + av(v.name, 44, false, v.id) + '<span class="t"><b>' + esc(v.name) + "</b><small>" + tm(v.viewed_at) + "</small></span></div>").join("") : '<p class="mut" style="padding:16px">No one has viewed this status yet.</p>') + "</div></div>";
@@ -695,6 +811,7 @@ function overlays() {
   if (o == "ng") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New group</h1></div><div class="body"><div class="cd"><label>Group name<input id="gnm" maxlength="40" placeholder="e.g. Family"></label><span class="mut">Choose members from your contacts (up to 29).</span>' + (CT.length ? CT.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") : '<span class="mut">Add contacts first.</span>') + '<button class="btn" data-a="mkgrp">Create group</button></div></div></div>';
   if (o == "ginfo" && GI) return ginfoHtml();
   if (o == "gadd" && GI) { const inG = new Set(GI.members.map((m) => m.id)), cand = CT.filter((c) => !inG.has(c.id)); return '<div class="ov"><div class="hd"><button class="ib" data-a="gaddback" aria-label="Back">←</button><h1>Add members</h1></div><div class="body"><div class="cd">' + (cand.length ? cand.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") + '<button class="btn" data-a="gadd">Add</button>' : '<span class="mut">All your contacts are already in this group.</span>') + "</div></div></div>"; }
+  if (o == "cc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Call a contact</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">🎥</button></div>').join("") : '<p class="mut" style="padding:16px">Add a contact first.</p>') + "</div></div>";
   if (o == "sgp") return sgpHtml();
   if (o == "sgmatch" && SGMP) return '<div class="ov"><div class="wrap pad center"><div style="font-size:56px">💜</div><div class="logo">It’s a match!</div><p class="mut">You and ' + esc(SGMP.nick) + ' like each other.</p><button class="btn" style="width:100%" data-a="sgsay">Say hello</button><button class="btn o" style="width:100%" data-a="cov">Keep browsing</button></div></div>';
   if (o == "pg") return pageOv();
@@ -723,6 +840,7 @@ function render() {
   app.innerHTML = h + (U && V.scr != "code" ? overlays() : "");
   if (U && LR) drawLR();
   if (U && NT) drawNT();
+  if (U && CALL) drawCall();
   if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
@@ -734,6 +852,19 @@ app.addEventListener("click", async (e) => {
     if (a == "tologin") { V.mode = "login"; return render(); }
     if (a == "recover") return recover();
     if (a == "otpgo") return otpGo();
+    if (a == "newcall") { V.ov = "cc"; return render(); }
+    if (a == "callv" || a == "callvid") { V.ov = null; return startCall(id, a == "callvid" ? "video" : "voice", b.dataset.n || callName(id)); }
+    if (a == "callacc") return acceptCall();
+    if (a == "calldec") { const c = CALL; if (c) { try { await api("/calls/" + c.id + "/answer", "POST", { accept: false }); } catch (e) {} endCallUi(); } return; }
+    if (a == "callend") return hangup();
+    if (a == "callmute") { if (CALL && CALL.local) { CALL.muted = !CALL.muted; CALL.local.getAudioTracks().forEach((t) => { t.enabled = !CALL.muted; }); drawCall(); } return; }
+    if (a == "callcam") { if (CALL && CALL.local) { CALL.cam = !CALL.cam; CALL.local.getVideoTracks().forEach((t) => { t.enabled = CALL.cam; }); drawCall(); } return; }
+    if (a == "invite") {
+      const link = location.origin + location.pathname, text = "Join me on Orivoclass: " + link;
+      if (navigator.share) { try { await navigator.share({ text }); } catch (e) {} return; }
+      location.href = "sms:" + b.dataset.p.replace(/[^\d+]/g, "") + "?body=" + encodeURIComponent(text); return;
+    }
+    if (a == "saveper") { const c = peer(); if (!c) return; await api("/contacts", "POST", { phone: c.phone, alias: c.pname || "" }); await loadCT(); await loadCH(); render(); loadPr().catch(() => {}); loadMsgs(true).catch(() => {}); return toast("Added to contacts"); }
     if (a == "sgnew" || a == "sgedit") { V.ov = "sgp"; return render(); }
     if (a == "sgt") { SGt = b.dataset.t; if (SGt == "matches") { try { SGM = (await api("/singles/matches")).matches; } catch (e) {} } return render(); }
     if (a == "sgref") { await loadDeck(); return render(); }
@@ -840,7 +971,7 @@ app.addEventListener("click", async (e) => {
       RC = ""; V.scr = null; V.tab = "chats"; render(); start(); return;
     }
     if (a == "auth") return auth();
-    if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } if (V.tab == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } render(); } return; }
+    if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } if (V.tab == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } render(); } if (V.tab == "calls") { try { await loadCalls(); } catch (e) {} render(); } return; }
     if (a == "sq") { if (V.tab != "chats") { V.tab = "chats"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
@@ -884,7 +1015,7 @@ app.addEventListener("click", async (e) => {
     if (a == "bls") { V.ov = "bls"; return render(); }
     if (a == "unbl") { await api("/blocks/" + id, "DELETE"); await loadBL(); return render(); }
     if (a == "delchat") { await api("/chats/" + V.cid, "DELETE"); await loadCH(); V.menu = false; V.scr = null; render(); return toast("Chat deleted"); }
-    if (a == "addc") { const er = $("ce"), p = $("cp").value.trim(); if (p.replace(/\D/g, "").length < 9) { er.textContent = "Enter a valid phone number."; return; } try { await api("/contacts", "POST", { phone: p, alias: $("cn").value.trim() }); await loadCT(); await loadPhotos(CT.map((c) => c.id)); render(); toast("Contact added"); } catch (err) { er.textContent = err.message; } return; }
+    if (a == "addc") { const er = $("ce"), p = $("cp").value.trim(); if (p.replace(/\D/g, "").length < 9) { er.textContent = "Enter a valid phone number."; return; } try { await api("/contacts", "POST", { phone: p, alias: $("cn").value.trim() }); await loadCT(); await loadPhotos(CT.map((c) => c.id)); render(); toast("Contact added"); } catch (err) { er.textContent = err.message; const old = $("invb"); if (old) old.remove(); if (/not on Orivoclass/i.test(err.message)) er.insertAdjacentHTML("afterend", '<button class="btn o" id="invb" data-a="invite" data-p="' + esc(p) + '">Invite them to Orivoclass</button>'); } return; }
     if (a == "delc") { await api("/contacts/" + id, "DELETE"); await loadCT(); return render(); }
     if (a == "sc") { V.ov = "sc"; V.draft = ""; return render(); }
     if (a == "col") { V.draft = $("stx").value; V.col = b.dataset.c; return render(); }
@@ -904,7 +1035,7 @@ app.addEventListener("input", (e) => {
 });
 app.addEventListener("change", async (e) => {
   if (e.target.id == "sgf" && e.target.files && e.target.files[0]) { try { const d = await shrink(e.target.files[0]); await api("/singles/photo", "PUT", { photo: d }); SGP.photo = d; const el = $("sgav"); if (el) el.innerHTML = sgAvatar(SGP); toast("Photo saved"); } catch (err) { toast(err.message); } return; }
-  if (e.target.id == "nfm" || e.target.id == "nfs" || e.target.id == "nfv") { try { await api("/notifications", "PUT", { msg: $("nfm").checked, status: $("nfs").checked, views: $("nfv").checked }); NOTIF = await api("/notifications"); toast("Saved"); } catch (err) { toast(err.message); } return; }
+  if (e.target.id == "nfm" || e.target.id == "nfs" || e.target.id == "nfv" || e.target.id == "nfc") { try { await api("/notifications", "PUT", { msg: $("nfm").checked, status: $("nfs").checked, views: $("nfv").checked, calls: $("nfc").checked }); NOTIF = await api("/notifications"); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "bkf" && e.target.files && e.target.files[0]) { try { const o = JSON.parse(await e.target.files[0].text()); if (o.type == "enc" && o.blob) { BKE = o; render(); return toast("Enter the backup password"); } if (o.type == "plain" && o.data && o.data.chats) { BK = o.data; BKI = null; V.ov = "bkv"; render(); return; } throw 0; } catch (err) { toast("That is not an Orivoclass backup."); } return; }
   if (e.target.id == "lpb" && lockOn()) { try { localStorage.setItem("bv.lk", JSON.stringify({ a: +e.target.value })); toast("Saved"); } catch (err) {} return; }
   if (e.target.id == "pf" && e.target.files && e.target.files[0]) { try { const d = await shrink(e.target.files[0]); await api("/me/photo", "PUT", { photo: d }); PH[U.id] = d; render(); toast("Photo saved"); } catch (err) { toast(err.message); } return; }
