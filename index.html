@@ -65,7 +65,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIB = false, SIMG = "", JP = null, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -389,11 +389,11 @@ function callsTab() {
 const AISVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2l2.1 5.9L20 10l-5.9 2.1L12 18l-2.1-5.9L4 10l5.9-2.1z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>';
 const aiLogo = (n) => '<span class="av" style="width:' + n + 'px;height:' + n + 'px;background:linear-gradient(135deg,var(--ac),#ff8fb1)">' + AISVG.replace('width="26" height="26"', 'width="' + Math.round(n * 0.55) + '" height="' + Math.round(n * 0.55) + '"') + "</span>";
 function aimsgsHtml() {
-  if (!AIM.length) return '<div class="empty">' + aiLogo(72) + '<b>Orivoclass AI</b>Ask me anything. I can help you write a message, explain something or answer a question.<span class="note">AI can make mistakes. Do not share passwords or private details. What you type here is sent to an AI service.</span></div>';
+  if (!AIM.length) return '<div class="empty">' + aiLogo(72) + '<b>Orivoclass AI</b>Ask me anything. I can help you write a message, explain something or answer a question.<span class="note">AI can make mistakes. Do not share passwords or private details. What you type here is sent to an AI service. You choose whether chats are saved in ⚙ settings.</span></div>';
   return AIM.map((m) => '<div class="b ' + (m.role == "user" ? "me" : "") + '">' + esc(m.content) + "</div>").join("") + (AIB ? '<div class="b">…</div>' : "");
 }
 function aiView() {
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="btn" data-a="aisend">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiset" aria-label="AI settings">⚙</button><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="btn" data-a="aisend">Send</button></div>';
 }
 function refreshAI(sc) {
   if (V.scr != "ai") return;
@@ -403,8 +403,8 @@ function refreshAI(sc) {
 async function sendAI() {
   if (AIB) return;
   const i = $("msg"), t = i.value.trim(); if (!t) return;
-  i.value = ""; AIM.push({ role: "user", content: t }); AIB = true; refreshAI(true);
-  try { const j = await api("/ai", "POST", { messages: AIM.slice(-12) }); AIM.push({ role: "assistant", content: j.reply }); }
+  i.value = ""; AIM.push({ role: "user", content: t, t: Date.now() }); AIB = true; refreshAI(true);
+  try { const j = await api("/ai", "POST", { messages: AIM.slice(-12).map((m) => ({ role: m.role, content: m.content })) }); AIM.push({ role: "assistant", content: j.reply, t: Date.now() }); }
   catch (e) { toast(e.message); AIM.pop(); i.value = t; }
   AIB = false; refreshAI(true); const n = $("msg"); if (n) n.focus();
 }
@@ -509,7 +509,11 @@ function shrink(file) {
   });
 }
 const loadGL = async () => { GL = (await api("/groups")).groups; };
-async function loadAll() { await Promise.all([loadCT(), loadCH(), loadST(), loadBL(), loadGL()]); await loadPhotos([U.id].concat(CT.map((c) => c.id), CH.map((c) => c.peer))); }
+async function loadAI() {
+  const j = await api("/ai/history"); AIKEEP = j.keep;
+  if (j.keep !== 0) AIM = j.messages.map((m) => ({ role: m.role, content: m.content, t: new Date(m.created_at).getTime() }));
+}
+async function loadAll() { await Promise.all([loadCT(), loadCH(), loadST(), loadBL(), loadGL(), loadAI().catch(() => {})]); await loadPhotos([U.id].concat(CT.map((c) => c.id), CH.map((c) => c.peer))); }
 async function loadMsgs(sc) {
   const id = V.cid; const j = await api("/messages/" + id);
   if (V.scr != "chat" || V.cid != id) return;
@@ -649,6 +653,10 @@ function listHtml() {
   const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>";
   const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind == "poll" ? "📊 " + esc(g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
+  if (!V.arch && V.f == "all" && AIM.length && (!q || "orivoclass ai".indexOf(q) > -1)) {
+    const m = AIM[AIM.length - 1];
+    items.push({ pin: 0, t: m.t || 0, h: '<button class="row" data-a="ai">' + aiLogo(52) + '<span class="t"><b>Orivoclass AI</b><small>' + esc((m.role == "user" ? "You: " : "") + m.content) + "</small></span><small>" + (m.t ? tm(m.t) : "") + "</small></button>" });
+  }
   items.sort((a, b) => b.pin - a.pin || b.t - a.t);
   let top = "";
   if (V.arch) top = '<button class="row" data-a="arch" style="min-height:48px"><b>← Back to chats</b></button>';
@@ -687,7 +695,7 @@ const rowSoon = (t, sb) => '<div class="row" style="opacity:.75;cursor:default">
 function meTab() {
   return profileHead() +
     '<div class="sec">ACCOUNT</div>' + rowGo("priv", "Privacy", "Last seen, blocked contacts") + rowGo("acct", "Account status", "Trust score " + (U.trust == null ? 100 : U.trust) + "%") + rowGo("dev", "Linked devices", "Devices logged in to your account") +
-    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + rowGo("theme", "Appearance", "Light or dark, and your colour") + rowGo("photo", "Profile photo", "Add a photo and choose who sees it") + rowGo("dm", "Disappearing messages", "Set inside each chat") + rowGo("lock", "Chat lock", lockOn() ? "On · PIN" : "Off") + rowGo("backup", "Backup", "Download a copy of your chats") + rowGo("notif", "Notifications", "Messages, status and views") +
+    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + rowGo("theme", "Appearance", "Light or dark, and your colour") + rowGo("photo", "Profile photo", "Add a photo and choose who sees it") + rowGo("dm", "Disappearing messages", "Set inside each chat") + rowGo("lock", "Chat lock", lockOn() ? "On · PIN" : "Off") + rowGo("backup", "Backup", "Download a copy of your chats") + rowGo("notif", "Notifications", "Messages, status and views") + rowGo("aiset", "Orivoclass AI", "Save your AI chats, or not") +
     '<div class="sec">LEGAL AND HELP</div>' + rowGo("terms", "Terms of Service", "Last updated: November 2026") + rowGo("privacy", "Privacy Policy", "How we handle your data") + rowGo("rules", "Community Rules", "What is allowed on Orivoclass") + rowGo("about", "About Us", "Who we are") + rowGo("help", "Help and contact", "Questions and support") +
     '<div class="cd" style="margin-top:16px"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="btn d" data-a="pg" data-p="del">Delete my account</button></div>';
 }
@@ -810,7 +818,7 @@ const LEGAL = {
     ["Suspended and banned accounts", "If an account is banned or suspended, its phone number stays on a block list so the ban cannot be avoided, even if the account is deleted. Everything else is erased when you delete your account."],
     ["Singles", "If you create a Singles profile we keep your nickname, date of birth, gender, what you are looking for, town, short description, photo, likes, matches and Singles messages. Your phone number and real name are never shown there. New Singles photos are checked by our team. If you delete your Singles profile all of this is erased."],
     ["Calls", "Voice and video calls go directly between the two phones when possible, or through a relay that only passes encrypted data. We do not record calls. To connect a call, your phone\u2019s network address is shared with the other phone. We keep a call history (who, when and how long) for 90 days. You can only call people who have saved your number."],
-    ["Orivoclass AI", "The AI button sends what you type to an outside AI service so that it can answer. Do not share passwords or private details with it. We do not store your AI conversation on our servers and it is cleared when you log out, but the AI service may handle it under its own rules."],
+    ["Orivoclass AI", "The AI button sends what you type to an outside AI service so that it can answer. Do not share passwords or private details with it. By default we do not store your AI conversation and it is cleared when you log out. If you turn on saving in Settings, we keep your AI messages for the time you choose (or until you delete them) so you can read them on any phone, and you can delete them whenever you want. The AI service may handle your messages under its own rules."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
     ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
@@ -858,6 +866,9 @@ function pageOv() {
     t = "Appearance";
     const th = TH();
     b = '<div class="cd"><b>Mode</b><div class="row2"><button class="btn ' + (th.m == "light" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="light">White</button><button class="btn ' + (th.m == "dark" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="dark">Dark</button></div></div><div class="cd"><b>Colour</b><div class="sw" style="flex-wrap:wrap">' + PAL.map((c, i) => '<button data-a="thc" data-i="' + i + '" class="' + (th.a == i ? "on" : "") + '" style="background:' + c[th.m == "dark" ? 1 : 0] + '" aria-label="Colour ' + (i + 1) + '"></button>').join("") + '</div><span class="note">This is saved on this phone only.</span></div>';
+  } else if (p == "aiset") {
+    t = "Orivoclass AI";
+    b = '<div class="cd"><b>Save my AI chats</b><span class="mut">Choose how long Orivoclass keeps what you and the AI write, so you can read it again on any phone.</span><label>Keep my AI chats<select id="aik">' + [[0, "Don’t save"], [86400, "24 hours"], [604800, "7 days"], [2592000, "30 days"], [-1, "Until I delete them"]].map((o) => '<option value="' + o[0] + '"' + (AIKEEP == o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + '</select></label><span class="note">With “Don’t save”, the chat only lasts while the app is open. The AI service may handle your messages under its own rules, so never share passwords or private details.</span></div><div class="cd"><button class="btn d" data-a="aidel">Delete my AI chat history</button></div>';
   } else if (p == "notif") {
     t = "Notifications";
     const N = NOTIF || {};
@@ -979,9 +990,11 @@ app.addEventListener("click", async (e) => {
     if (a == "joingo") { const j = await api("/groups/join/" + JP.token, "POST"); dropJoin(); V.ov = null; await loadGL(); return openGroup(j.id); }
     if (a == "joinopen") { const gid = JP.id; dropJoin(); V.ov = null; return openGroup(gid); }
     if (a == "joinno") { dropJoin(); V.ov = null; return render(); }
-    if (a == "ai") { V.scr = "ai"; V.ov = null; render(); const n = $("msg"); if (n) n.focus(); return; }
+    if (a == "ai") { V.scr = "ai"; V.ov = null; render(); const n = $("msg"); if (n) n.focus(); if (AIKEEP !== 0) loadAI().then(() => refreshAI(true)).catch(() => {}); return; }
+    if (a == "aiset") { V.pg = "aiset"; V.ov = "pg"; return render(); }
+    if (a == "aidel") { if (!confirm("Delete your saved AI chats?")) return; await api("/ai/history", "DELETE"); AIM = []; refreshAI(false); render(); return toast("AI chats deleted"); }
     if (a == "aisend") return sendAI();
-    if (a == "aiclear") { AIM = []; refreshAI(false); return toast("Chat cleared"); }
+    if (a == "aiclear") { if (AIKEEP !== 0) { if (!confirm("Clear this chat? Your saved AI chat will be deleted too.")) return; await api("/ai/history", "DELETE"); } AIM = []; refreshAI(false); return toast("Chat cleared"); }
     if (a == "newcall") { V.ov = "cc"; return render(); }
     if (a == "callv" || a == "callvid") { V.ov = null; return startCall(id, a == "callvid" ? "video" : "voice", b.dataset.n || callName(id)); }
     if (a == "callacc") return acceptCall();
@@ -1166,6 +1179,7 @@ app.addEventListener("input", (e) => {
   else if (e.target.id == "msg" && V.scr == "chat" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
 });
 app.addEventListener("change", async (e) => {
+  if (e.target.id == "aik") { try { const k = +e.target.value; await api("/ai/settings", "PUT", { keep: k }); AIKEEP = k; toast(k === 0 ? "AI chats will not be saved" : "Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "gs1" || e.target.id == "gs2") { try { await api("/groups/" + V.gid + "/settings", "PUT", { only_admins_send: $("gs1").checked, members_can_add: $("gs2").checked }); await loadGInfo(); render(); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "sif" && e.target.files && e.target.files[0]) { try { SIMG = await fitImg(e.target.files[0]); render(); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "sgf" && e.target.files && e.target.files[0]) { try { const d = await shrink(e.target.files[0]); await api("/singles/photo", "PUT", { photo: d }); SGP.photo = d; const el = $("sgav"); if (el) el.innerHTML = sgAvatar(SGP); toast("Photo saved"); } catch (err) { toast(err.message); } return; }
@@ -1186,4 +1200,4 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 })();
 </script>
 </body>
-</html>
+  </html>
