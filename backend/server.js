@@ -212,7 +212,9 @@ app.post("/api/login/status", pollLimit, wrap(async (req, res) => {
 app.get("/api/login-requests", need, wrap(async (req, res) => {
   const r = await db.query("SELECT id, device, created_at FROM login_requests WHERE user_id=$1 AND status='pending' AND expires_at > now() ORDER BY created_at DESC LIMIT 1", [req.uid]);
   const n = await db.query("SELECT id, kind, reason, until, created_at FROM sanctions WHERE user_id=$1 AND seen=false AND kind IN ('warning','restriction') ORDER BY id LIMIT 1", [req.uid]);
-  res.json({ request: r.rows[0] || null, notice: n.rows[0] || null });
+  await expireCalls();
+  const cl = await db.query(`SELECT c.id, c.kind, c.caller AS from_id, COALESCE(NULLIF(k.alias,''), u.name) AS name FROM calls c JOIN users u ON u.id=c.caller LEFT JOIN contacts k ON k.owner=$1 AND k.contact=c.caller WHERE c.callee=$1 AND c.status='ringing' ORDER BY c.created_at DESC LIMIT 1`, [req.uid]);
+  res.json({ request: r.rows[0] || null, notice: n.rows[0] || null, call: cl.rows[0] || null });
 }));
 app.post("/api/login-requests/:id/answer", need, wrap(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, "Invalid id.");
@@ -379,7 +381,7 @@ app.get("/api/chats", need, wrap(async (req, res) => {
          SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, CASE WHEN view_once THEN 'View once message' ELSE body END AS body, from_id, created_at
          FROM messages WHERE ((from_id=$1 AND NOT del_from) OR (to_id=$1 AND NOT del_to)) AND (expires_at IS NULL OR expires_at > now())
        ) x ORDER BY peer, id DESC)
-     SELECT m.*, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), u.name) AS display,
+     SELECT m.*, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS display, (c.contact IS NOT NULL) AS saved, u.name AS pname,
             EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs,
             COALESCE(p.pinned, false) AS pinned, COALESCE(p.archived, false) AS archived,
             EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=m.peer) OR (b.blocker=m.peer AND b.blocked=$1)) AS blk
@@ -423,7 +425,7 @@ app.post("/api/messages", need, wrap(async (req, res) => {
     [req.uid, req.body.to, body, reply, !!req.body.once && !req.body.fwd, !!req.body.fwd, hideFromThem, ttl ? new Date(Date.now() + ttl * 1000) : null]);
   await db.query("UPDATE chat_prefs SET archived=false WHERE (owner=$1 AND peer=$2) OR (owner=$2 AND peer=$1)", [req.uid, req.body.to]);
   if (webpush && !hideFromThem) // never include the message text
-    db.query("SELECT COALESCE(NULLIF(c.alias,''), u.name) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, req.body.to])
+    db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, req.body.to])
       .then((q) => notify(req.body.to, "msg", { title: (q.rows[0] && q.rows[0].n) || "Orivoclass", body: "New message", tag: "m" + req.uid })).catch(() => {});
   res.json({ id: r.rows[0].id });
 }));
@@ -515,11 +517,11 @@ app.delete("/api/chats/:peer", need, wrap(async (req, res) => {
 // ---- Status (text updates, 24 hours) ----
 app.get("/api/status", need, wrap(async (req, res) => {
   const r = await db.query(
-    `SELECT s.id, s.user_id, s.body, s.color, s.created_at, u.name,
+    `SELECT s.id, s.user_id, s.body, s.color, s.created_at, COALESCE(NULLIF(k.alias,''), u.name) AS name,
             (SELECT count(*)::int FROM status_views v WHERE v.status_id=s.id AND s.user_id=$1) AS views
-     FROM statuses s JOIN users u ON u.id = s.user_id
+     FROM statuses s JOIN users u ON u.id = s.user_id LEFT JOIN contacts k ON k.owner=$1 AND k.contact=s.user_id
      WHERE s.created_at > now() - interval '24 hours'
-       AND (s.user_id=$1 OR EXISTS (SELECT 1 FROM contacts c WHERE c.owner=s.user_id AND c.contact=$1))
+       AND (s.user_id=$1 OR EXISTS (SELECT 1 FROM contacts c WHERE c.owner=$1 AND c.contact=s.user_id))
        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))
      ORDER BY s.created_at DESC`, [req.uid]);
   res.json({ status: r.rows });
@@ -532,7 +534,7 @@ app.post("/api/status", need, wrap(async (req, res) => {
   await db.query("INSERT INTO statuses(user_id,body,color) VALUES($1,$2,$3)", [req.uid, body, color]);
   if (webpush) { // tell the people who can see it (fire and forget)
     const me = (await db.query("SELECT name FROM users WHERE id=$1", [req.uid])).rows[0];
-    const to = await db.query("SELECT contact FROM contacts WHERE owner=$1 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=contacts.contact) OR (b.blocker=contacts.contact AND b.blocked=$1))", [req.uid]);
+    const to = await db.query("SELECT owner AS contact FROM contacts WHERE contact=$1 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=contacts.owner) OR (b.blocker=contacts.owner AND b.blocked=$1))", [req.uid]);
     to.rows.forEach((r) => notify(r.contact, "status", { title: me.name, body: "posted a status", tag: "s" + req.uid }));
   }
   res.json({ ok: true });
@@ -687,12 +689,12 @@ app.post("/api/status/:id/view", need, wrap(async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
   const s = (await db.query(
     `SELECT s.id, s.user_id FROM statuses s WHERE s.id=$2 AND s.user_id<>$1 AND s.created_at > now() - interval '24 hours'
-       AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=s.user_id AND c.contact=$1)
+       AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=$1 AND c.contact=s.user_id)
        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))`, [req.uid, req.params.id])).rows[0];
   if (s) {
     const ins = await db.query("INSERT INTO status_views(status_id,viewer_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING status_id", [s.id, req.uid]);
     if (ins.rowCount && webpush) {
-      const q = (await db.query("SELECT COALESCE(NULLIF(c.alias,''), u.name) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, s.user_id])).rows[0];
+      const q = (await db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, s.user_id])).rows[0];
       notify(s.user_id, "views", { title: (q && q.n) || "Orivoclass", body: "viewed your status", tag: "v" + s.id });
     }
   }
@@ -701,7 +703,7 @@ app.post("/api/status/:id/view", need, wrap(async (req, res) => {
 app.get("/api/status/:id/views", need, wrap(async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
   if (!(await db.query("SELECT 1 FROM statuses WHERE id=$1 AND user_id=$2", [req.params.id, req.uid])).rowCount) return bad(res, "Not found.", 404);
-  const r = await db.query("SELECT u.id, COALESCE(NULLIF(c.alias,''), u.name) AS name, v.viewed_at FROM status_views v JOIN users u ON u.id=v.viewer_id LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE v.status_id=$1 ORDER BY v.viewed_at DESC", [req.params.id, req.uid]);
+  const r = await db.query("SELECT u.id, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS name, v.viewed_at FROM status_views v JOIN users u ON u.id=v.viewer_id LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE v.status_id=$1 ORDER BY v.viewed_at DESC", [req.params.id, req.uid]);
   res.json({ views: r.rows });
 }));
 setInterval(() => db.query("DELETE FROM statuses WHERE created_at < now() - interval '2 days'").catch(() => {}), 3600000); // views go with them
@@ -710,7 +712,7 @@ setInterval(() => db.query("DELETE FROM statuses WHERE created_at < now() - inte
 async function notify(uid, kind, payload) {
   if (!webpush) return;
   try {
-    const col = { msg: "n_msg", status: "n_status", views: "n_views" }[kind];
+    const col = { msg: "n_msg", status: "n_status", views: "n_views", calls: "n_calls" }[kind];
     const u = (await db.query(`SELECT ${col} AS enabled FROM users WHERE id=$1`, [uid])).rows[0];
     if (!u || !u.enabled) return;
     const subs = (await db.query("SELECT endpoint, p256dh, auth FROM push_subs WHERE user_id=$1", [uid])).rows;
@@ -734,12 +736,12 @@ app.post("/api/push/unsubscribe", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 app.get("/api/notifications", need, wrap(async (req, res) => {
-  const u = (await db.query("SELECT n_msg, n_status, n_views FROM users WHERE id=$1", [req.uid])).rows[0];
+  const u = (await db.query("SELECT n_msg, n_status, n_views, n_calls FROM users WHERE id=$1", [req.uid])).rows[0];
   const d = req.sid ? (await db.query("SELECT 1 FROM push_subs WHERE session_id=$1", [req.sid])).rowCount > 0 : false;
-  res.json({ available: !!webpush, msg: u.n_msg, status: u.n_status, views: u.n_views, this_device: d });
+  res.json({ available: !!webpush, msg: u.n_msg, status: u.n_status, views: u.n_views, calls: u.n_calls, this_device: d });
 }));
 app.put("/api/notifications", need, wrap(async (req, res) => {
-  await db.query("UPDATE users SET n_msg=$2, n_status=$3, n_views=$4 WHERE id=$1", [req.uid, req.body.msg === true, req.body.status === true, req.body.views === true]);
+  await db.query("UPDATE users SET n_msg=$2, n_status=$3, n_views=$4, n_calls=$5 WHERE id=$1", [req.uid, req.body.msg === true, req.body.status === true, req.body.views === true, req.body.calls === true]);
   res.json({ ok: true });
 }));
 
@@ -772,6 +774,100 @@ app.get("/api/backup", need, backupLimit, wrap(async (req, res) => {
     exported_at: new Date(), me, chats: Object.values(chats), groups,
     statuses: st.rows.map((x) => ({ body: x.body, created_at: x.created_at, views: vs.rows.filter((v) => String(v.status_id) === String(x.id)).map((v) => ({ name: v.name, at: v.viewed_at })) })),
   });
+}));
+
+// ---- Calls (voice and video, WebRTC). The server only passes the set-up messages; the call itself goes phone to phone, or through a TURN relay. ----
+// Optional env: TURN_URLS (comma list, e.g. turn:turn.example.com:3478,turns:turn.example.com:5349) with either TURN_SECRET (coturn "REST" auth) or TURN_USERNAME + TURN_CREDENTIAL.
+const callPoll = rateLimit({ windowMs: 60000, max: 200 });
+const callStart = rateLimit({ windowMs: 60 * 60000, max: 30 });
+async function expireCalls() {
+  await db.query("UPDATE calls SET status='missed', ended_at=now() WHERE status='ringing' AND created_at < now() - interval '45 seconds'");
+  await db.query("UPDATE calls SET status='ended', ended_at=now() WHERE status='active' AND answered_at < now() - interval '6 hours'");
+}
+setInterval(() => {
+  expireCalls().catch(() => {});
+  db.query("DELETE FROM call_signals WHERE created_at < now() - interval '2 hours'").catch(() => {});
+  db.query("DELETE FROM calls WHERE created_at < now() - interval '90 days'").catch(() => {});
+}, 15000);
+
+app.get("/api/calls/ice", need, (req, res) => {
+  const servers = [{ urls: (process.env.STUN_URLS || "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302").split(",").map((x) => x.trim()).filter(Boolean) }];
+  const urls = (process.env.TURN_URLS || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (urls.length) {
+    if (process.env.TURN_SECRET) {
+      const user = (Math.floor(Date.now() / 1000) + 3600) + ":" + req.uid;
+      servers.push({ urls, username: user, credential: crypto.createHmac("sha1", process.env.TURN_SECRET).update(user).digest("base64") });
+    } else if (process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) servers.push({ urls, username: process.env.TURN_USERNAME, credential: process.env.TURN_CREDENTIAL });
+  }
+  res.json({ iceServers: servers, relay: servers.length > 1 });
+});
+
+app.post("/api/calls", need, callStart, wrap(async (req, res) => {
+  if (!isId(req.body.to) || req.body.to.toLowerCase() === req.uid) return bad(res, "Invalid id.");
+  const to = req.body.to.toLowerCase(), kind = req.body.kind === "video" ? "video" : "voice";
+  if (!(await db.query("SELECT 1 FROM users WHERE id=$1 AND NOT banned", [to])).rowCount) return bad(res, "Not found.", 404);
+  if (await sgBlocked(req.uid, to)) return bad(res, "This person cannot be called right now.", 403);
+  if (!(await db.query("SELECT 1 FROM contacts WHERE owner=$1 AND contact=$2", [to, req.uid])).rowCount) return bad(res, "You can only call people who have saved your number.", 403);
+  await expireCalls();
+  if ((await db.query("SELECT 1 FROM calls WHERE (caller=$1 OR callee=$1) AND status IN ('ringing','active')", [req.uid])).rowCount) return bad(res, "You are already in a call.", 409);
+  if ((await db.query("SELECT 1 FROM calls WHERE (caller=$1 OR callee=$1) AND status IN ('ringing','active')", [to])).rowCount) {
+    const b = await db.query("INSERT INTO calls(caller,callee,kind,status,ended_at) VALUES($1,$2,$3,'busy',now()) RETURNING id", [req.uid, to, kind]);
+    return res.json({ id: b.rows[0].id, busy: true });
+  }
+  const c = await db.query("INSERT INTO calls(caller,callee,kind) VALUES($1,$2,$3) RETURNING id", [req.uid, to, kind]);
+  if (webpush) {
+    const q = (await db.query("SELECT COALESCE(NULLIF(k.alias,''), u.name) AS n FROM users u LEFT JOIN contacts k ON k.owner=$2 AND k.contact=u.id WHERE u.id=$1", [req.uid, to])).rows[0];
+    notify(to, "calls", { title: (q && q.n) || "Orivoclass", body: "Incoming " + kind + " call", tag: "call" + c.rows[0].id });
+  }
+  res.json({ id: c.rows[0].id });
+}));
+
+app.post("/api/calls/:id/answer", need, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  const st = req.body.accept === true ? "active" : "declined";
+  const r = await db.query("UPDATE calls SET status=$3::text, answered_at=CASE WHEN $3::text='active' THEN now() ELSE NULL END, ended_at=CASE WHEN $3::text='active' THEN NULL ELSE now() END WHERE id=$1 AND callee=$2 AND status='ringing' AND created_at > now() - interval '60 seconds' RETURNING id", [req.params.id, req.uid, st]);
+  if (!r.rowCount) return bad(res, "This call has ended.", 410);
+  res.json({ ok: true });
+}));
+
+app.post("/api/calls/:id/signal", need, callPoll, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  const kind = String(req.body.kind || ""), payload = String(req.body.payload || "");
+  if (!["offer", "answer", "ice"].includes(kind) || !payload || payload.length > 20000) return bad(res, "Invalid signal.");
+  const c = (await db.query("SELECT caller, callee FROM calls WHERE id=$1 AND (caller=$2 OR callee=$2) AND status IN ('ringing','active')", [req.params.id, req.uid])).rows[0];
+  if (!c) return bad(res, "This call has ended.", 410);
+  await db.query("INSERT INTO call_signals(call_id,to_id,kind,payload) VALUES($1,$2,$3,$4)", [req.params.id, c.caller === req.uid ? c.callee : c.caller, kind, payload]);
+  res.json({ ok: true });
+}));
+
+app.get("/api/calls/:id/signals", need, callPoll, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  await expireCalls();
+  const c = (await db.query("SELECT status FROM calls WHERE id=$1 AND (caller=$2 OR callee=$2)", [req.params.id, req.uid])).rows[0];
+  if (!c) return bad(res, "Not found.", 404);
+  const s = await db.query("SELECT id, kind, payload FROM call_signals WHERE call_id=$1 AND to_id=$2 AND id > $3 ORDER BY id LIMIT 100", [req.params.id, req.uid, parseInt(req.query.since, 10) || 0]);
+  res.json({ status: c.status, signals: s.rows.map((x) => ({ id: Number(x.id), kind: x.kind, payload: x.payload })) });
+}));
+
+app.post("/api/calls/:id/end", need, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  const c = (await db.query("UPDATE calls SET status=CASE WHEN status='ringing' THEN 'missed' ELSE 'ended' END, ended_at=now() WHERE id=$1 AND (caller=$2 OR callee=$2) AND status IN ('ringing','active') RETURNING *", [req.params.id, req.uid])).rows[0];
+  if (c && c.status === "missed" && c.caller === req.uid && webpush) {
+    const q = (await db.query("SELECT COALESCE(NULLIF(k.alias,''), u.name) AS n FROM users u LEFT JOIN contacts k ON k.owner=$2 AND k.contact=u.id WHERE u.id=$1", [req.uid, c.callee])).rows[0];
+    notify(c.callee, "calls", { title: (q && q.n) || "Orivoclass", body: "Missed " + c.kind + " call", tag: "call" + c.id });
+  }
+  res.json({ ok: true });
+}));
+
+app.get("/api/calls", need, wrap(async (req, res) => {
+  await expireCalls();
+  const r = await db.query(
+    `SELECT c.id, c.kind, c.status, c.created_at, c.answered_at, c.ended_at, (c.caller=$1) AS outgoing, u.id AS peer_id,
+            COALESCE(NULLIF(k.alias,''), CASE WHEN k.contact IS NOT NULL THEN u.name ELSE u.phone END) AS peer_name
+     FROM calls c JOIN users u ON u.id = CASE WHEN c.caller=$1 THEN c.callee ELSE c.caller END
+     LEFT JOIN contacts k ON k.owner=$1 AND k.contact=u.id
+     WHERE c.caller=$1 OR c.callee=$1 ORDER BY c.created_at DESC LIMIT 50`, [req.uid]);
+  res.json({ calls: r.rows });
 }));
 
 // ---- Singles: ONE shared room for everyone, with limits on how much people see and how much they can be reached ----
@@ -1142,6 +1238,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS n_msg boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_status boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_views boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS cover int NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS n_calls boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mood text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS status_views(status_id bigint REFERENCES statuses(id) ON DELETE CASCADE, viewer_id uuid REFERENCES users(id) ON DELETE CASCADE, viewed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(status_id,viewer_id));
 CREATE TABLE IF NOT EXISTS push_subs(endpoint text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, session_id uuid REFERENCES sessions(id) ON DELETE CASCADE, p256dh text NOT NULL, auth text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
@@ -1150,6 +1247,11 @@ CREATE TABLE IF NOT EXISTS group_members(group_id uuid REFERENCES chat_groups(id
 CREATE INDEX IF NOT EXISTS gm_user ON group_members(user_id);
 CREATE TABLE IF NOT EXISTS group_messages(id bigserial PRIMARY KEY, group_id uuid NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL DEFAULT 'text', target_id uuid REFERENCES users(id) ON DELETE CASCADE, body text, reply text, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz);
 CREATE INDEX IF NOT EXISTS gmsg_group ON group_messages(group_id,id);
+CREATE TABLE IF NOT EXISTS calls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), caller uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, callee uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL DEFAULT 'voice', status text NOT NULL DEFAULT 'ringing', created_at timestamptz NOT NULL DEFAULT now(), answered_at timestamptz, ended_at timestamptz);
+CREATE INDEX IF NOT EXISTS calls_caller ON calls(caller, created_at DESC);
+CREATE INDEX IF NOT EXISTS calls_callee ON calls(callee, created_at DESC);
+CREATE TABLE IF NOT EXISTS call_signals(id bigserial PRIMARY KEY, call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, payload text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS callsig_to ON call_signals(call_id, to_id, id);
 CREATE TABLE IF NOT EXISTS singles(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, nick text NOT NULL, birth_date date NOT NULL, gender text NOT NULL, show_me text NOT NULL DEFAULT 'everyone', age_min int NOT NULL DEFAULT 18, age_max int NOT NULL DEFAULT 99, town text, bio text, photo text, photo_review boolean NOT NULL DEFAULT false, active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS singles_views(day date NOT NULL, viewer uuid REFERENCES users(id) ON DELETE CASCADE, profile uuid REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(day,viewer,profile));
 CREATE TABLE IF NOT EXISTS singles_likes(liker uuid REFERENCES users(id) ON DELETE CASCADE, liked uuid REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(liker,liked));
