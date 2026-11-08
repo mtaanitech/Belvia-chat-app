@@ -846,7 +846,12 @@ app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
     if (r.ok) {
       let j; try { j = JSON.parse(r.raw); } catch (e) { j = r.raw; }
       const reply = pickReply(j).slice(0, 4000);
-      if (reply) { aiGood = fmt; return res.json({ reply }); }
+      if (reply) {
+        aiGood = fmt;
+        const kp = (await db.query("SELECT ai_keep FROM users WHERE id=$1", [req.uid])).rows[0];
+        if (kp && kp.ai_keep !== 0) await db.query("INSERT INTO ai_messages(user_id,role,content) VALUES($1,'user',$2),($1,'assistant',$3)", [req.uid, msgs[msgs.length - 1].content, reply]);
+        return res.json({ reply });
+      }
       console.error("AI reply format not recognised:", r.raw.slice(0, 300));
       return bad(res, "The AI answered in a way the app does not understand yet.", 502);
     }
@@ -856,6 +861,28 @@ app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
   if (last.status === 401 || last.status === 403) return bad(res, "The AI needs a key. Ask the app owner to set AI_KEY.", 502);
   const why = last.status ? "error " + last.status : last.error === "timeout" ? "it took too long" : "no connection";
   return bad(res, "The AI is not available right now (" + why + ").", 502);
+}));
+
+// Saved AI chats: off by default. The person chooses how long to keep them (or deletes them whenever they want).
+setInterval(() => db.query("DELETE FROM ai_messages m USING users u WHERE m.user_id=u.id AND u.ai_keep > 0 AND m.created_at < now() - make_interval(secs => u.ai_keep::double precision)").catch(() => {}), 3600000);
+app.get("/api/ai/history", need, wrap(async (req, res) => {
+  const u = (await db.query("SELECT ai_keep FROM users WHERE id=$1", [req.uid])).rows[0];
+  const keep = u ? u.ai_keep : 0;
+  if (keep === 0) return res.json({ keep, messages: [] });
+  const r = await db.query("SELECT * FROM (SELECT id, role, content, created_at FROM ai_messages WHERE user_id=$1 AND ($2::int < 0 OR created_at > now() - make_interval(secs => $2::double precision)) ORDER BY id DESC LIMIT 60) t ORDER BY id", [req.uid, keep]);
+  res.json({ keep, messages: r.rows });
+}));
+app.put("/api/ai/settings", need, wrap(async (req, res) => {
+  const k = Number(req.body.keep);
+  if (![0, 86400, 604800, 2592000, -1].includes(k)) return bad(res, "Choose how long to keep your AI chats.");
+  await db.query("UPDATE users SET ai_keep=$2 WHERE id=$1", [req.uid, k]);
+  if (k === 0) await db.query("DELETE FROM ai_messages WHERE user_id=$1", [req.uid]);
+  else if (k > 0) await db.query("DELETE FROM ai_messages WHERE user_id=$1 AND created_at < now() - make_interval(secs => $2::double precision)", [req.uid, k]);
+  res.json({ ok: true, keep: k });
+}));
+app.delete("/api/ai/history", need, wrap(async (req, res) => {
+  await db.query("DELETE FROM ai_messages WHERE user_id=$1", [req.uid]);
+  res.json({ ok: true });
 }));
 
 // ---- Calls (voice and video, WebRTC). The server only passes the set-up messages; the call itself goes phone to phone, or through a TURN relay. ----
@@ -1423,6 +1450,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS n_status boolean NOT NULL DEFAULT tru
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_views boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS cover int NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_calls boolean NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_keep int NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mood text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS status_views(status_id bigint REFERENCES statuses(id) ON DELETE CASCADE, viewer_id uuid REFERENCES users(id) ON DELETE CASCADE, viewed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(status_id,viewer_id));
