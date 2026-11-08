@@ -9,7 +9,8 @@ self.addEventListener("push", (e) => {
     // If the app is open and on screen, the person already sees what is happening.
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (wins.some((c) => c.visibilityState === "visible")) return;
-    await self.registration.showNotification(d.title || "Orivoclass", { body: d.body || "", tag: d.tag || undefined, renotify: !!d.tag });
+    const call = !!(d.tag && String(d.tag).indexOf("call") === 0);
+    await self.registration.showNotification(d.title || "Orivoclass", { body: d.body || "", tag: d.tag || undefined, renotify: !!d.tag, requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400] : [100] });
   })());
 });
 
