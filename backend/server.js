@@ -636,6 +636,16 @@ const adminOnly = (req, res, next) => {
   if (a.length < 16 || k.length !== a.length || !crypto.timingSafeEqual(k, a)) return res.status(401).json({ error: "Admin key required." });
   next();
 };
+// Admin check of the AI connection: shows what the AI answers to each request shape (never shows the key).
+app.get("/api/admin/ai-test", adminLimit, adminOnly, wrap(async (req, res) => {
+  const out = [];
+  for (const fmt of AI_FORMATS) {
+    const r = await aiCall(fmt, [{ role: "user", content: "Say hello in one short sentence." }]);
+    let j; try { j = JSON.parse(r.raw); } catch (e) { j = r.raw; }
+    out.push({ format: fmt, status: r.status, ok: r.ok, error: r.error || null, reply: pickReply(j).slice(0, 200), body: r.raw.slice(0, 400) });
+  }
+  res.json({ node: process.version, fetch: typeof fetch === "function", url: AI_URL, key_set: !!process.env.AI_KEY, system_prompt_sent: !!AI_SYSTEM, results: out });
+}));
 app.get("/api/admin/reports", adminLimit, adminOnly, wrap(async (req, res) => {
   const r = await db.query(`SELECT r.id, r.reason, r.note, r.evidence, r.created_at,
       rp.id AS reported_id, rp.name AS reported_name, rp.phone AS reported_phone, rp.trust_score, rp.banned,
@@ -807,27 +817,45 @@ function pickReply(j) {
   for (const x of cands) if (typeof x === "string" && x.trim()) return x.trim();
   return "";
 }
+const AI_FORMATS = ["messages", "message", "prompt"];
+let aiGood = null; // the request format that worked last, tried first next time
+const aiBody = (fmt, msgs) => {
+  const last = msgs[msgs.length - 1].content;
+  return fmt === "message" ? { message: last, history: msgs.slice(0, -1) }
+    : fmt === "prompt" ? { prompt: last }
+    : { messages: (AI_SYSTEM ? [{ role: "system", content: AI_SYSTEM }] : []).concat(msgs) };
+};
+async function aiCall(fmt, msgs) {
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 30000);
+  try {
+    const r = await fetch(AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, process.env.AI_KEY ? { Authorization: "Bearer " + process.env.AI_KEY } : {}), body: JSON.stringify(aiBody(fmt, msgs)), signal: ac.signal });
+    return { ok: r.ok, status: r.status, raw: await r.text() };
+  } catch (e) { return { ok: false, status: 0, raw: "", error: e.name === "AbortError" ? "timeout" : e.message }; }
+  finally { clearTimeout(timer); }
+}
 app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
+  if (typeof fetch !== "function") return bad(res, "The server needs Node 18 or newer for the AI.", 500);
   const msgs = (Array.isArray(req.body.messages) ? req.body.messages : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") return bad(res, "Type a message first.");
-  const last = msgs[msgs.length - 1].content;
-  const body = AI_FORMAT === "message" ? { message: last, history: msgs.slice(0, -1) }
-    : AI_FORMAT === "prompt" ? { prompt: last }
-    : { messages: (AI_SYSTEM ? [{ role: "system", content: AI_SYSTEM }] : []).concat(msgs) };
-  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 30000);
-  let r, raw = "";
-  try {
-    r = await fetch(AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, process.env.AI_KEY ? { Authorization: "Bearer " + process.env.AI_KEY } : {}), body: JSON.stringify(body), signal: ac.signal });
-    raw = await r.text();
-  } catch (e) { console.error("AI request failed:", e.message); return bad(res, "The AI is not available right now. Try again later.", 502); }
-  finally { clearTimeout(timer); }
-  if (!r.ok) { console.error("AI upstream error", r.status, raw.slice(0, 300)); return bad(res, "The AI is not available right now. Try again later.", 502); }
-  let j; try { j = JSON.parse(raw); } catch (e) { j = raw; }
-  const reply = pickReply(j).slice(0, 4000);
-  if (!reply) { console.error("AI reply format not recognised:", raw.slice(0, 300)); return bad(res, "The AI answered in a way the app does not understand yet.", 502); }
-  res.json({ reply });
+  const first = aiGood || AI_FORMAT, order = [first].concat(AI_FORMATS.filter((f) => f !== first));
+  let last = null;
+  for (const fmt of order) { // if the AI rejects one request shape (400/415/422), try the next shape
+    const r = await aiCall(fmt, msgs); last = r;
+    if (r.ok) {
+      let j; try { j = JSON.parse(r.raw); } catch (e) { j = r.raw; }
+      const reply = pickReply(j).slice(0, 4000);
+      if (reply) { aiGood = fmt; return res.json({ reply }); }
+      console.error("AI reply format not recognised:", r.raw.slice(0, 300));
+      return bad(res, "The AI answered in a way the app does not understand yet.", 502);
+    }
+    console.error("AI upstream error", fmt, r.status, r.error || r.raw.slice(0, 300));
+    if (![400, 415, 422].includes(r.status)) break;
+  }
+  if (last.status === 401 || last.status === 403) return bad(res, "The AI needs a key. Ask the app owner to set AI_KEY.", 502);
+  const why = last.status ? "error " + last.status : last.error === "timeout" ? "it took too long" : "no connection";
+  return bad(res, "The AI is not available right now (" + why + ").", 502);
 }));
 
 // ---- Calls (voice and video, WebRTC). The server only passes the set-up messages; the call itself goes phone to phone, or through a TURN relay. ----
