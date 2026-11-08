@@ -8,7 +8,8 @@
 :root{--bg:#FFFFFF;--sf:#F3F1FB;--wh:#FFFFFF;--ink:#1B1830;--mu:#6B6788;--ln:#E4E1F2;--ac:#6C4DFF;--on:#FFFFFF;--cr:#D64A31;--ok:#0E9F6E;--tk:#CFE8FF;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html[data-theme="dark"]{--bg:#121022;--sf:#1D1A35;--wh:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;background:var(--sf);font-size:12px;font-weight:600;color:var(--mu)}
-.cov{width:56px;height:36px;border-radius:12px;border:3px solid transparent;flex:none}.cov.on{border-color:var(--ink)}
+.cov{width:56px;height:36px;border-radius:12px;border:3px solid transparent;flex:none}
+.aib{position:absolute;right:24px;bottom:96px;width:52px;height:52px;border-radius:26px;border:0;background:linear-gradient(135deg,var(--ac),#ff8fb1);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25)}.cov.on{border-color:var(--ink)}
 *{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
 #app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .wrap{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px}.pad{padding:44px 22px 22px}.center{align-items:center;justify-content:center;text-align:center}
@@ -64,7 +65,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIB = false, SIMG = "", JP = null, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -94,7 +95,7 @@ async function api(p, m, b) {
   if (!r.ok) { const er = new Error(j.error || "Something went wrong."); er.data = j; throw er; }
   return j;
 }
-function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
+function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; AIM = []; SIMG = ""; JP = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
 // ---- Chat lock: a 6-digit PIN protects the app on this phone. The login token is stored encrypted with the PIN. ----
 let HID = 0;
 const LK = () => { try { return JSON.parse(localStorage.getItem("bv.lk") || "null"); } catch (e) { return null; } };
@@ -138,7 +139,7 @@ async function unlock() {
 function lockNow() {
   if (!lockOn() || !U || CALL) return;
   clearInterval(timer); clearInterval(WT);
-  T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; LR = null; NT = null; DC = ""; RC = "";
+  T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; AIM = []; LR = null; NT = null; DC = ""; RC = "";
   V.scr = "lock"; V.ov = null; V.menu = false; render();
 }
 document.addEventListener("visibilitychange", () => {
@@ -246,6 +247,32 @@ async function sendS() {
   try { await api("/singles/chat/" + V.cid, "POST", { body: t }); await loadSChat(true); } catch (e) { toast(e.message); i.value = t; }
   i.focus();
 }
+// ---- Ring sounds: the caller hears a ringing tone while the other phone rings; the person called hears a ringtone ----
+let ACX = null, RING = null;
+function acx() { try { if (!ACX) ACX = new (window.AudioContext || window.webkitAudioContext)(); if (ACX.state == "suspended") ACX.resume(); } catch (e) {} return ACX; }
+["pointerdown", "keydown", "touchstart"].forEach((ev) => document.addEventListener(ev, () => { acx(); }, { passive: true }));
+function beep(freqs, t0, dur, vol) {
+  freqs.forEach((f) => {
+    const o = ACX.createOscillator(), g = ACX.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.03); g.gain.setValueAtTime(vol, t0 + dur - 0.05); g.gain.linearRampToValueAtTime(0, t0 + dur);
+    o.connect(g); g.connect(ACX.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  });
+}
+function stopRing() { if (RING) { clearInterval(RING); RING = null; } }
+function startRing(kind) {
+  stopRing();
+  if (!acx()) return;
+  const play = () => {
+    try {
+      if (ACX.state == "suspended") ACX.resume();
+      const t = ACX.currentTime + 0.02;
+      if (kind == "back") beep([425], t, 1, 0.16);
+      else { beep([740], t, 0.28, 0.28); beep([988], t + 0.38, 0.28, 0.28); beep([740], t + 0.76, 0.28, 0.28); beep([988], t + 1.14, 0.28, 0.28); }
+    } catch (e) {}
+  };
+  play(); RING = setInterval(play, kind == "back" ? 4000 : 3000);
+}
 // ---- Calls (voice and video) ----
 const fmtDur = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
 const loadCalls = async () => { CALLS = (await api("/calls")).calls; };
@@ -274,7 +301,7 @@ function drawCall() {
 }
 function endCallUi() {
   const c = CALL; if (!c) return;
-  clearInterval(c.timer); clearInterval(c.clock);
+  stopRing(); clearInterval(c.timer); clearInterval(c.clock);
   try { if (c.pc) c.pc.close(); } catch (e) {}
   try { if (c.local) c.local.getTracks().forEach((t) => t.stop()); } catch (e) {}
   CALL = null; const b = $("callbox"); if (b) b.remove();
@@ -310,7 +337,7 @@ async function pollCallSig() {
   try {
     const j = await api("/calls/" + c.id + "/signals?since=" + c.since);
     if (CALL !== c) return;
-    if (c.role == "out" && c.status == "ringing" && j.status == "active") { c.status = "connecting"; drawCall(); }
+    if (c.role == "out" && c.status == "ringing" && j.status == "active") { stopRing(); c.status = "connecting"; drawCall(); }
     for (const sg of j.signals) { c.since = Math.max(c.since, sg.id); await handleSig(sg); }
     if (j.status != "active" && j.status != "ringing") {
       const nm = c.peer.name; endCallUi();
@@ -330,17 +357,18 @@ async function startCall(peerId, kind, name) {
   try { j = await api("/calls", "POST", { to: peerId, kind }); } catch (e) { endCallUi(); return toast(e.message); }
   if (CALL !== c) { try { await api("/calls/" + j.id + "/end", "POST"); } catch (e) {} return; }
   if (j.busy) { endCallUi(); return toast(name + " is on another call."); }
-  c.id = j.id; c.status = "ringing"; drawCall();
+  c.id = j.id; c.status = "ringing"; drawCall(); startRing("back");
   try { await setupPc(); const off = await c.pc.createOffer(); await c.pc.setLocalDescription(off); await sendSig("offer", c.pc.localDescription); }
   catch (e) { toast("Could not start the call."); return hangup(); }
   startCallPoll();
 }
 function incomingCall(x) {
   CALL = { id: x.id, role: "in", kind: x.kind, peer: { id: x.from_id, name: x.name }, status: "incoming", since: 0, ice: [], muted: false, cam: x.kind == "video", pc: null, local: null, t0: 0 };
-  drawCall(); try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+  drawCall(); startRing("tone"); try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
 }
 async function acceptCall() {
   const c = CALL; if (!c || c.role != "in" || c.status != "incoming") return;
+  stopRing();
   try { c.local = await navigator.mediaDevices.getUserMedia({ audio: true, video: c.kind == "video" ? { facingMode: "user" } : false }); }
   catch (e) { try { await api("/calls/" + c.id + "/answer", "POST", { accept: false }); } catch (x) {} endCallUi(); return toast("Allow the microphone to answer calls."); }
   try { await api("/calls/" + c.id + "/answer", "POST", { accept: true }); } catch (e) { endCallUi(); return toast("The call has ended."); }
@@ -357,6 +385,36 @@ function callsTab() {
   const rows = CALLS.map((x) => { const miss = !x.outgoing && x.status == "missed"; const nm = esc(x.peer_name); return '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(x.peer_name, 52, false, x.peer_id) + '<span class="t"><b' + (miss ? ' style="color:var(--cr)"' : "") + ">" + nm + "</b><small>" + (x.outgoing ? "↗" : "↙") + " " + (x.kind == "video" ? "Video" : "Voice") + " · " + callLabel(x) + " · " + tm(x.created_at) + '</small></span></div><button class="ib" data-a="callv" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Video call">🎥</button></div>'; }).join("");
   return '<div class="cd"><b>Calls</b><span class="mut">Voice and video calls with your contacts.</span><button class="btn" data-a="newcall">Call a contact</button></div>' + (rows || '<div class="empty"><b>No calls yet</b>Open a chat and tap 📞 or 🎥. You can call people who have saved your number.</div>');
 }
+// ---- Orivoclass AI ----
+const AISVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2l2.1 5.9L20 10l-5.9 2.1L12 18l-2.1-5.9L4 10l5.9-2.1z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>';
+const aiLogo = (n) => '<span class="av" style="width:' + n + 'px;height:' + n + 'px;background:linear-gradient(135deg,var(--ac),#ff8fb1)">' + AISVG.replace('width="26" height="26"', 'width="' + Math.round(n * 0.55) + '" height="' + Math.round(n * 0.55) + '"') + "</span>";
+function aimsgsHtml() {
+  if (!AIM.length) return '<div class="empty">' + aiLogo(72) + '<b>Orivoclass AI</b>Ask me anything. I can help you write a message, explain something or answer a question.<span class="note">AI can make mistakes. Do not share passwords or private details. What you type here is sent to an AI service.</span></div>';
+  return AIM.map((m) => '<div class="b ' + (m.role == "user" ? "me" : "") + '">' + esc(m.content) + "</div>").join("") + (AIB ? '<div class="b">…</div>' : "");
+}
+function aiView() {
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="btn" data-a="aisend">Send</button></div>';
+}
+function refreshAI(sc) {
+  if (V.scr != "ai") return;
+  const el = $("msgs"); if (el) { el.innerHTML = aimsgsHtml(); if (sc) el.scrollTop = el.scrollHeight; }
+  const st = $("ais"); if (st) st.textContent = AIB ? "typing..." : "AI assistant";
+}
+async function sendAI() {
+  if (AIB) return;
+  const i = $("msg"), t = i.value.trim(); if (!t) return;
+  i.value = ""; AIM.push({ role: "user", content: t }); AIB = true; refreshAI(true);
+  try { const j = await api("/ai", "POST", { messages: AIM.slice(-12) }); AIM.push({ role: "assistant", content: j.reply }); }
+  catch (e) { toast(e.message); AIM.pop(); i.value = t; }
+  AIB = false; refreshAI(true); const n = $("msg"); if (n) n.focus();
+}
+async function checkJoin() {
+  let t = ""; try { t = localStorage.getItem("bv.join") || ""; } catch (e) {}
+  if (!t || !U || V.ov == "joinp") return;
+  try { JP = await api("/groups/join/" + t); JP.token = t; V.ov = "joinp"; render(); }
+  catch (e) { try { localStorage.removeItem("bv.join"); } catch (x) {} if (U) toast("This invite link is not valid anymore."); }
+}
+const dropJoin = () => { try { localStorage.removeItem("bv.join"); } catch (e) {} JP = null; };
 async function doLogout() { try { await api("/logout", "POST"); } catch (e) {} logout(); }
 function waitView() {
   return '<div class="wrap pad center"><div class="spin"></div><h2 style="margin:0">Waiting for approval</h2><p class="mut">We asked your other device. Open Orivoclass there and tap “Yes, it’s me”. This request expires in 5 minutes.</p><button class="btn o" style="width:100%" data-a="waitcancel">Cancel</button><button class="lnk" data-a="waitrec">I can’t use my other device</button></div>';
@@ -418,6 +476,22 @@ async function loadPhotos(ids, force) {
   try { const j = await api("/photos", "POST", { ids }); ids.forEach((i) => { PH[i] = j.photos[i] || ""; }); } catch (e) {}
 }
 // Crop to a square, shrink to 256px and save as a small JPEG before uploading.
+function fitImg(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      for (const side of [900, 720, 560]) {
+        const k = Math.min(1, side / Math.max(img.width, img.height)), w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+        const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
+        for (let q = 0.78; q >= 0.4; q -= 0.12) { const d = c.toDataURL("image/jpeg", q); if (d.length <= 150000) return res(d); }
+      }
+      rej(new Error("That picture is too large."));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("That file is not a picture.")); };
+    img.src = url;
+  });
+}
 function shrink(file) {
   return new Promise((res, rej) => {
     const img = new Image(), url = URL.createObjectURL(file);
@@ -465,7 +539,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
+function start() { setTimeout(checkJoin, 300); clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -573,7 +647,7 @@ function listHtml() {
   if (V.f == "unread") { L = []; G = []; }
   if (V.f == "groups") L = [];
   const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>";
-  const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
+  const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind == "poll" ? "📊 " + esc(g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
   items.sort((a, b) => b.pin - a.pin || b.t - a.t);
   let top = "";
@@ -591,7 +665,7 @@ function listHtml() {
 function menuHtml() {
   if (!V.menu) return "";
   if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
-  if (V.scr == "gchat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="ginfo">Group info</button><button data-a="dm">Disappearing</button><button data-a="gleave" style="color:var(--cr)">Leave group</button></div>';
+  if (V.scr == "gchat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="ginfo">Group info</button><button data-a="pollnew">Poll</button><button data-a="dm">Disappearing</button><button data-a="gleave" style="color:var(--cr)">Leave group</button></div>';
   const c = CH.find((x) => x.peer == V.cid), bl = BL.some((x) => x.id == V.cid);
   return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end">' + (c ? '<button data-a="pin">' + (c.pinned ? "Unpin" : "Pin") + '</button><button data-a="archive">' + (c.archived ? "Unarchive" : "Archive") + "</button>" : "") + '<button data-a="dm">Disappearing</button><button data-a="blk">' + (bl ? "Unblock" : "Block") + '</button><button data-a="rep">Report</button><button data-a="delchat" style="color:var(--cr)">Delete chat</button></div>';
 }
@@ -603,7 +677,7 @@ function strip() {
 const soon = (t, x) => '<div class="empty"><b>' + t + "</b>" + x + "</div>";
 function statusTab() {
   const mine = ST.filter((s) => s.user_id == U.id), oth = ST.filter((s) => s.user_id != U.id);
-  const r = (x, own) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="vs" data-id="' + x.id + '"><span class="av" style="width:44px;height:44px;background:' + x.color + ';color:#fff;font-size:13px">Aa</span><span class="t"><b>' + esc(own ? x.body.slice(0, 40) : x.name) + "</b><small>" + (own ? "" : esc(x.body.slice(0, 40)) + " · ") + tm(x.created_at) + (own ? " · " + (x.views || 0) + (x.views == 1 ? " view" : " views") : "") + "</small></span></button>" + (own ? '<button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="ds" data-id="' + x.id + '">Delete</button>' : "") + "</div>";
+  const r = (x, own) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="vs" data-id="' + x.id + '"><span class="av" style="width:44px;height:44px;background:' + x.color + ';color:#fff;font-size:' + (x.has_image ? 20 : 13) + 'px">' + (x.has_image ? "📷" : "Aa") + '</span><span class="t"><b>' + esc(own ? (x.body ? x.body.slice(0, 40) : "Photo") : x.name) + "</b><small>" + (own ? "" : esc(x.body ? x.body.slice(0, 40) : "Photo") + " · ") + tm(x.created_at) + (own ? " · " + (x.views || 0) + (x.views == 1 ? " view" : " views") : "") + "</small></span></button>" + (own ? '<button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="ds" data-id="' + x.id + '">Delete</button>' : "") + "</div>";
   return '<div class="cd"><b>My status</b><span class="mut">Share a text update. It disappears after 24 hours.</span><button class="btn" data-a="sc">Add status</button></div>' + mine.map((x) => r(x, 1)).join("") +
     '<div class="sec">Updates from contacts</div>' + (oth.length ? oth.map((x) => r(x, 0)).join("") : '<p class="mut" style="padding:0 16px">No updates yet.</p>') +
     '<div class="sec">Status privacy</div><div class="cd"><span class="mut">Ghost view, “My contacts except…” and “Only share with…” arrive in the next update.</span></div>';
@@ -627,7 +701,7 @@ function main() {
   if (t == "chats") {
     b = (V.sq ? '<input id="q" class="srch" style="margin-top:12px" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '">' : "") + strip() +
       '<div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + listHtml() + "</div>";
-    f = '<button class="fab" data-a="cov" aria-label="New chat">+</button>';
+    f = '<button class="aib" data-a="ai" aria-label="Orivoclass AI">' + AISVG + '</button><button class="fab" data-a="cov" aria-label="New chat">+</button>';
   }
   else if (t == "status") b = statusTab();
   else if (t == "calls") b = callsTab();
@@ -661,6 +735,8 @@ async function loadGMsgs(sc) {
   catch (e) { if (/not in this group/i.test(e.message) && V.scr == "gchat") { V.scr = null; V.ov = null; render(); toast("You are no longer in this group."); } return; }
   if (V.scr != "gchat" || V.gid != id) return;
   TT = j.ttl || 0; const dm = $("dmb"); if (dm) dm.textContent = dmbText();
+  if (GI) GI.only_admins_send = !!j.only_admins_send;
+  const gc = $("gcomp"); if (gc && gc.dataset.s != String(gLocked())) { gc.dataset.s = String(gLocked()); gc.innerHTML = gcompHtml(); }
   const k = JSON.stringify(j.messages);
   if (k !== gKey) { const last = MG.length ? MG[MG.length - 1].id : 0; MG = j.messages; gKey = k; const nl = MG.length ? MG[MG.length - 1].id : 0; upd(sc || nl != last); }
 }
@@ -668,9 +744,10 @@ function gmsgsHtml() {
   if (!MG.length) return '<div class="empty"><b>No messages yet</b>Say hello.</div>';
   const nm = (id, n) => id == U.id ? "You" : n;
   return MG.map((x) => {
+    if (x.kind == "poll") return pollHtml(x);
     if (x.kind != "text") {
       const a = nm(x.from_id, x.from_name), t = nm(x.target_id, x.target_name);
-      const tx = x.kind == "created" ? a + " created the group" : x.kind == "added" ? a + " added " + t : x.kind == "removed" ? a + " removed " + t : x.kind == "left" ? a + " left" : x.kind == "admin" ? a + " made " + t + " an admin" : x.kind == "renamed" ? a + " renamed the group to “" + x.body + "”" : x.kind == "timer" ? a + (+x.body ? " turned on disappearing messages (" + (+x.body == 86400 ? "24 hours" : "7 days") + ")" : " turned off disappearing messages") : "";
+      const tx = x.kind == "created" ? a + " created the group" : x.kind == "added" ? a + " added " + t : x.kind == "removed" ? a + " removed " + t : x.kind == "left" ? a + " left" : x.kind == "admin" ? a + " made " + t + " an admin" : x.kind == "renamed" ? a + " renamed the group to “" + x.body + "”" : x.kind == "timer" ? a + (+x.body ? " turned on disappearing messages (" + (+x.body == 86400 ? "24 hours" : "7 days") + ")" : " turned off disappearing messages") : x.kind == "desc" ? a + " changed the group description" : x.kind == "joined" ? a + " joined using the group link" : "";
       return '<div class="note" style="align-self:center;text-align:center;background:var(--sf);padding:4px 12px;border-radius:12px">' + esc(tx) + "</div>";
     }
     const me = x.from_id == U.id;
@@ -692,12 +769,25 @@ async function openGroup(id) {
   loadGInfo().catch(() => {}); return loadGMsgs(true);
 }
 function ginfoHtml() {
-  const g = GI, ad = g.role == "admin";
+  const g = GI, ad = g.role == "admin", canAdd = ad || g.members_can_add;
+  const link = g.invite_token ? location.origin + location.pathname + "#join=" + g.invite_token : "";
   return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Group info</h1></div><div class="body"><div class="cd" style="align-items:center">' + av(g.name, 80) + '<b style="font-size:20px">' + esc(g.name) + '</b><span class="mut">' + g.members.length + " members · Disappearing: " + (g.ttl ? (g.ttl == 86400 ? "24 hours" : "7 days") : "Off") + "</span></div>" +
-    (ad ? '<div class="cd"><label>Group name<input id="gren" maxlength="40" value="' + esc(g.name) + '"></label><button class="btn o" data-a="grename">Save name</button><button class="btn" data-a="gaddov">Add members</button></div>' : "") +
+    (ad ? '<div class="cd"><label>Group name<input id="gren" maxlength="40" value="' + esc(g.name) + '"></label><button class="btn o" data-a="grename">Save name</button><label>Description<textarea id="gdesc" rows="3" maxlength="300" placeholder="What is this group about?">' + esc(g.description || "") + '</textarea></label><button class="btn o" data-a="gdescsave">Save description</button></div>' : g.description ? '<div class="cd"><b>Description</b><span class="mut">' + esc(g.description) + "</span></div>" : "") +
+    (ad ? '<div class="cd"><b>Group settings</b><label class="chk"><input type="checkbox" id="gs1"' + (g.only_admins_send ? " checked" : "") + '> Only admins can send messages</label><label class="chk"><input type="checkbox" id="gs2"' + (g.members_can_add ? " checked" : "") + "> Members can add people</label></div>" : "") +
+    (ad ? '<div class="cd"><b>Invite link</b>' + (g.invite_on && link ? '<input readonly value="' + esc(link) + '"><div class="row2"><button class="btn o" style="flex:1" data-a="gcopy">Copy</button><button class="btn" style="flex:1" data-a="gshare">Share</button></div><button class="lnk" data-a="ginvreset">Reset link</button><button class="lnk" style="color:var(--cr)" data-a="ginvoff">Turn off link</button><span class="note">Anyone with this link can join the group. Reset it if it reaches the wrong people.</span>' : '<span class="mut">Let people join by opening a link.</span><button class="btn o" data-a="ginvon">Turn on invite link</button>') + "</div>" : "") +
+    (canAdd ? '<div class="cd"><button class="btn" data-a="gaddov">Add members</button></div>' : "") +
     '<div class="sec">MEMBERS</div>' + g.members.map((m) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(m.name, 44, false, m.id) + '<span class="t"><b>' + esc(m.id == U.id ? "You" : m.name) + "</b><small>" + (m.role == "admin" ? "Admin" : "Member") + "</small></span></div>" + (ad && m.id != U.id && m.role != "admin" ? '<button class="ib" style="color:var(--ac);font-size:13px;padding:0 8px" data-a="gmk" data-id="' + m.id + '">Make admin</button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 8px" data-a="grm" data-id="' + m.id + '">Remove</button>' : "") + "</div>").join("") +
     '<div class="cd" style="margin-top:12px"><button class="btn d" data-a="gleave">Leave group</button></div></div></div>';
 }
+function pollHtml(x) {
+  const p = x.poll || { options: [], voters: 0, multi: false };
+  const tot = p.options.reduce((n, o) => n + o.votes, 0), me = x.from_id == U.id;
+  return '<div class="b" style="align-self:stretch;max-width:100%;background:var(--sf);color:var(--ink);gap:6px;display:flex;flex-direction:column"><b>📊 ' + esc(x.body) + '</b><span class="note">' + (p.multi ? "Select one or more" : "Select one") + " · " + (me ? "You" : esc(x.from_name)) + "</span>" +
+    p.options.map((o, i) => '<button data-a="pvote" data-m="' + x.id + '" data-i="' + i + '" style="position:relative;overflow:hidden;border:1.5px solid ' + (o.mine ? "var(--ac)" : "var(--ln)") + ';border-radius:12px;background:var(--bg);padding:9px 12px;text-align:left;color:var(--ink);display:flex;justify-content:space-between;gap:8px;font:inherit"><span style="position:absolute;left:0;top:0;bottom:0;width:' + (tot ? Math.round(o.votes * 100 / tot) : 0) + '%;background:var(--ac);opacity:.18"></span><span style="position:relative">' + (o.mine ? "✓ " : "") + esc(o.text) + '</span><b style="position:relative">' + o.votes + "</b></button>").join("") +
+    '<div class="mt">' + p.voters + (p.voters == 1 ? " vote" : " votes") + " · " + tm(x.created_at) + "</div></div>";
+}
+const gLocked = () => GI && GI.only_admins_send && GI.role != "admin" ? 1 : 0;
+const gcompHtml = () => gLocked() ? '<div class="rp" style="justify-content:center">Only admins can send messages</div>' : '<div id="gcomp" data-s="' + gLocked() + '">' + gcompHtml() + '</div>';
 function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = V.scr == "gchat" ? gmsgsHtml() : V.scr == "schat" ? smsgsHtml() : msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
 async function send() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
@@ -714,12 +804,13 @@ const LEGAL = {
     ["Suspension", "We may warn, restrict or suspend accounts that break the rules, following the steps in the Community Rules. You can appeal."],
     ["Changes and contact", "We may update these terms and will show the new date at the top. Questions: [YOUR SUPPORT EMAIL]."]]],
   privacy: ["Privacy Policy", [
-    ["What we collect", "Your name, phone number, profile photo (if you add one), the messages you send and receive, contacts you add, status updates and who viewed them, online and last seen time, blocks and reports. If you turn on notifications we also keep a notification address for your browser, which is removed when you log out."],
+    ["What we collect", "Your name, phone number, profile photo (if you add one), the messages you send and receive, contacts you add, status updates (text or photos) and who viewed them, online and last seen time, blocks and reports. If you turn on notifications we also keep a notification address for your browser, which is removed when you log out."],
     ["Messages are not end-to-end encrypted yet", "Right now messages are stored on our servers so the service can deliver them. End-to-end encryption is planned. We will tell you when it is available."],
     ["How long we keep things", "Status updates disappear after 24 hours. View once messages are erased after they are opened. Deleting a chat removes it from your side. Groups: people see a group\u2019s messages only from the time they joined, and if you delete your account you are removed from your groups and the messages you sent there are erased. Disappearing messages are deleted from our servers after the time chosen for that chat."],
     ["Suspended and banned accounts", "If an account is banned or suspended, its phone number stays on a block list so the ban cannot be avoided, even if the account is deleted. Everything else is erased when you delete your account."],
     ["Singles", "If you create a Singles profile we keep your nickname, date of birth, gender, what you are looking for, town, short description, photo, likes, matches and Singles messages. Your phone number and real name are never shown there. New Singles photos are checked by our team. If you delete your Singles profile all of this is erased."],
     ["Calls", "Voice and video calls go directly between the two phones when possible, or through a relay that only passes encrypted data. We do not record calls. To connect a call, your phone\u2019s network address is shared with the other phone. We keep a call history (who, when and how long) for 90 days. You can only call people who have saved your number."],
+    ["Orivoclass AI", "The AI button sends what you type to an outside AI service so that it can answer. Do not share passwords or private details with it. We do not store your AI conversation on our servers and it is cleared when you log out, but the AI service may handle it under its own rules."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
     ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
@@ -809,6 +900,8 @@ function overlays() {
   if (o == "vws") return '<div class="ov"><div class="hd"><button class="ib" data-a="vwback" aria-label="Back">←</button><h1>Viewed by</h1></div><div class="body">' + (VW.length ? VW.map((v) => '<div class="row">' + av(v.name, 44, false, v.id) + '<span class="t"><b>' + esc(v.name) + "</b><small>" + tm(v.viewed_at) + "</small></span></div>").join("") : '<p class="mut" style="padding:16px">No one has viewed this status yet.</p>') + "</div></div>";
   if (o == "bkv") return bkvHtml();
   if (o == "ng") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New group</h1></div><div class="body"><div class="cd"><label>Group name<input id="gnm" maxlength="40" placeholder="e.g. Family"></label><span class="mut">Choose members from your contacts (up to 29).</span>' + (CT.length ? CT.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") : '<span class="mut">Add contacts first.</span>') + '<button class="btn" data-a="mkgrp">Create group</button></div></div></div>';
+  if (o == "pn") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New poll</h1></div><div class="body"><div class="cd"><label>Question<input id="pq" maxlength="200" placeholder="Ask a question"></label><div id="pops" style="display:flex;flex-direction:column;gap:10px"><label>Option 1<input class="po" maxlength="100"></label><label>Option 2<input class="po" maxlength="100"></label></div><button class="lnk" data-a="popadd">+ Add option</button><label class="chk"><input type="checkbox" id="pmulti"> Allow more than one answer</label><button class="btn" data-a="pomake">Send poll</button></div></div></div>';
+  if (o == "joinp" && JP) return '<div class="ov"><div class="wrap pad center">' + av(JP.name, 84) + '<div style="font-size:24px;font-weight:800">' + esc(JP.name) + '</div><p class="mut">' + JP.members + " members</p>" + (JP.description ? '<p class="mut">' + esc(JP.description) + "</p>" : "") + (JP.full ? '<p class="err">This group is full.</p>' : JP.already ? '<button class="btn" style="width:100%" data-a="joinopen">Open group</button>' : '<button class="btn" style="width:100%" data-a="joingo">Join group</button>') + '<button class="lnk" data-a="joinno">Not now</button></div></div>';
   if (o == "ginfo" && GI) return ginfoHtml();
   if (o == "gadd" && GI) { const inG = new Set(GI.members.map((m) => m.id)), cand = CT.filter((c) => !inG.has(c.id)); return '<div class="ov"><div class="hd"><button class="ib" data-a="gaddback" aria-label="Back">←</button><h1>Add members</h1></div><div class="body"><div class="cd">' + (cand.length ? cand.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") + '<button class="btn" data-a="gadd">Add</button>' : '<span class="mut">All your contacts are already in this group.</span>') + "</div></div></div>"; }
   if (o == "cc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Call a contact</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">🎥</button></div>').join("") : '<p class="mut" style="padding:16px">Add a contact first.</p>') + "</div></div>";
@@ -819,9 +912,15 @@ function overlays() {
   if (o == "bls") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Blocked contacts</h1></div><div class="body">' + (BL.length ? BL.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" style="color:var(--ac);font-size:13px;padding:0 10px" data-a="unbl" data-id="' + c.id + '">Unblock</button></div>').join("") : '<p class="mut" style="padding:16px">You have not blocked anyone.</p>') + "</div></div>";
   if (o == "fwd") return '<div class="ov"><div class="hd"><button class="ib" data-a="cfw" aria-label="Close">←</button><h1>Forward to…</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<button class="row" data-a="dofwd" data-id="' + c.id + '">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + "</small></span></button>").join("") : '<p class="mut" style="padding:8px 16px">Add a contact first.</p>') + "</div></div>";
   if (o == "vo") return '<button class="sv" style="background:#1D1A2E" data-a="cvo">' + esc(V.vo) + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400;padding:0 24px">Tap to close. This message is now deleted for good.</small></button>';
-  if (o == "sc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New status</h1></div><div class="body"><div class="cd"><label>Your update<textarea id="stx" rows="4" maxlength="140" placeholder="What’s on your mind?">' + esc(V.draft) + '</textarea></label><div class="sw">' + COL.map((c) => '<button data-a="col" data-c="' + c + '" class="' + (V.col == c ? "on" : "") + '" style="background:' + c + '" aria-label="Colour ' + c + '"></button>').join("") + '</div><button class="btn" data-a="post">Post status</button></div></div></div>';
+  if (o == "sc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>New status</h1></div><div class="body"><div class="cd">' + (SIMG ? '<img src="' + esc(SIMG) + '" alt="" style="width:100%;max-height:320px;object-fit:contain;border-radius:12px;background:#000"><button class="lnk" data-a="srmimg">Remove photo</button>' : "") + '<label>' + (SIMG ? "Caption (optional)" : "Your update") + '<textarea id="stx" rows="' + (SIMG ? 2 : 4) + '" maxlength="200" placeholder="' + (SIMG ? "Add a caption…" : "What’s on your mind?") + '">' + esc(V.draft) + '</textarea></label>' + (SIMG ? "" : '<div class="sw">' + COL.map((c) => '<button data-a="col" data-c="' + c + '" class="' + (V.col == c ? "on" : "") + '" style="background:' + c + '" aria-label="Colour ' + c + '"></button>').join("") + "</div>") + '<input id="sif" type="file" accept="image/*" style="display:none"><button class="btn o" data-a="spick">' + (SIMG ? "Change photo" : "📷 Add photo from gallery") + '</button><button class="btn" data-a="post">Post status</button></div></div></div>';
   if (o == "legal") { const T2 = [["Terms of Service", "Draft text. Use Orivoclass respectfully and lawfully."], ["Privacy Policy", "Draft text. Explains what Orivoclass collects and why."], ["Community Rules", "Draft text. No spam, scams, threats or abuse."], ["About Us", "Orivoclass is a private messaging app."]]; return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Legal</h1></div><div class="body"><div class="cd"><span class="mut">Last updated: November 2026. Draft text, to be reviewed before launch.</span>' + T2.map((x) => "<div><b>" + x[0] + '</b><br><span class="mut">' + x[1] + "</span></div>").join("") + "</div></div></div>"; }
-  if (o == "view") { const x = ST.find((s) => s.id == V.vid); if (x) return '<button class="sv" style="background:' + x.color + '" data-a="cv">' + esc(x.body) + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400">' + (x.user_id == U.id ? "Your status" : esc(x.name)) + " · tap to close</small></button>" + (x.user_id == U.id ? '<button class="btn" style="position:absolute;z-index:10;left:50%;bottom:76px;transform:translateX(-50%)" data-a="vwr" data-id="' + x.id + '">👁 Viewed by ' + (x.views || 0) + "</button>" : ""); }
+  if (o == "view") {
+    const x = ST.find((z) => z.id == V.vid); if (!x) return "";
+    const own = x.user_id == U.id, who = own ? "Your status" : esc(x.name);
+    const viewers = own ? '<button class="btn" style="position:absolute;z-index:10;left:50%;bottom:76px;transform:translateX(-50%)" data-a="vwr" data-id="' + x.id + '">👁 Viewed by ' + (x.views || 0) + "</button>" : "";
+    if (x.has_image) return '<button class="sv" style="background:#000;padding:0" data-a="cv">' + (V.vimg ? '<img src="' + esc(V.vimg) + '" alt="" style="max-width:100%;max-height:78%;object-fit:contain">' : '<span style="font-size:16px;font-weight:400">Loading…</span>') + (x.body ? '<span style="position:absolute;left:0;right:0;bottom:' + (own ? 120 : 60) + 'px;padding:12px 20px;font-size:17px;font-weight:500;background:linear-gradient(transparent,rgba(0,0,0,.65))">' + esc(x.body) + "</span>" : "") + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400">' + who + " · tap to close</small></button>" + viewers;
+    return '<button class="sv" style="background:' + x.color + '" data-a="cv">' + esc(x.body) + '<small style="position:absolute;bottom:28px;font-size:13px;font-weight:400">' + who + " · tap to close</small></button>" + viewers;
+  }
   return "";
 }
 function render() {
@@ -835,13 +934,14 @@ function render() {
   else if (V.scr == "code") h = codeView();
   else if (V.scr == "gchat") h = gchatView();
   else if (V.scr == "schat") h = schatView();
+  else if (V.scr == "ai") h = aiView();
   else if (V.scr == "chat") h = chatView();
   else h = main();
   app.innerHTML = h + (U && V.scr != "code" ? overlays() : "");
   if (U && LR) drawLR();
   if (U && NT) drawNT();
   if (U && CALL) drawCall();
-  if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
+  if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat" || V.scr == "ai")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-a]"); if (!b) return;
@@ -852,10 +952,40 @@ app.addEventListener("click", async (e) => {
     if (a == "tologin") { V.mode = "login"; return render(); }
     if (a == "recover") return recover();
     if (a == "otpgo") return otpGo();
+    if (a == "gdescsave") { await api("/groups/" + V.gid + "/description", "PUT", { description: $("gdesc").value }); await loadGInfo(); await loadGMsgs(true); render(); return toast("Description saved"); }
+    if (a == "ginvon") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: true }); await loadGInfo(); return render(); }
+    if (a == "ginvoff") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: false }); await loadGInfo(); return render(); }
+    if (a == "ginvreset") { if (!confirm("Reset the link? The old link will stop working.")) return; await api("/groups/" + V.gid + "/invite/reset", "POST"); await loadGInfo(); render(); return toast("New link ready"); }
+    if (a == "gcopy" || a == "gshare") {
+      const link = location.origin + location.pathname + "#join=" + GI.invite_token, text = "Join my group “" + GI.name + "” on Orivoclass: " + link;
+      if (a == "gshare" && navigator.share) { try { await navigator.share({ text }); } catch (e) {} return; }
+      if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(link); return toast("Link copied"); }
+      return toast("Copy is not available");
+    }
+    if (a == "pollnew") { V.menu = false; V.ov = "pn"; return render(); }
+    if (a == "popadd") { const box = $("pops"), n = document.querySelectorAll(".po").length; if (n >= 6) return toast("A poll can have up to 6 options."); box.insertAdjacentHTML("beforeend", '<label>Option ' + (n + 1) + '<input class="po" maxlength="100"></label>'); return; }
+    if (a == "pomake") {
+      const opts = [...document.querySelectorAll(".po")].map((i) => i.value.trim()).filter(Boolean), q = $("pq").value.trim();
+      if (!q) return toast("Write the question."); if (opts.length < 2) return toast("Add at least 2 options.");
+      await api("/groups/" + V.gid + "/polls", "POST", { question: q, options: opts, multi: $("pmulti").checked });
+      V.ov = null; render(); return loadGMsgs(true);
+    }
+    if (a == "pvote") {
+      const px = MG.find((z) => z.id == m); if (!px || !px.poll) return;
+      const i = +b.dataset.i, mine = px.poll.options.map((o, k) => o.mine ? k : -1).filter((k) => k >= 0);
+      const next = px.poll.multi ? (mine.includes(i) ? mine.filter((k) => k != i) : mine.concat(i)) : (mine.includes(i) ? [] : [i]);
+      await api("/polls/" + m + "/vote", "POST", { options: next }); return loadGMsgs(false);
+    }
+    if (a == "joingo") { const j = await api("/groups/join/" + JP.token, "POST"); dropJoin(); V.ov = null; await loadGL(); return openGroup(j.id); }
+    if (a == "joinopen") { const gid = JP.id; dropJoin(); V.ov = null; return openGroup(gid); }
+    if (a == "joinno") { dropJoin(); V.ov = null; return render(); }
+    if (a == "ai") { V.scr = "ai"; V.ov = null; render(); const n = $("msg"); if (n) n.focus(); return; }
+    if (a == "aisend") return sendAI();
+    if (a == "aiclear") { AIM = []; refreshAI(false); return toast("Chat cleared"); }
     if (a == "newcall") { V.ov = "cc"; return render(); }
     if (a == "callv" || a == "callvid") { V.ov = null; return startCall(id, a == "callvid" ? "video" : "voice", b.dataset.n || callName(id)); }
     if (a == "callacc") return acceptCall();
-    if (a == "calldec") { const c = CALL; if (c) { try { await api("/calls/" + c.id + "/answer", "POST", { accept: false }); } catch (e) {} endCallUi(); } return; }
+    if (a == "calldec") { stopRing(); const c = CALL; if (c) { try { await api("/calls/" + c.id + "/answer", "POST", { accept: false }); } catch (e) {} endCallUi(); } return; }
     if (a == "callend") return hangup();
     if (a == "callmute") { if (CALL && CALL.local) { CALL.muted = !CALL.muted; CALL.local.getAudioTracks().forEach((t) => { t.enabled = !CALL.muted; }); drawCall(); } return; }
     if (a == "callcam") { if (CALL && CALL.local) { CALL.cam = !CALL.cam; CALL.local.getVideoTracks().forEach((t) => { t.enabled = CALL.cam; }); drawCall(); } return; }
@@ -1017,10 +1147,12 @@ app.addEventListener("click", async (e) => {
     if (a == "delchat") { await api("/chats/" + V.cid, "DELETE"); await loadCH(); V.menu = false; V.scr = null; render(); return toast("Chat deleted"); }
     if (a == "addc") { const er = $("ce"), p = $("cp").value.trim(); if (p.replace(/\D/g, "").length < 9) { er.textContent = "Enter a valid phone number."; return; } try { await api("/contacts", "POST", { phone: p, alias: $("cn").value.trim() }); await loadCT(); await loadPhotos(CT.map((c) => c.id)); render(); toast("Contact added"); } catch (err) { er.textContent = err.message; const old = $("invb"); if (old) old.remove(); if (/not on Orivoclass/i.test(err.message)) er.insertAdjacentHTML("afterend", '<button class="btn o" id="invb" data-a="invite" data-p="' + esc(p) + '">Invite them to Orivoclass</button>'); } return; }
     if (a == "delc") { await api("/contacts/" + id, "DELETE"); await loadCT(); return render(); }
-    if (a == "sc") { V.ov = "sc"; V.draft = ""; return render(); }
+    if (a == "sc") { V.ov = "sc"; V.draft = ""; SIMG = ""; return render(); }
+    if (a == "spick") { V.draft = $("stx") ? $("stx").value : V.draft; const f = $("sif"); if (f) f.click(); return; }
+    if (a == "srmimg") { V.draft = $("stx") ? $("stx").value : V.draft; SIMG = ""; return render(); }
     if (a == "col") { V.draft = $("stx").value; V.col = b.dataset.c; return render(); }
-    if (a == "post") { const t = $("stx").value.trim(); if (!t) return toast("Write something first"); await api("/status", "POST", { body: t, color: V.col }); await loadST(); V.ov = null; render(); return toast("Status posted"); }
-    if (a == "vs") { V.ov = "view"; V.vid = id; const sx = ST.find((z) => z.id == id); if (sx && sx.user_id != U.id) api("/status/" + id + "/view", "POST").catch(() => {}); return render(); }
+    if (a == "post") { const t = $("stx").value.trim(); if (!t && !SIMG) return toast("Write something or add a photo first"); await api("/status", "POST", { body: t, color: V.col, image: SIMG || null }); SIMG = ""; await loadST(); V.ov = null; render(); return toast("Status posted"); }
+    if (a == "vs") { V.ov = "view"; V.vid = id; const sx = ST.find((z) => z.id == id); if (sx && sx.user_id != U.id) api("/status/" + id + "/view", "POST").catch(() => {}); V.vimg = ""; render(); if (sx && sx.has_image) { try { V.vimg = (await api("/status/" + id + "/image")).image; } catch (e) { toast("Could not load the photo."); } if (V.ov == "view" && V.vid == id) render(); } return; }
     if (a == "cv") { V.ov = null; return render(); }
     if (a == "ds") { await api("/status/" + id, "DELETE"); await loadST(); return render(); }
     if (a == "savep") { const j = await api("/me", "PUT", { name: $("pn").value, about: $("pa").value, cover: EDT.cover, mood: EDT.mood }); U = j.user; V.ov = null; render(); return toast("Profile saved"); }
@@ -1034,6 +1166,8 @@ app.addEventListener("input", (e) => {
   else if (e.target.id == "msg" && V.scr == "chat" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
 });
 app.addEventListener("change", async (e) => {
+  if (e.target.id == "gs1" || e.target.id == "gs2") { try { await api("/groups/" + V.gid + "/settings", "PUT", { only_admins_send: $("gs1").checked, members_can_add: $("gs2").checked }); await loadGInfo(); render(); toast("Saved"); } catch (err) { toast(err.message); } return; }
+  if (e.target.id == "sif" && e.target.files && e.target.files[0]) { try { SIMG = await fitImg(e.target.files[0]); render(); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "sgf" && e.target.files && e.target.files[0]) { try { const d = await shrink(e.target.files[0]); await api("/singles/photo", "PUT", { photo: d }); SGP.photo = d; const el = $("sgav"); if (el) el.innerHTML = sgAvatar(SGP); toast("Photo saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "nfm" || e.target.id == "nfs" || e.target.id == "nfv" || e.target.id == "nfc") { try { await api("/notifications", "PUT", { msg: $("nfm").checked, status: $("nfs").checked, views: $("nfv").checked, calls: $("nfc").checked }); NOTIF = await api("/notifications"); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "bkf" && e.target.files && e.target.files[0]) { try { const o = JSON.parse(await e.target.files[0].text()); if (o.type == "enc" && o.blob) { BKE = o; render(); return toast("Enter the backup password"); } if (o.type == "plain" && o.data && o.data.chats) { BK = o.data; BKI = null; V.ov = "bkv"; render(); return; } throw 0; } catch (err) { toast("That is not an Orivoclass backup."); } return; }
@@ -1042,8 +1176,10 @@ app.addEventListener("change", async (e) => {
   if (e.target.id == "pp") { try { const j = await api("/me", "PUT", { name: U.name, about: U.about, photo_privacy: e.target.value }); U = j.user; toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "sp") { try { const j = await api("/me", "PUT", { name: U.name, about: U.about, seen_privacy: e.target.value }); U = j.user; toast("Saved"); } catch (err) { toast(err.message); } }
 });
-app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); V.scr == "gchat" ? sendG() : V.scr == "schat" ? sendS() : send(); } if (e.key == "Enter" && e.target.id == "lpin") { e.preventDefault(); unlock(); } });
+app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); V.scr == "gchat" ? sendG() : V.scr == "schat" ? sendS() : V.scr == "ai" ? sendAI() : send(); } if (e.key == "Enter" && e.target.id == "lpin") { e.preventDefault(); unlock(); } });
 (async function init() {
+  const jm = /^#join=([A-Za-z0-9_-]{16,40})$/.exec(location.hash);
+  if (jm) { try { localStorage.setItem("bv.join", jm[1]); } catch (e) {} try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
   if (!T && lockOn()) { V.scr = "lock"; render(); return; }
   if (T) { try { U = await api("/me"); await loadAll(); start(); } catch (e) { if (!T) U = null; } }
   render();
