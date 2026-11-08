@@ -55,9 +55,13 @@ function draw(reports, appeals, photos) {
   h += "<h2>Singles photos to check (" + photos.length + ")</h2>";
   if (!photos.length) h += '<p class="mu">No new photos.</p>';
   h += photos.map((x) => '<div class="card" data-p="' + x.user_id + '"><div class="row"><img src="' + esc(x.photo) + '" alt="" style="width:140px;height:140px;object-fit:cover;border-radius:12px"><div><b>' + esc(x.nick) + "</b>, " + x.age + '<br><small>Remove it if it shows nudity, violence, a minor, or someone else’s identity.</small></div></div><div class="row"><button class="g" data-ph="approve">Looks fine</button><button class="d" data-ph="remove">Remove photo</button><button class="o" data-ph="hide">Hide profile</button></div></div>').join("");
-  h += '<p><button class="o" id="rf">Refresh</button></p><div class="err" id="e"></div>';
+  h += '<p><button class="o" id="rf">Refresh</button> <button class="o" id="aitest">Test AI</button></p><pre id="aiout" class="ev"></pre><div class="err" id="e"></div>';
   m.innerHTML = h;
   document.getElementById("rf").onclick = () => load().catch(fail);
+  document.getElementById("aitest").onclick = async () => {
+    const o = document.getElementById("aiout"); o.textContent = "Testing…";
+    try { o.textContent = JSON.stringify(await call("/ai-test"), null, 2); } catch (e) { o.textContent = e.message; }
+  };
   m.querySelectorAll("[data-act]").forEach((b) => b.onclick = async () => {
     const c = b.closest("[data-r]"), act = b.dataset.act;
     if (act != "dismiss" && !confirm("Apply: " + b.textContent + "?")) return;
