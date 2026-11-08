@@ -25,7 +25,7 @@ const app = express();
 app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false }));
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "256kb" })); // status photos are up to ~160 KB; each route checks its own size
 app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
 const authLimit = rateLimit({ windowMs: 15 * 60000, max: 20 });
 
@@ -517,7 +517,7 @@ app.delete("/api/chats/:peer", need, wrap(async (req, res) => {
 // ---- Status (text updates, 24 hours) ----
 app.get("/api/status", need, wrap(async (req, res) => {
   const r = await db.query(
-    `SELECT s.id, s.user_id, s.body, s.color, s.created_at, COALESCE(NULLIF(k.alias,''), u.name) AS name,
+    `SELECT s.id, s.user_id, s.body, s.color, s.created_at, COALESCE(NULLIF(k.alias,''), u.name) AS name, (s.image IS NOT NULL) AS has_image,
             (SELECT count(*)::int FROM status_views v WHERE v.status_id=s.id AND s.user_id=$1) AS views
      FROM statuses s JOIN users u ON u.id = s.user_id LEFT JOIN contacts k ON k.owner=$1 AND k.contact=s.user_id
      WHERE s.created_at > now() - interval '24 hours'
@@ -528,10 +528,18 @@ app.get("/api/status", need, wrap(async (req, res) => {
 }));
 
 app.post("/api/status", need, wrap(async (req, res) => {
-  const body = String(req.body.body || "").trim().slice(0, 140);
+  const body = String(req.body.body || "").trim().slice(0, 200);
   const color = /^#[0-9a-f]{6}$/i.test(req.body.color || "") ? req.body.color : "#5A3FD6";
-  if (!body) return bad(res, "Write something first.");
-  await db.query("INSERT INTO statuses(user_id,body,color) VALUES($1,$2,$3)", [req.uid, body, color]);
+  let image = null;
+  if (req.body.image) {
+    const p = String(req.body.image), m = /^data:image\/jpeg;base64,([A-Za-z0-9+\/]+={0,2})$/.exec(p);
+    if (!m || p.length > 160000) return bad(res, "Please choose a smaller picture.");
+    const buf = Buffer.from(m[1], "base64");
+    if (buf.length < 100 || buf[0] !== 0xff || buf[1] !== 0xd8) return bad(res, "That is not a JPEG picture.");
+    image = p;
+  }
+  if (!body && !image) return bad(res, "Write something or add a photo first.");
+  await db.query("INSERT INTO statuses(user_id,body,color,image) VALUES($1,$2,$3,$4)", [req.uid, body, color, image]);
   if (webpush) { // tell the people who can see it (fire and forget)
     const me = (await db.query("SELECT name FROM users WHERE id=$1", [req.uid])).rows[0];
     const to = await db.query("SELECT owner AS contact FROM contacts WHERE contact=$1 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=contacts.owner) OR (b.blocker=contacts.owner AND b.blocked=$1))", [req.uid]);
@@ -685,6 +693,15 @@ app.post("/api/admin/appeals/:id", adminLimit, adminOnly, wrap(async (req, res) 
 }));
 
 // ---- Status views ----
+app.get("/api/status/:id/image", need, wrap(async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
+  const r = await db.query(
+    `SELECT s.image FROM statuses s WHERE s.id=$2 AND s.image IS NOT NULL AND s.created_at > now() - interval '24 hours'
+       AND (s.user_id=$1 OR (EXISTS (SELECT 1 FROM contacts c WHERE c.owner=$1 AND c.contact=s.user_id)
+            AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))))`, [req.uid, req.params.id]);
+  if (!r.rows[0]) return bad(res, "Not found.", 404);
+  res.json({ image: r.rows[0].image });
+}));
 app.post("/api/status/:id/view", need, wrap(async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
   const s = (await db.query(
@@ -774,6 +791,43 @@ app.get("/api/backup", need, backupLimit, wrap(async (req, res) => {
     exported_at: new Date(), me, chats: Object.values(chats), groups,
     statuses: st.rows.map((x) => ({ body: x.body, created_at: x.created_at, views: vs.rows.filter((v) => String(v.status_id) === String(x.id)).map((v) => ({ name: v.name, at: v.viewed_at })) })),
   });
+}));
+
+// ---- Orivoclass AI: the app talks to the AI through this server, so the AI address and key stay private and each person is rate limited ----
+// Env (all optional): AI_URL, AI_KEY (sent as "Authorization: Bearer"), AI_SYSTEM (instructions; set empty to send none), AI_FORMAT = messages | message | prompt.
+const AI_URL = process.env.AI_URL || "https://superb-owl-342.convex.site/v1/chat";
+const AI_SYSTEM = process.env.AI_SYSTEM !== undefined ? process.env.AI_SYSTEM : "You are Orivoclass AI, a friendly assistant inside the Orivoclass messaging app. Keep answers short and clear. Reply in the language the person writes in (Swahili, English or Sheng).";
+const AI_FORMAT = process.env.AI_FORMAT || "messages";
+const aiLimit = rateLimit({ windowMs: 10 * 60000, max: 20, keyGenerator: (req) => String(req.uid) });
+function pickReply(j) {
+  if (typeof j === "string") return j.trim();
+  if (!j || typeof j !== "object") return "";
+  const c = j.choices && j.choices[0], d = j.data && typeof j.data === "object" ? j.data : {};
+  const cands = [j.reply, j.response, j.answer, j.text, j.output, j.content, j.message && (j.message.content || j.message), d.reply, d.response, d.text, d.content, d.message, c && c.message && c.message.content, c && c.text];
+  for (const x of cands) if (typeof x === "string" && x.trim()) return x.trim();
+  return "";
+}
+app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
+  const msgs = (Array.isArray(req.body.messages) ? req.body.messages : [])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
+    .slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+  if (!msgs.length || msgs[msgs.length - 1].role !== "user") return bad(res, "Type a message first.");
+  const last = msgs[msgs.length - 1].content;
+  const body = AI_FORMAT === "message" ? { message: last, history: msgs.slice(0, -1) }
+    : AI_FORMAT === "prompt" ? { prompt: last }
+    : { messages: (AI_SYSTEM ? [{ role: "system", content: AI_SYSTEM }] : []).concat(msgs) };
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 30000);
+  let r, raw = "";
+  try {
+    r = await fetch(AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, process.env.AI_KEY ? { Authorization: "Bearer " + process.env.AI_KEY } : {}), body: JSON.stringify(body), signal: ac.signal });
+    raw = await r.text();
+  } catch (e) { console.error("AI request failed:", e.message); return bad(res, "The AI is not available right now. Try again later.", 502); }
+  finally { clearTimeout(timer); }
+  if (!r.ok) { console.error("AI upstream error", r.status, raw.slice(0, 300)); return bad(res, "The AI is not available right now. Try again later.", 502); }
+  let j; try { j = JSON.parse(raw); } catch (e) { j = raw; }
+  const reply = pickReply(j).slice(0, 4000);
+  if (!reply) { console.error("AI reply format not recognised:", raw.slice(0, 300)); return bad(res, "The AI answered in a way the app does not understand yet.", 502); }
+  res.json({ reply });
 }));
 
 // ---- Calls (voice and video, WebRTC). The server only passes the set-up messages; the call itself goes phone to phone, or through a TURN relay. ----
@@ -1100,9 +1154,10 @@ app.get("/api/groups/:id", need, wrap(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, "Invalid id.");
   const me = await gMember(req.params.id, req.uid);
   if (!me) return bad(res, "You are not in this group.", 403);
-  const g = (await db.query("SELECT id, name, ttl, created_at FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
+  const g = (await db.query("SELECT id, name, ttl, created_at, description, invite_on, invite_token, only_admins_send, members_can_add FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
   const m = await db.query("SELECT u.id, COALESCE(NULLIF(c.alias,''), u.name) AS name, gm.role FROM group_members gm JOIN users u ON u.id=gm.user_id LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE gm.group_id=$1 ORDER BY (gm.role='admin') DESC, gm.joined_at", [req.params.id, req.uid]);
-  res.json({ ...g, role: me.role, members: m.rows });
+  const { invite_token, ...pubg } = g;
+  res.json({ ...pubg, role: me.role, members: m.rows, invite_token: me.role === "admin" && g.invite_on ? invite_token : null });
 }));
 
 app.get("/api/groups/:id/messages", need, wrap(async (req, res) => {
@@ -1117,17 +1172,34 @@ app.get("/api/groups/:id/messages", need, wrap(async (req, res) => {
        LEFT JOIN users t ON t.id=m.target_id LEFT JOIN contacts c2 ON c2.owner=$1 AND c2.contact=m.target_id
        WHERE m.group_id=$2 AND m.created_at >= $3 AND (m.expires_at IS NULL OR m.expires_at > now())
        ORDER BY m.id DESC LIMIT 200) t ORDER BY id`, [req.uid, req.params.id, me.joined_at]);
-  const g = (await db.query("SELECT ttl FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
-  res.json({ messages: r.rows, ttl: g ? g.ttl : 0 });
+  const g = (await db.query("SELECT ttl, only_admins_send FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
+  const pids = r.rows.filter((x) => x.kind === "poll").map((x) => x.id);
+  if (pids.length) {
+    const P = await db.query("SELECT message_id, multi, options FROM group_polls WHERE message_id = ANY($1::bigint[])", [pids]);
+    const Vt = await db.query("SELECT message_id, opt, count(*)::int AS n, bool_or(user_id=$2::uuid) AS mine FROM group_poll_votes WHERE message_id = ANY($1::bigint[]) GROUP BY message_id, opt", [pids, req.uid]);
+    const Tv = await db.query("SELECT message_id, count(DISTINCT user_id)::int AS n FROM group_poll_votes WHERE message_id = ANY($1::bigint[]) GROUP BY message_id", [pids]);
+    for (const x of r.rows) {
+      if (x.kind !== "poll") continue;
+      const p = P.rows.find((y) => String(y.message_id) === String(x.id)); if (!p) continue;
+      x.poll = {
+        multi: p.multi,
+        options: p.options.map((t, i) => { const v = Vt.rows.find((y) => String(y.message_id) === String(x.id) && y.opt === i); return { text: t, votes: v ? v.n : 0, mine: !!(v && v.mine) }; }),
+        voters: (Tv.rows.find((y) => String(y.message_id) === String(x.id)) || { n: 0 }).n,
+      };
+    }
+  }
+  res.json({ messages: r.rows, ttl: g ? g.ttl : 0, only_admins_send: g ? g.only_admins_send : false });
 }));
 
 app.post("/api/groups/:id/messages", need, wrap(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, "Invalid id.");
-  if (!(await gMember(req.params.id, req.uid))) return bad(res, "You are not in this group.", 403);
+  const mem = await gMember(req.params.id, req.uid);
+  if (!mem) return bad(res, "You are not in this group.", 403);
   const body = String(req.body.body || "").trim().slice(0, 4000);
   const reply = req.body.reply ? String(req.body.reply).slice(0, 120) : null;
   if (!body) return bad(res, "Message is empty.");
-  const g = (await db.query("SELECT name, ttl FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
+  const g = (await db.query("SELECT name, ttl, only_admins_send FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
+  if (g.only_admins_send && mem.role !== "admin") return bad(res, "Only admins can send messages in this group.", 403);
   const r = await db.query("INSERT INTO group_messages(group_id,from_id,body,reply,expires_at) VALUES($1,$2,$3,$4,$5) RETURNING id", [req.params.id, req.uid, body, reply, g.ttl ? new Date(Date.now() + g.ttl * 1000) : null]);
   const me = (await db.query("SELECT name FROM users WHERE id=$1", [req.uid])).rows[0];
   notifyGroup(req.params.id, req.uid, g.name, me.name + " sent a message").catch(() => {}); // never the message text
@@ -1137,7 +1209,8 @@ app.post("/api/groups/:id/messages", need, wrap(async (req, res) => {
 app.post("/api/groups/:id/members", need, groupLimit, wrap(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, "Invalid id.");
   const me = await gMember(req.params.id, req.uid);
-  if (!me || me.role !== "admin") return bad(res, "Only admins can add people.", 403);
+  const gs = (await db.query("SELECT members_can_add FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
+  if (!me || (me.role !== "admin" && !(gs && gs.members_can_add))) return bad(res, "Only admins can add people.", 403);
   if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot add people to groups for now.", 403);
   const v = await checkAddable(req.uid, Array.isArray(req.body.members) ? req.body.members : []);
   if (v.error) return bad(res, v.error);
@@ -1198,6 +1271,89 @@ app.post("/api/groups/:id/disappear", need, wrap(async (req, res) => {
   res.json({ ok: true, ttl: sec });
 }));
 
+const joinLimit = rateLimit({ windowMs: 10 * 60000, max: 30, keyGenerator: (req) => String(req.uid) });
+const adminOfGroup = async (req, res) => {
+  if (!isId(req.params.id)) { bad(res, "Invalid id."); return false; }
+  const me = await gMember(req.params.id, req.uid);
+  if (!me || me.role !== "admin") { bad(res, "Only admins can do this.", 403); return false; }
+  return true;
+};
+app.put("/api/groups/:id/description", need, wrap(async (req, res) => {
+  if (!(await adminOfGroup(req, res))) return;
+  await db.query("UPDATE chat_groups SET description=$2 WHERE id=$1", [req.params.id, String(req.body.description || "").trim().slice(0, 300)]);
+  await db.query("INSERT INTO group_messages(group_id,from_id,kind) VALUES($1,$2,'desc')", [req.params.id, req.uid]);
+  res.json({ ok: true });
+}));
+app.put("/api/groups/:id/settings", need, wrap(async (req, res) => {
+  if (!(await adminOfGroup(req, res))) return;
+  const b = req.body || {}, id = req.params.id;
+  if (typeof b.only_admins_send === "boolean") await db.query("UPDATE chat_groups SET only_admins_send=$2 WHERE id=$1", [id, b.only_admins_send]);
+  if (typeof b.members_can_add === "boolean") await db.query("UPDATE chat_groups SET members_can_add=$2 WHERE id=$1", [id, b.members_can_add]);
+  if (typeof b.invite_on === "boolean") {
+    await db.query("UPDATE chat_groups SET invite_on=$2, invite_token=CASE WHEN $2 AND invite_token IS NULL THEN $3 ELSE invite_token END WHERE id=$1", [id, b.invite_on, crypto.randomBytes(16).toString("base64url")]);
+  }
+  res.json({ ok: true });
+}));
+app.post("/api/groups/:id/invite/reset", need, wrap(async (req, res) => {
+  if (!(await adminOfGroup(req, res))) return;
+  await db.query("UPDATE chat_groups SET invite_token=$2, invite_on=true WHERE id=$1", [req.params.id, crypto.randomBytes(16).toString("base64url")]);
+  res.json({ ok: true });
+}));
+const tokenOk = (t) => /^[A-Za-z0-9_-]{16,40}$/.test(String(t));
+app.get("/api/groups/join/:token", need, joinLimit, wrap(async (req, res) => {
+  if (!tokenOk(req.params.token)) return bad(res, "This invite link is not valid.", 404);
+  const g = (await db.query("SELECT id, name, description FROM chat_groups WHERE invite_token=$1 AND invite_on", [req.params.token])).rows[0];
+  if (!g) return bad(res, "This invite link is not valid.", 404);
+  const n = (await db.query("SELECT count(*)::int AS n FROM group_members WHERE group_id=$1", [g.id])).rows[0].n;
+  res.json({ id: g.id, name: g.name, description: g.description, members: n, full: n >= MAXG, already: !!(await gMember(g.id, req.uid)) });
+}));
+app.post("/api/groups/join/:token", need, joinLimit, wrap(async (req, res) => {
+  if (!tokenOk(req.params.token)) return bad(res, "This invite link is not valid.", 404);
+  const g = (await db.query("SELECT id FROM chat_groups WHERE invite_token=$1 AND invite_on", [req.params.token])).rows[0];
+  if (!g) return bad(res, "This invite link is not valid.", 404);
+  if (await gMember(g.id, req.uid)) return res.json({ id: g.id });
+  const n = (await db.query("SELECT count(*)::int AS n FROM group_members WHERE group_id=$1", [g.id])).rows[0].n;
+  if (n >= MAXG) return bad(res, "This group is full.", 409);
+  await db.query("INSERT INTO group_members(group_id,user_id) VALUES($1,$2)", [g.id, req.uid]);
+  await db.query("INSERT INTO group_messages(group_id,from_id,kind) VALUES($1,$2,'joined')", [g.id, req.uid]);
+  res.json({ id: g.id });
+}));
+
+app.post("/api/groups/:id/polls", need, groupLimit, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  const mem = await gMember(req.params.id, req.uid);
+  if (!mem) return bad(res, "You are not in this group.", 403);
+  const g = (await db.query("SELECT name, ttl, only_admins_send FROM chat_groups WHERE id=$1", [req.params.id])).rows[0];
+  if (g.only_admins_send && mem.role !== "admin") return bad(res, "Only admins can send messages in this group.", 403);
+  const q = String(req.body.question || "").trim().slice(0, 200);
+  const opts = [...new Set((Array.isArray(req.body.options) ? req.body.options : []).map((x) => String(x || "").trim().slice(0, 100)).filter(Boolean))].slice(0, 6);
+  if (!q) return bad(res, "Write the question.");
+  if (opts.length < 2) return bad(res, "Add at least 2 different options.");
+  const m = await db.query("INSERT INTO group_messages(group_id,from_id,kind,body,expires_at) VALUES($1,$2,'poll',$3,$4) RETURNING id", [req.params.id, req.uid, q, g.ttl ? new Date(Date.now() + g.ttl * 1000) : null]);
+  await db.query("INSERT INTO group_polls(message_id,multi,options) VALUES($1,$2,$3::text[])", [m.rows[0].id, req.body.multi === true, opts]);
+  const me = (await db.query("SELECT name FROM users WHERE id=$1", [req.uid])).rows[0];
+  notifyGroup(req.params.id, req.uid, g.name, me.name + " created a poll").catch(() => {});
+  res.json({ id: m.rows[0].id });
+}));
+app.post("/api/polls/:id/vote", need, wrap(async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
+  const row = (await db.query(
+    `SELECT m.id, p.multi, p.options FROM group_messages m JOIN group_polls p ON p.message_id=m.id
+     JOIN group_members gm ON gm.group_id=m.group_id AND gm.user_id=$2
+     WHERE m.id=$1 AND m.created_at >= gm.joined_at AND (m.expires_at IS NULL OR m.expires_at > now())`, [req.params.id, req.uid])).rows[0];
+  if (!row) return bad(res, "This poll is not available.", 404);
+  let sel = [...new Set((Array.isArray(req.body.options) ? req.body.options : []).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < row.options.length))];
+  if (!row.multi) sel = sel.slice(0, 1);
+  const cl = await db.connect();
+  try {
+    await cl.query("BEGIN");
+    await cl.query("DELETE FROM group_poll_votes WHERE message_id=$1 AND user_id=$2", [row.id, req.uid]);
+    for (const o of sel) await cl.query("INSERT INTO group_poll_votes(message_id,user_id,opt) VALUES($1,$2,$3)", [row.id, req.uid, o]);
+    await cl.query("COMMIT");
+  } catch (e) { await cl.query("ROLLBACK").catch(() => {}); throw e; } finally { cl.release(); }
+  res.json({ ok: true });
+}));
+
 app.post("/api/groups/:id/leave", need, wrap(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, "Invalid id.");
   await leaveGroup(req.params.id, req.uid, false);
@@ -1239,6 +1395,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS n_status boolean NOT NULL DEFAULT tru
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_views boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS cover int NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_calls boolean NOT NULL DEFAULT true;
+ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mood text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS status_views(status_id bigint REFERENCES statuses(id) ON DELETE CASCADE, viewer_id uuid REFERENCES users(id) ON DELETE CASCADE, viewed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(status_id,viewer_id));
 CREATE TABLE IF NOT EXISTS push_subs(endpoint text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, session_id uuid REFERENCES sessions(id) ON DELETE CASCADE, p256dh text NOT NULL, auth text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
@@ -1247,6 +1404,14 @@ CREATE TABLE IF NOT EXISTS group_members(group_id uuid REFERENCES chat_groups(id
 CREATE INDEX IF NOT EXISTS gm_user ON group_members(user_id);
 CREATE TABLE IF NOT EXISTS group_messages(id bigserial PRIMARY KEY, group_id uuid NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL DEFAULT 'text', target_id uuid REFERENCES users(id) ON DELETE CASCADE, body text, reply text, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz);
 CREATE INDEX IF NOT EXISTS gmsg_group ON group_messages(group_id,id);
+ALTER TABLE chat_groups ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT '';
+ALTER TABLE chat_groups ADD COLUMN IF NOT EXISTS invite_token text;
+ALTER TABLE chat_groups ADD COLUMN IF NOT EXISTS invite_on boolean NOT NULL DEFAULT false;
+ALTER TABLE chat_groups ADD COLUMN IF NOT EXISTS only_admins_send boolean NOT NULL DEFAULT false;
+ALTER TABLE chat_groups ADD COLUMN IF NOT EXISTS members_can_add boolean NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX IF NOT EXISTS chat_groups_token ON chat_groups(invite_token) WHERE invite_token IS NOT NULL;
+CREATE TABLE IF NOT EXISTS group_polls(message_id bigint PRIMARY KEY REFERENCES group_messages(id) ON DELETE CASCADE, multi boolean NOT NULL DEFAULT false, options text[] NOT NULL);
+CREATE TABLE IF NOT EXISTS group_poll_votes(message_id bigint REFERENCES group_messages(id) ON DELETE CASCADE, user_id uuid REFERENCES users(id) ON DELETE CASCADE, opt int NOT NULL, PRIMARY KEY(message_id,user_id,opt));
 CREATE TABLE IF NOT EXISTS calls(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), caller uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, callee uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL DEFAULT 'voice', status text NOT NULL DEFAULT 'ringing', created_at timestamptz NOT NULL DEFAULT now(), answered_at timestamptz, ended_at timestamptz);
 CREATE INDEX IF NOT EXISTS calls_caller ON calls(caller, created_at DESC);
 CREATE INDEX IF NOT EXISTS calls_callee ON calls(callee, created_at DESC);
