@@ -5,6 +5,8 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 // Push notifications need the "web-push" package and VAPID keys. Without them the server works and notifications stay off.
 let webpush = null;
@@ -23,7 +25,23 @@ if (!DATABASE_URL || !JWT_SECRET) {
 const db = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 app.set("trust proxy", 1);
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "script-src": ["'self'", "'unsafe-inline'"],
+      "style-src": ["'self'", "'unsafe-inline'"],
+      "img-src": ["'self'", "data:", "blob:"],
+      "media-src": ["'self'", "blob:", "data:"],
+      "connect-src": ["'self'", "https:"],
+      "worker-src": ["'self'"],
+      "manifest-src": ["'self'"],
+      "object-src": ["'none'"],
+      "frame-ancestors": ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // the API stays usable from the app wherever it is opened
+}));
 app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false }));
 app.use(express.json({ limit: "256kb" })); // status photos are up to ~160 KB; each route checks its own size
 app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
@@ -93,7 +111,33 @@ const phoneOf = (p) => {
 };
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 
-app.get("/health", (req, res) => res.json({ service: "orivoclass-api", status: "ok" }));
+app.get("/health", (req, res) => res.json({ service: "orivoclass-api", status: "ok", app: appDir ? "found" : "missing" }));
+// Lets an old copy of the app know it must refresh. Raise MIN_CLIENT (and APP_VERSION in index.html) only when you make a change that old apps cannot work with.
+app.get("/api/version", (req, res) => res.json({ min_client: Number(process.env.MIN_CLIENT) || 1 }));
+
+// Proof that the Android app and this website belong to the same owner (removes the browser bar from the Android app).
+// Set ANDROID_PACKAGE (e.g. com.orivoclass.app) and ANDROID_SHA256 (one or more fingerprints, separated by commas) on Render.
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  const pkg = String(process.env.ANDROID_PACKAGE || "").trim();
+  const prints = String(process.env.ANDROID_SHA256 || "").split(",").map((x) => x.trim().toUpperCase()).filter((x) => /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(x));
+  if (!pkg || !prints.length) return res.status(404).json({ error: "Android app link is not set up yet." });
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.json([{ relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: pkg, sha256_cert_fingerprints: prints } }]);
+});
+
+// The app itself. Only these exact files are shown to visitors (never server.js or anything else).
+// They are looked for next to server.js, in a folder called "public", or one folder above.
+const APP_FILES = ["index.html", "admin.html", "sw.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+let ICONS = {}; try { ICONS = require("./icons.js"); } catch (e) {} // icons kept as text in icons.js (optional)
+const appDir = [path.join(__dirname, "public"), __dirname, path.join(__dirname, "..")].find((d) => fs.existsSync(path.join(d, "index.html")));
+if (!appDir) console.warn("App files (index.html and the others) were not found next to server.js, so the app page will not be shown.");
+for (const name of APP_FILES) {
+  app.get(name === "index.html" ? ["/", "/index.html"] : ["/" + name], (req, res, next) => {
+    if (appDir && fs.existsSync(path.join(appDir, name))) return res.sendFile(name, { root: appDir, headers: /\.(html|js|webmanifest)$/.test(name) ? { "Cache-Control": "no-cache" } : {} }); // html, sw.js and manifest are always re-checked, so updates arrive
+    if (ICONS[name]) { res.setHeader("Content-Type", "image/png"); res.setHeader("Cache-Control", "public, max-age=86400"); return res.end(Buffer.from(ICONS[name], "base64")); }
+    next();
+  });
+}
 
 // ---- SMS code (OTP) ----
 // DEV_SHOW_CODE=true  -> no SMS is sent, the code is returned to the app and shown on screen (testing only, NOT secure).
