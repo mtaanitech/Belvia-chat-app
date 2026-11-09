@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orivoclass</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Orivoclass">
 <style>
 :root{--bg:#FFFFFF;--sf:#F3F1FB;--wh:#FFFFFF;--ink:#1B1830;--mu:#6B6788;--ln:#E4E1F2;--ac:#6C4DFF;--on:#FFFFFF;--cr:#D64A31;--ok:#0E9F6E;--tk:#CFE8FF;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html[data-theme="dark"]{--bg:#121022;--sf:#1D1A35;--wh:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark}
@@ -63,7 +70,7 @@ const COV = [["#6C4DFF", "#B79CFF"], ["#2563EB", "#6EE7F9"], ["#0E8F63", "#A7F3D
 const MOODS = ["", "😊", "😎", "🔥", "💜", "🌍", "🎵", "📚", "⚽", "🙏"];
 const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gradient(circle at 18% 25%,rgba(255,255,255,.35) 0 14%,transparent 15%),radial-gradient(circle at 82% 70%,rgba(255,255,255,.25) 0 20%,transparent 21%),radial-gradient(circle at 60% 15%,rgba(255,255,255,.18) 0 9%,transparent 10%),linear-gradient(135deg," + c[0] + "," + c[1] + ")"; };
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
-function applyTheme() { const t = TH(), d = t.m == "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
+function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#121022" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
 let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
@@ -415,6 +422,27 @@ async function checkJoin() {
   catch (e) { try { localStorage.removeItem("bv.join"); } catch (x) {} if (U) toast("This invite link is not valid anymore."); }
 }
 const dropJoin = () => { try { localStorage.removeItem("bv.join"); } catch (e) {} JP = null; };
+// ---- Install as an app, and keep it up to date ----
+const APP_VERSION = 1; // must stay >= MIN_CLIENT on the server
+let DIP = null, BUILDTAG = null, UPD = false;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); DIP = e; });
+window.addEventListener("appinstalled", () => { DIP = null; });
+const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true || document.referrer.indexOf("android-app://") === 0;
+const buildTag = async () => { try { const r = await fetch(location.pathname, { method: "HEAD", cache: "no-store" }); return r.headers.get("etag") || r.headers.get("last-modified") || ""; } catch (e) { return ""; } };
+async function checkUpdate() {
+  const t = await buildTag(); if (!t) return;
+  if (BUILDTAG === null) { BUILDTAG = t; return; }
+  if (t !== BUILDTAG && !UPD) { UPD = true; drawUpd(); }
+}
+function drawUpd() {
+  if (!UPD || $("updb")) return;
+  const d = document.createElement("div"); d.id = "updb"; d.style.cssText = "position:absolute;top:0;left:0;right:0;z-index:60;background:var(--ac);color:var(--on);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:14px";
+  d.innerHTML = "<span>A new version is ready.</span><button class=\"lnk\" style=\"color:var(--on);min-height:32px\" data-a=\"reload\">Refresh</button>";
+  app.appendChild(d);
+}
+const updView = () => '<div class="wrap pad center"><div class="logo">Update needed</div><p class="mut">A newer version of Orivoclass is available. Refresh to continue.</p><button class="btn" style="width:100%" data-a="reload">Refresh</button></div>';
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
+setInterval(checkUpdate, 15 * 60000);
 async function doLogout() { try { await api("/logout", "POST"); } catch (e) {} logout(); }
 function waitView() {
   return '<div class="wrap pad center"><div class="spin"></div><h2 style="margin:0">Waiting for approval</h2><p class="mut">We asked your other device. Open Orivoclass there and tap “Yes, it’s me”. This request expires in 5 minutes.</p><button class="btn o" style="width:100%" data-a="waitcancel">Cancel</button><button class="lnk" data-a="waitrec">I can’t use my other device</button></div>';
@@ -695,7 +723,7 @@ const rowSoon = (t, sb) => '<div class="row" style="opacity:.75;cursor:default">
 function meTab() {
   return profileHead() +
     '<div class="sec">ACCOUNT</div>' + rowGo("priv", "Privacy", "Last seen, blocked contacts") + rowGo("acct", "Account status", "Trust score " + (U.trust == null ? 100 : U.trust) + "%") + rowGo("dev", "Linked devices", "Devices logged in to your account") +
-    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + rowGo("theme", "Appearance", "Light or dark, and your colour") + rowGo("photo", "Profile photo", "Add a photo and choose who sees it") + rowGo("dm", "Disappearing messages", "Set inside each chat") + rowGo("lock", "Chat lock", lockOn() ? "On · PIN" : "Off") + rowGo("backup", "Backup", "Download a copy of your chats") + rowGo("notif", "Notifications", "Messages, status and views") + rowGo("aiset", "Orivoclass AI", "Save your AI chats, or not") +
+    '<div class="sec">CHATS AND NOTIFICATIONS</div>' + (isStandalone() ? "" : rowGo("install", "Install app", "Add Orivoclass to your home screen")) + rowGo("theme", "Appearance", "Light or dark, and your colour") + rowGo("photo", "Profile photo", "Add a photo and choose who sees it") + rowGo("dm", "Disappearing messages", "Set inside each chat") + rowGo("lock", "Chat lock", lockOn() ? "On · PIN" : "Off") + rowGo("backup", "Backup", "Download a copy of your chats") + rowGo("notif", "Notifications", "Messages, status and views") + rowGo("aiset", "Orivoclass AI", "Save your AI chats, or not") +
     '<div class="sec">LEGAL AND HELP</div>' + rowGo("terms", "Terms of Service", "Last updated: November 2026") + rowGo("privacy", "Privacy Policy", "How we handle your data") + rowGo("rules", "Community Rules", "What is allowed on Orivoclass") + rowGo("about", "About Us", "Who we are") + rowGo("help", "Help and contact", "Questions and support") +
     '<div class="cd" style="margin-top:16px"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="btn d" data-a="pg" data-p="del">Delete my account</button></div>';
 }
@@ -862,6 +890,10 @@ function pageOv() {
   } else if (p == "photo") {
     t = "Profile photo";
     b = '<div class="cd" style="align-items:center">' + av(U.name, 120, false, U.id) + '<input id="pf" type="file" accept="image/*" style="display:none"><button class="btn" data-a="pick">' + (PH[U.id] ? "Change photo" : "Add photo") + "</button>" + (PH[U.id] ? '<button class="btn d" data-a="rmphoto">Remove photo</button>' : "") + '</div><div class="cd"><label>Who can see my photo<select id="pp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.photo_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + "</select></label></div>";
+  } else if (p == "install") {
+    t = "Install app";
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    b = '<div class="cd"><b>Use Orivoclass like an app</b><span class="mut">It opens full screen from your home screen, with its own icon, and it updates itself.</span>' + (DIP ? '<button class="btn" data-a="doinstall">Install now</button>' : ios ? '<span class="mut">On iPhone: tap the Share button, then “Add to Home Screen”.</span>' : '<span class="mut">On Android: open the browser menu (⋮), then tap “Install app” or “Add to Home screen”. On a computer: use the install icon in the address bar.</span>') + "</div>";
   } else if (p == "theme") {
     t = "Appearance";
     const th = TH();
@@ -936,7 +968,8 @@ function overlays() {
 }
 function render() {
   let h;
-  if (!U && V.scr == "lock") h = lockView();
+  if (V.scr == "update") h = updView();
+  else if (!U && V.scr == "lock") h = lockView();
   else if (!U && V.scr == "appeal" && AP) h = appealView();
   else if (!U && V.scr == "wait") h = waitView();
   else if (!U && V.scr == "otp" && PEND) h = otpView();
@@ -952,6 +985,7 @@ function render() {
   if (U && LR) drawLR();
   if (U && NT) drawNT();
   if (U && CALL) drawCall();
+  if (UPD) drawUpd();
   if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat" || V.scr == "ai")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
@@ -963,6 +997,8 @@ app.addEventListener("click", async (e) => {
     if (a == "tologin") { V.mode = "login"; return render(); }
     if (a == "recover") return recover();
     if (a == "otpgo") return otpGo();
+    if (a == "reload") { location.reload(); return; }
+    if (a == "doinstall") { if (!DIP) return; DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
     if (a == "gdescsave") { await api("/groups/" + V.gid + "/description", "PUT", { description: $("gdesc").value }); await loadGInfo(); await loadGMsgs(true); render(); return toast("Description saved"); }
     if (a == "ginvon") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: true }); await loadGInfo(); return render(); }
     if (a == "ginvoff") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: false }); await loadGInfo(); return render(); }
@@ -1192,6 +1228,9 @@ app.addEventListener("change", async (e) => {
 });
 app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); V.scr == "gchat" ? sendG() : V.scr == "schat" ? sendS() : V.scr == "ai" ? sendAI() : send(); } if (e.key == "Enter" && e.target.id == "lpin") { e.preventDefault(); unlock(); } });
 (async function init() {
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").then((reg) => { setInterval(() => reg.update().catch(() => {}), 3600000); }).catch(() => {});
+  checkUpdate();
+  try { const r = await fetch(API + "/api/version"); const j = await r.json(); if (j.min_client > APP_VERSION) { V.scr = "update"; render(); return; } } catch (e) {}
   const jm = /^#join=([A-Za-z0-9_-]{16,40})$/.exec(location.hash);
   if (jm) { try { localStorage.setItem("bv.join", jm[1]); } catch (e) {} try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
   if (!T && lockOn()) { V.scr = "lock"; render(); return; }
@@ -1200,4 +1239,4 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 })();
 </script>
 </body>
-  </html>
+</html>
