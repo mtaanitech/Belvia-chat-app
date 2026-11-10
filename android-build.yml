@@ -1,0 +1,157 @@
+# Builds the Orivoclass Android app (APK) on GitHub, and puts it on the "Releases" page.
+# Run it by hand: Actions tab -> "Build Android app (APK)" -> Run workflow.
+name: Build Android app (APK)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SITE_URL: "https://mtaanitech.github.io/Belvia-chat-app/"
+  PACKAGE_ID: "com.orivoclass.app"
+  APP_NAME: "Orivoclass"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Get the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Accept the Android licences
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Point Bubblewrap at Java and the Android tools
+        run: |
+          mkdir -p "$HOME/.bubblewrap"
+          printf '{"jdkPath":"%s","androidSdkPath":"%s"}\n' "$JAVA_HOME" "$ANDROID_HOME" > "$HOME/.bubblewrap/config.json"
+
+      - name: Prepare the app icons (taken from icons.js in this repository)
+        run: |
+          mkdir -p twa-icons
+          ICONS_JS=$(find . -name icons.js -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$ICONS_JS" ]; then echo "icons.js was not found in the repository. Upload it first."; exit 1; fi
+          ICONS_JS="$ICONS_JS" node -e '
+            const fs = require("fs"), I = require(require("path").resolve(process.env.ICONS_JS));
+            for (const n of ["icon-512.png", "icon-maskable-512.png"]) fs.writeFileSync("twa-icons/" + n, Buffer.from(I[n], "base64"));
+          '
+          (cd twa-icons && nohup python3 -m http.server 8765 --bind 127.0.0.1 > /dev/null 2>&1 &)
+          sleep 2
+          curl -fsS -o /dev/null http://127.0.0.1:8765/icon-512.png
+
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PASS_IN: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS_IN: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          mkdir -p twa
+          cd twa
+          ALIAS="${KEY_ALIAS_IN:-orivoclass}"
+          KEY_PASS="$KEY_PASS_IN"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEY_PASS" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android.keystore
+            echo "KEY_MODE=permanent" >> "$GITHUB_ENV"
+          else
+            KEY_PASS=$(openssl rand -hex 16)
+            keytool -genkeypair -noprompt -keystore android.keystore -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -storepass "$KEY_PASS" -keypass "$KEY_PASS" -dname "CN=Orivoclass, O=Orivoclass, C=KE"
+            echo "KEY_MODE=temporary" >> "$GITHUB_ENV"
+          fi
+          echo "::add-mask::$KEY_PASS"
+          echo "BUBBLEWRAP_KEYSTORE_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+          echo "BUBBLEWRAP_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$ALIAS" >> "$GITHUB_ENV"
+
+      - name: Describe the app to Bubblewrap
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from urllib.parse import urlparse
+          site = os.environ["SITE_URL"]
+          u = urlparse(site)
+          code = int(os.environ["GITHUB_RUN_NUMBER"])
+          icons = "http://127.0.0.1:8765/"
+          m = {
+            "packageId": os.environ["PACKAGE_ID"],
+            "host": u.netloc,
+            "name": os.environ["APP_NAME"],
+            "launcherName": os.environ["APP_NAME"],
+            "display": "standalone",
+            "displayOverride": [],
+            "orientation": "portrait",
+            "themeColor": "#FFFFFF",
+            "themeColorDark": "#121022",
+            "navigationColor": "#FFFFFF",
+            "navigationColorDark": "#121022",
+            "navigationDividerColor": "#FFFFFF",
+            "navigationDividerColorDark": "#121022",
+            "backgroundColor": "#FFFFFF",
+            "enableNotifications": True,
+            "startUrl": u.path or "/",
+            "fullScopeUrl": site,
+            "iconUrl": icons + "icon-512.png",
+            "maskableIconUrl": icons + "icon-maskable-512.png",
+            "splashScreenFadeOutDuration": 300,
+            "signingKey": {"path": "./android.keystore", "alias": os.environ["KEY_ALIAS"]},
+            "appVersionName": "1.0." + str(code),
+            "appVersionCode": code,
+            "shortcuts": [],
+            "generatorApp": "bubblewrap-cli",
+            "webManifestUrl": site + "manifest.webmanifest",
+            "fallbackType": "customtabs",
+            "features": {},
+            "alphaDependencies": {"enabled": False},
+            "enableSiteSettingsShortcut": True,
+            "isChromeOSOnly": False,
+            "isMetaQuest": False,
+            "additionalTrustedOrigins": [],
+            "retainedBundles": [],
+            "minSdkVersion": 21
+          }
+          json.dump(m, open("twa/twa-manifest.json", "w"), indent=2)
+          print(json.dumps(m, indent=2))
+          PY
+
+      - name: Build the app
+        working-directory: twa
+        run: |
+          bubblewrap update --manifest=. --skipVersionUpgrade
+          bubblewrap build --manifest=. --skipPwaValidation
+          ls -la
+
+      - name: Put the APK on the Releases page
+        working-directory: twa
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app-release-signed.apk orivoclass.apk
+          if [ "$KEY_MODE" = "permanent" ]; then
+            NOTE="Orivoclass Android app (build ${GITHUB_RUN_NUMBER}). Signed with your permanent key."
+          else
+            NOTE="Orivoclass Android app (build ${GITHUB_RUN_NUMBER}). TEST BUILD: signed with a temporary key. Uninstall any older Orivoclass app before installing this one."
+          fi
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest orivoclass.apk --title "Orivoclass Android app" --notes "$NOTE" --prerelease
+
+      - name: Also keep a copy with the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: orivoclass-apk
+          path: twa/orivoclass.apk
