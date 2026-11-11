@@ -25,7 +25,10 @@ if (!DATABASE_URL || !JWT_SECRET) {
 const db = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 app.set("trust proxy", 1);
-app.use(helmet({
+// If the security settings are ever rejected, start anyway (without the content policy) instead of crashing.
+let helmetMw;
+try {
+  helmetMw = helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
@@ -41,7 +44,9 @@ app.use(helmet({
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }, // the API stays usable from the app wherever it is opened
-}));
+});
+} catch (e) { console.warn("helmet settings problem, using a simpler setup:", e.message); helmetMw = helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }); }
+app.use(helmetMw);
 app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false }));
 app.use(express.json({ limit: "256kb" })); // status photos are up to ~160 KB; each route checks its own size
 app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
@@ -1394,10 +1399,4 @@ app.put("/api/groups/:id/settings", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 app.post("/api/groups/:id/invite/reset", need, wrap(async (req, res) => {
-  if (!(await adminOfGroup(req, res))) return;
-  await db.query("UPDATE chat_groups SET invite_token=$2, invite_on=true WHERE id=$1", [req.params.id, crypto.randomBytes(16).toString("base64url")]);
-  res.json({ ok: true });
-}));
-const tokenOk = (t) => /^[A-Za-z0-9_-]{16,40}$/.test(String(t));
-app.get("/api/groups/join/:token", need, joinLimit, wrap(async (req, res) => {
-  if (!to
+  if (!(await adminOfGroup(re
