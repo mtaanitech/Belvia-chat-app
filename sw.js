@@ -2,7 +2,7 @@
 // 1) Keeps the app updating itself: the page is always fetched from the network first, so a new push shows up the next time the app opens.
 // 2) Falls back to the saved copy when there is no internet.
 // 3) Shows push notifications. Keep this file next to index.html.
-const VERSION = "2026-11-08.1";
+const VERSION = "2026-11-11.1";
 const CACHE = "orivoclass-" + VERSION;
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
@@ -20,15 +20,21 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // never touch the API or other sites
   const isPage = req.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("/index.html");
-  if (isPage) { // network first, so updates arrive without anyone downloading anything
+  if (isPage) { // open from the saved copy at once; fetch the newest copy in the background and tell the page when it changed
     e.respondWith((async () => {
-      try {
-        const r = await fetch(url.pathname + url.search, { cache: "no-store" });
-        if (r.ok) { const c = await caches.open(CACHE); c.put("index.html", r.clone()).catch(() => {}); }
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match("index.html");
+      const fresh = fetch(url.pathname + url.search, { cache: "no-store" }).then(async (r) => {
+        if (r.ok) {
+          const was = cached && (cached.headers.get("etag") || cached.headers.get("last-modified"));
+          const now = r.headers.get("etag") || r.headers.get("last-modified");
+          await cache.put("index.html", r.clone());
+          if (was && now && was !== now) (await self.clients.matchAll({ type: "window" })).forEach((c) => c.postMessage({ type: "updated" }));
+        }
         return r;
-      } catch (err) {
-        return (await caches.match("index.html")) || (await caches.match("./")) || Response.error();
-      }
+      });
+      if (cached) { e.waitUntil(fresh.catch(() => {})); return cached; }
+      try { return await fresh; } catch (err) { return Response.error(); }
     })());
     return;
   }
