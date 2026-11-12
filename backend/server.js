@@ -47,7 +47,7 @@ try {
 });
 } catch (e) { console.warn("helmet settings problem, using a simpler setup:", e.message); helmetMw = helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }); }
 app.use(helmetMw);
-app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false }));
+app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false, maxAge: 86400 })); // browsers remember the "may I talk to this server?" check, so each request is one trip instead of two
 app.use(express.json({ limit: "256kb" })); // status photos are up to ~160 KB; each route checks its own size
 app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
 const authLimit = rateLimit({ windowMs: 15 * 60000, max: 20 });
@@ -143,7 +143,6 @@ for (const name of APP_FILES) {
     next();
   });
 }
-
 // ---- SMS code (OTP) ----
 // DEV_SHOW_CODE=true  -> no SMS is sent, the code is returned to the app and shown on screen (testing only, NOT secure).
 // otherwise           -> the code is sent by SMS through Africa's Talking (AT_USERNAME, AT_API_KEY).
