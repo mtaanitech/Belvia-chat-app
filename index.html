@@ -72,7 +72,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#121022" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -81,7 +81,7 @@ const ini = (n) => ((n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] |
 const pal = [["#E6E3FF", "#3A2FA0"], ["#FFE1E7", "#8A1F36"], ["#DDF3E4", "#14532D"], ["#DCEBFF", "#1E4F8F"], ["#FFEFD2", "#7A4A05"]];
 const av = (n, s, on, id) => {
   const p = pal[(n || "").length % 5];
-  const a = id && PH[id] ? '<img class="av" alt="" src="' + esc(PH[id]) + '" style="width:' + s + 'px;height:' + s + 'px;object-fit:cover">' : '<span class="av" style="width:' + s + 'px;height:' + s + 'px;background:' + p[0] + ';color:' + p[1] + ';font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>";
+  const a = id && PH[id] ? '<img class="av" alt="" decoding="async" src="' + esc(PH[id]) + '" style="width:' + s + 'px;height:' + s + 'px;object-fit:cover">' : '<span class="av" style="width:' + s + 'px;height:' + s + 'px;background:' + p[0] + ';color:' + p[1] + ';font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>";
   return on ? '<span style="position:relative;display:inline-flex;flex:none">' + a + '<span style="position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;background:var(--ok);border:2px solid var(--bg)"></span></span>' : a;
 };
 const tm = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() == n.toDateString() ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString([], { day: "2-digit", month: "2-digit" }); };
@@ -102,7 +102,7 @@ async function api(p, m, b) {
   if (!r.ok) { const er = new Error(j.error || "Something went wrong."); er.data = j; throw er; }
   return j;
 }
-function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; AIM = []; SIMG = ""; JP = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
+function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; MSC = {}; GMC = {}; PENDM = []; GPEND = []; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; AIM = []; SIMG = ""; JP = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); localStorage.removeItem("bv.cache"); } catch (e) {} V = Object.assign(V, { tab: "chats", scr: null, ov: null, lo: false, mode: "login" }); render(); }
 // ---- Chat lock: a 6-digit PIN protects the app on this phone. The login token is stored encrypted with the PIN. ----
 let HID = 0;
 const LK = () => { try { return JSON.parse(localStorage.getItem("bv.lk") || "null"); } catch (e) { return null; } };
@@ -146,7 +146,7 @@ async function unlock() {
 function lockNow() {
   if (!lockOn() || !U || CALL) return;
   clearInterval(timer); clearInterval(WT);
-  T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; AIM = []; LR = null; NT = null; DC = ""; RC = "";
+  T = ""; U = null; CT = []; CH = []; MS = []; ST = []; BL = []; PH = {}; MSC = {}; GMC = {}; PENDM = []; GPEND = []; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; AIM = []; LR = null; NT = null; DC = ""; RC = "";
   V.scr = "lock"; V.ov = null; V.menu = false; render();
 }
 document.addEventListener("visibilitychange", () => {
@@ -541,13 +541,33 @@ async function loadAI() {
   const j = await api("/ai/history"); AIKEEP = j.keep;
   if (j.keep !== 0) AIM = j.messages.map((m) => ({ role: m.role, content: m.content, t: new Date(m.created_at).getTime() }));
 }
-async function loadAll() { await Promise.all([loadCT(), loadCH(), loadST(), loadBL(), loadGL(), loadAI().catch(() => {})]); await loadPhotos([U.id].concat(CT.map((c) => c.id), CH.map((c) => c.peer))); }
+// A saved copy of the lists lets the app open instantly; fresh data replaces it a moment later. Not kept when Chat lock is on.
+function saveCache() {
+  try { if (!U || lockOn()) { localStorage.removeItem("bv.cache"); return; } localStorage.setItem("bv.cache", JSON.stringify({ v: 1, U, CH, CT, GL, ST, BL })); } catch (e) {}
+}
+function loadCache() { try { const c = JSON.parse(localStorage.getItem("bv.cache") || "null"); return c && c.v == 1 && c.U ? c : null; } catch (e) { return null; } }
+function refreshMain() {
+  if (!U || V.scr || V.ov || CALL) return;
+  const ae = document.activeElement; if (ae && (ae.tagName == "INPUT" || ae.tagName == "TEXTAREA")) return;
+  render();
+}
+function refreshList() { const l = $("lst"); if (!l) return; const h = listHtml(); if (l._h !== h) { l.innerHTML = h; l._h = h; } }
+const photoIds = () => [U.id].concat(CT.map((c) => c.id), CH.map((c) => c.peer));
+// Pictures come in after the screen is already showing.
+async function loadAll() { await Promise.all([loadCT(), loadCH(), loadST(), loadBL(), loadGL(), loadAI().catch(() => {})]); saveCache(); loadPhotos(photoIds()).then(refreshMain).catch(() => {}); }
+// At start: your profile and all the lists are asked for at the same time (not one after another).
+async function bootLoad() {
+  const r = await Promise.all([api("/me"), loadCT(), loadCH(), loadST(), loadBL(), loadGL(), loadAI().catch(() => {})]);
+  U = r[0]; saveCache(); loadPhotos(photoIds()).then(refreshMain).catch(() => {});
+}
+const bootView = () => '<div class="wrap center"><div class="logo">Orivoclass</div><div class="spin"></div></div>';
 async function loadMsgs(sc) {
   const id = V.cid; const j = await api("/messages/" + id);
   if (V.scr != "chat" || V.cid != id) return;
   TT = j.ttl || 0; const dm = $("dmb"); if (dm) dm.textContent = dmbText();
+  MSC[id] = j.messages; const wasL = MSL; MSL = false;
   const k = JSON.stringify(j.messages);
-  if (k !== msKey) { const last = MS.length ? MS[MS.length - 1].id : 0; MS = j.messages; msKey = k; const nl = MS.length ? MS[MS.length - 1].id : 0; upd(sc || nl != last); }
+  if (k !== msKey || wasL) { const last = MS.length ? MS[MS.length - 1].id : 0; MS = j.messages.concat(PENDM.filter((p) => p.to_id == id)); msKey = k; const nl = MS.length ? MS[MS.length - 1].id : 0; upd(sc || nl != last || wasL); }
 }
 const dmbText = () => TT ? "⏱ New messages in this chat disappear after " + (TT == 86400 ? "24 hours" : "7 days") + "." : "";
 function lastSeenText(p) {
@@ -571,7 +591,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { setTimeout(checkJoin, 300); clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); const l = $("lst"); if (l) l.innerHTML = listHtml(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
+function start() { setTimeout(checkJoin, 300); clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -615,7 +635,7 @@ function recoverView() {
     '<label>Recovery code<input id="rc2" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX"></label>' +
     '<label>New password<input id="pw" type="password" placeholder="At least 8 characters" autocomplete="new-password"></label>' +
     '<button class="btn" data-a="recover">Reset password</button><p id="err" class="err"></p><button class="lnk" data-a="tologin">Back to log in</button></div>';
-  }
+}
 const cleanPh = () => { let p = ($("cc").value + $("ph").value).replace(/\D/g, ""); if (p.startsWith("2540")) p = "254" + p.slice(4); return p; };
 async function recover() {
   const er = $("err"), ph = cleanPh(), pw = $("pw").value;
@@ -736,7 +756,7 @@ function main() {
   const t = V.tab; let b = "", f = "";
   if (t == "chats") {
     b = (V.sq ? '<input id="q" class="srch" style="margin-top:12px" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '">' : "") + strip() +
-      '<div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + listHtml() + "</div>";
+      '<div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + (LSTH = listHtml()) + "</div>";
     f = '<button class="aib" data-a="ai" aria-label="Orivoclass AI">' + AISVG + '</button><button class="fab" data-a="cov" aria-label="New chat">+</button>';
   }
   else if (t == "status") b = statusTab();
@@ -751,8 +771,8 @@ function bodyHtml(x, me) {
   return x.opened_at ? "View once · Opened" : "View once message · tap to open";
 }
 function msgsHtml() {
-  if (!MS.length) return '<div class="empty"><b>No messages yet</b>Say hello.</div>';
-  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + (me ? (x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '</div>' : ""); }).join("");
+  if (!MS.length) return MSL ? '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>' : '<div class="empty"><b>No messages yet</b>Say hello.</div>';
+  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + (me ? (x.tmp ? " 🕓" : x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '</div>' : ""); }).join("");
 }
 const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
 function peer() {
@@ -774,10 +794,11 @@ async function loadGMsgs(sc) {
   if (GI) GI.only_admins_send = !!j.only_admins_send;
   const gc = $("gcomp"); if (gc && gc.dataset.s != String(gLocked())) { gc.dataset.s = String(gLocked()); gc.innerHTML = gcompHtml(); }
   const k = JSON.stringify(j.messages);
-  if (k !== gKey) { const last = MG.length ? MG[MG.length - 1].id : 0; MG = j.messages; gKey = k; const nl = MG.length ? MG[MG.length - 1].id : 0; upd(sc || nl != last); }
+  GMC[id] = j.messages; const wasG = gLoad; gLoad = false;
+  if (k !== gKey || wasG) { const last = MG.length ? MG[MG.length - 1].id : 0; MG = j.messages.concat(GPEND); gKey = k; const nl = MG.length ? MG[MG.length - 1].id : 0; upd(sc || nl != last || wasG); }
 }
 function gmsgsHtml() {
-  if (!MG.length) return '<div class="empty"><b>No messages yet</b>Say hello.</div>';
+  if (!MG.length) return gLoad ? '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>' : '<div class="empty"><b>No messages yet</b>Say hello.</div>';
   const nm = (id, n) => id == U.id ? "You" : n;
   return MG.map((x) => {
     if (x.kind == "poll") return pollHtml(x);
@@ -787,7 +808,7 @@ function gmsgsHtml() {
       return '<div class="note" style="align-self:center;text-align:center;background:var(--sf);padding:4px 12px;border-radius:12px">' + esc(tx) + "</div>";
     }
     const me = x.from_id == U.id;
-    return '<button class="b ' + (me ? "me" : "") + '" data-a="gsel" data-m="' + x.id + '">' + (me ? "" : '<div style="font-size:12px;font-weight:700;color:var(--ac)">' + esc(x.from_name) + "</div>") + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + "</div></button>" + (V.sel == x.id ? '<div class="act"><button data-a="greply" data-m="' + x.id + '">Reply</button></div>' : "");
+    return '<button class="b ' + (me ? "me" : "") + '" data-a="gsel" data-m="' + x.id + '">' + (me ? "" : '<div style="font-size:12px;font-weight:700;color:var(--ac)">' + esc(x.from_name) + "</div>") + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + (x.tmp ? " 🕓" : "") + "</div></button>" + (V.sel == x.id ? '<div class="act"><button data-a="greply" data-m="' + x.id + '">Reply</button></div>' : "");
   }).join("");
 }
 function gchatView() {
@@ -796,12 +817,16 @@ function gchatView() {
 }
 async function sendG() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
-  const rp = V.reply; i.value = ""; V.reply = null; V.sel = null; upd(false);
-  try { await api("/groups/" + V.gid + "/messages", "POST", { body: t, reply: rp }); await loadGMsgs(true); loadGL().catch(() => {}); } catch (e) { toast(e.message); i.value = t; }
+  const rp = V.reply; i.value = ""; V.reply = null; V.sel = null;
+  const tmp = { id: "tmp" + Date.now(), kind: "text", from_id: U.id, from_name: "You", body: t, reply: rp, created_at: new Date().toISOString(), tmp: true };
+  MG.push(tmp); GPEND.push(tmp); upd(true);
+  const drop = () => { GPEND = GPEND.filter((x) => x !== tmp); };
+  try { await api("/groups/" + V.gid + "/messages", "POST", { body: t, reply: rp }); drop(); await loadGMsgs(true); loadGL().catch(() => {}); }
+  catch (e) { drop(); MG = MG.filter((x) => x !== tmp); upd(false); toast(e.message); i.value = t; }
   i.focus();
 }
 async function openGroup(id) {
-  V.gid = id; V.scr = "gchat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MG = []; gKey = ""; GI = null; TT = 0; render();
+  V.gid = id; V.scr = "gchat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MG = GMC[id] || []; gKey = ""; gLoad = !GMC[id]; GI = null; TT = 0; render();
   loadGInfo().catch(() => {}); return loadGMsgs(true);
 }
 function ginfoHtml() {
@@ -827,8 +852,12 @@ const gcompHtml = () => gLocked() ? '<div class="rp" style="justify-content:cent
 function upd(sc) { const el = $("msgs"); if (el) { el.innerHTML = V.scr == "gchat" ? gmsgsHtml() : V.scr == "schat" ? smsgsHtml() : msgsHtml(); if (sc) el.scrollTop = el.scrollHeight; } const r = $("rp"); if (r) r.innerHTML = rpHtml(); }
 async function send() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
-  const rp = V.reply, once = V.once; i.value = ""; V.reply = null; V.sel = null; V.once = false; const oc = $("onc"); if (oc) oc.classList.remove("on"); upd(false);
-  try { await api("/messages", "POST", { to: V.cid, body: t, reply: rp, once }); await loadMsgs(true); loadCH().catch(() => {}); } catch (e) { toast(e.message); i.value = t; }
+  const rp = V.reply, once = V.once, cid = V.cid; i.value = ""; V.reply = null; V.sel = null; V.once = false; const oc = $("onc"); if (oc) oc.classList.remove("on");
+  const tmp = { id: "tmp" + Date.now(), from_id: U.id, to_id: cid, body: t, view_once: !!once, reply: rp, created_at: new Date().toISOString(), tmp: true };
+  MS.push(tmp); PENDM.push(tmp); upd(true);
+  const drop = () => { PENDM = PENDM.filter((x) => x !== tmp); };
+  try { await api("/messages", "POST", { to: cid, body: t, reply: rp, once }); drop(); await loadMsgs(true); loadCH().catch(() => {}); }
+  catch (e) { drop(); MS = MS.filter((x) => x !== tmp); upd(false); toast(e.message); i.value = t; }
   i.focus();
 }
 const LEGAL = {
@@ -864,7 +893,7 @@ const LEGAL = {
     ["What we care about", "Privacy first, simple design and fair rules that give people a second chance."],
     ["Version", "Web version 0.4. More features are on the way."],
     ["Contact", "[YOUR SUPPORT EMAIL]"]]]
-};
+  };
 const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
 const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
 function recCard() {
@@ -969,6 +998,7 @@ function overlays() {
 function render() {
   let h;
   if (V.scr == "update") h = updView();
+  else if (!U && V.scr == "boot") h = bootView();
   else if (!U && V.scr == "lock") h = lockView();
   else if (!U && V.scr == "appeal" && AP) h = appealView();
   else if (!U && V.scr == "wait") h = waitView();
@@ -982,6 +1012,7 @@ function render() {
   else if (V.scr == "chat") h = chatView();
   else h = main();
   app.innerHTML = h + (U && V.scr != "code" ? overlays() : "");
+  const lstEl = $("lst"); if (lstEl) lstEl._h = LSTH; // remember what is on screen, so the 3-second refresh only redraws when something changed
   if (U && LR) drawLR();
   if (U && NT) drawNT();
   if (U && CALL) drawCall();
@@ -1116,7 +1147,7 @@ app.addEventListener("click", async (e) => {
       if (p1 !== p2) return toast("The PINs do not match.");
       if (!window.crypto || !crypto.subtle) return toast("This browser cannot protect the app with a PIN.");
       const blob = await lkSeal(p1, T);
-      localStorage.setItem("bv.te", blob); localStorage.setItem("bv.lk", JSON.stringify({ a: +$("lpa").value })); localStorage.removeItem("bv.t");
+      localStorage.setItem("bv.te", blob); localStorage.setItem("bv.lk", JSON.stringify({ a: +$("lpa").value })); localStorage.removeItem("bv.t"); localStorage.removeItem("bv.cache");
       render(); return toast("Chat lock is on");
     }
     if (a == "lkoff") {
@@ -1150,12 +1181,19 @@ app.addEventListener("click", async (e) => {
       RC = ""; V.scr = null; V.tab = "chats"; render(); start(); return;
     }
     if (a == "auth") return auth();
-    if (a == "tab") { V.tab = b.dataset.t; V.scr = null; V.lo = false; render(); if (V.tab == "status") { await loadST(); render(); } if (V.tab == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } render(); } if (V.tab == "calls") { try { await loadCalls(); } catch (e) {} render(); } return; }
+    if (a == "tab") {
+      const tb = b.dataset.t; V.tab = tb; V.scr = null; V.lo = false; render();
+      const still = () => V.tab == tb && !V.scr && !V.ov; // only redraw if the person is still on this tab (never wipe what they are typing elsewhere)
+      if (tb == "status") { await loadST(); if (still()) render(); }
+      if (tb == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } if (still()) render(); }
+      if (tb == "calls") { try { await loadCalls(); } catch (e) {} if (still()) render(); }
+      return;
+    }
     if (a == "sq") { if (V.tab != "chats") { V.tab = "chats"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
-    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = []; msKey = ""; PR = null; TT = 0; render(); loadPr().catch(() => {}); return loadMsgs(true); }
-    if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); if (V.tab == "singles") api("/singles/matches").then((j) => { SGM = j.matches; render(); }).catch(() => {}); Promise.all([loadCH(), loadGL()]).then(() => { const l = $("lst"); if (l) l.innerHTML = listHtml(); }).catch(() => {}); return; }
+    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = MSC[id] || []; msKey = ""; MSL = !MSC[id]; PR = null; TT = 0; render(); loadPr().catch(() => {}); return loadMsgs(true); }
+    if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); if (V.tab == "singles") api("/singles/matches").then((j) => { SGM = j.matches; render(); }).catch(() => {}); Promise.all([loadCH(), loadGL()]).then(refreshList).catch(() => {}); return; }
     if (a == "send") return send();
     if (a == "sel") { V.sel = V.sel == m ? null : m; return upd(false); }
     if (a == "norep") { V.reply = null; return upd(false); }
@@ -1228,14 +1266,25 @@ app.addEventListener("change", async (e) => {
 });
 app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == "msg") { e.preventDefault(); V.scr == "gchat" ? sendG() : V.scr == "schat" ? sendS() : V.scr == "ai" ? sendAI() : send(); } if (e.key == "Enter" && e.target.id == "lpin") { e.preventDefault(); unlock(); } });
 (async function init() {
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").then((reg) => { setInterval(() => reg.update().catch(() => {}), 3600000); }).catch(() => {});
-  checkUpdate();
-  try { const r = await fetch(API + "/api/version"); const j = await r.json(); if (j.min_client > APP_VERSION) { V.scr = "update"; render(); return; } } catch (e) {}
   const jm = /^#join=([A-Za-z0-9_-]{16,40})$/.exec(location.hash);
   if (jm) { try { localStorage.setItem("bv.join", jm[1]); } catch (e) {} try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").then((reg) => { setInterval(() => reg.update().catch(() => {}), 3600000); }).catch(() => {});
+    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type == "updated" && !UPD) { UPD = true; drawUpd(); } });
+  }
+  checkUpdate();
+  fetch(API + "/api/version").then((r) => r.json()).then((j) => { if (j.min_client > APP_VERSION) { V.scr = "update"; render(); } }).catch(() => {}); // in the background, nobody waits for it
   if (!T && lockOn()) { V.scr = "lock"; render(); return; }
-  if (T) { try { U = await api("/me"); await loadAll(); start(); } catch (e) { if (!T) U = null; } }
-  render();
+  if (!T) { render(); return; }
+  const c = loadCache();
+  if (c) { U = c.U; CH = c.CH || []; CT = c.CT || []; GL = c.GL || []; ST = c.ST || []; BL = c.BL || []; render(); start(); }
+  else { V.scr = "boot"; render(); }
+  try { await bootLoad(); }
+  catch (e) {
+    if (!T) return; // logged out because the login ran out: logout() already showed the login screen
+    if (!U) { V.scr = null; render(); toast("Cannot reach the server. Check your internet."); return; }
+  }
+  if (c) refreshMain(); else { if (V.scr == "boot") V.scr = null; render(); start(); }
 })();
 </script>
 </body>
