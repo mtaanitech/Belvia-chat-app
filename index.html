@@ -12,8 +12,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Orivoclass">
 <style>
-:root{--bg:#FFFFFF;--sf:#F3F1FB;--wh:#FFFFFF;--ink:#1B1830;--mu:#6B6788;--ln:#E4E1F2;--ac:#6C4DFF;--on:#FFFFFF;--cr:#D64A31;--ok:#0E9F6E;--tk:#CFE8FF;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-html[data-theme="dark"]{--bg:#121022;--sf:#1D1A35;--wh:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark}
+:root{--bg:#FFFFFF;--sf:#F2F4F7;--wh:#FFFFFF;--ink:#101828;--mu:#667085;--ln:#E9ECF0;--ac:#6247F5;--acs:#ECE9FE;--on:#FFFFFF;--cr:#D92D20;--ok:#079455;--tk:#CFE8FF;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html[data-theme="dark"]{--bg:#0E1013;--sf:#1A1D23;--wh:#1A1D23;--ink:#ECEEF2;--mu:#98A2B3;--ln:#272B33;--ac:#9B87FF;--acs:#2A2650;--on:#0E1013;--cr:#FF8C75;--ok:#3DD9A0;--tk:#06305C;color-scheme:dark}
+@supports (background:color-mix(in srgb,red,blue)){:root{--acs:color-mix(in srgb,var(--ac) 13%,var(--bg))}html[data-theme="dark"]{--acs:color-mix(in srgb,var(--ac) 26%,var(--bg))}}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;background:var(--sf);font-size:12px;font-weight:600;color:var(--mu)}
 .cov{width:56px;height:36px;border-radius:12px;border:3px solid transparent;flex:none}
 .aib{position:absolute;right:24px;bottom:96px;width:52px;height:52px;border-radius:26px;border:0;background:linear-gradient(135deg,var(--ac),#ff8fb1);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25)}.cov.on{border-color:var(--ink)}
@@ -55,6 +56,29 @@ nav{display:flex;border-top:1px solid var(--ln);background:var(--bg)}nav button{
 .toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;max-width:90%}
 .rd{color:var(--tk);font-weight:700}
 .tabs{display:flex;border-bottom:1px solid var(--ln)}.tabs button{flex:1;min-height:48px;border:0;border-bottom:3px solid transparent;background:none;color:var(--mu);font-size:14px;font-weight:500}.tabs button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--ac)}
+/* ---- clean look ---- */
+.av{background:var(--acs);color:var(--ac)}
+.ring{border:2px solid var(--ln)}.ring.has{border:3px solid var(--ac);background:none}
+.row{border-bottom:0;background-image:linear-gradient(var(--ln),var(--ln));background-repeat:no-repeat;background-size:calc(100% - 32px) 1px;background-position:right bottom}
+.row:has(.av){background-size:calc(100% - 84px) 1px}
+.row b{font-weight:600;font-size:16px}.row small{font-size:14px;color:var(--mu)}
+.hd>div[style*="flex:1"]{overflow:hidden}.hd>div[style*="flex:1"]>b{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;font-weight:600}
+.tabs button{font-weight:600}.tabs button.on{color:var(--ac);font-weight:700}
+.chip{font-weight:500}
+.fab{box-shadow:0 2px 10px rgba(16,24,40,.22)}
+.aib{background:var(--bg);color:var(--ac);border:1px solid var(--ln);width:48px;height:48px;bottom:98px;right:26px;box-shadow:0 2px 8px rgba(16,24,40,.14)}
+.b{background:var(--sf);color:var(--ink);padding:8px 12px 6px;font-size:16px;line-height:1.35}
+.b.me{background:var(--acs);color:var(--ink)}
+.mt{color:var(--mu);opacity:1;font-size:11px}
+.rd{color:var(--ac)}
+.q{border-left-color:var(--ac);color:var(--mu);opacity:1}
+.dsep{align-self:center;background:var(--sf);color:var(--mu);font-size:12px;font-weight:600;padding:4px 12px;border-radius:12px;margin:8px 0 4px}
+.comp{padding:8px 10px;gap:8px}.comp input{background:var(--sf);border-color:transparent}
+.sendb{width:46px;height:46px;border-radius:50%;border:0;background:var(--ac);color:var(--on);display:flex;align-items:center;justify-content:center;flex:none}
+.pin{display:inline-flex;vertical-align:middle;color:var(--mu);margin-left:4px}
+.ib svg{display:block}
+.hd{gap:4px}.ib{min-width:40px}
+div[style*="border-bottom:1px solid var(--ln)"]>.row{background-image:none}
 </style>
 </head>
 <body>
@@ -65,12 +89,12 @@ const API = "https://orivoclass.onrender.com";
 const COL = ["#5A3FD6", "#C23B27", "#0F766E", "#B45309", "#1D4ED8"];
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
-const PAL = [["#6C4DFF", "#9B87FF"], ["#2563EB", "#6EA0FF"], ["#0E8F63", "#3DD9A0"], ["#D6336C", "#FF7AA8"], ["#D9480F", "#FFA066"], ["#0F766E", "#4FD1C5"]];
-const COV = [["#6C4DFF", "#B79CFF"], ["#2563EB", "#6EE7F9"], ["#0E8F63", "#A7F3D0"], ["#D6336C", "#FFC0A8"], ["#D9480F", "#FFD166"], ["#0F766E", "#99F6E4"], ["#7C3AED", "#F0ABFC"], ["#1F2937", "#6B7280"]];
+const PAL = [["#6247F5", "#9B87FF"], ["#2563EB", "#6EA0FF"], ["#0E8F63", "#3DD9A0"], ["#D6336C", "#FF7AA8"], ["#D9480F", "#FFA066"], ["#0F766E", "#4FD1C5"]];
+const COV = [["#6247F5", "#B79CFF"], ["#2563EB", "#6EE7F9"], ["#0E8F63", "#A7F3D0"], ["#D6336C", "#FFC0A8"], ["#D9480F", "#FFD166"], ["#0F766E", "#99F6E4"], ["#7C3AED", "#F0ABFC"], ["#1F2937", "#6B7280"]];
 const MOODS = ["", "😊", "😎", "🔥", "💜", "🌍", "🎵", "📚", "⚽", "🙏"];
 const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gradient(circle at 18% 25%,rgba(255,255,255,.35) 0 14%,transparent 15%),radial-gradient(circle at 82% 70%,rgba(255,255,255,.25) 0 20%,transparent 21%),radial-gradient(circle at 60% 15%,rgba(255,255,255,.18) 0 9%,transparent 10%),linear-gradient(135deg," + c[0] + "," + c[1] + ")"; };
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
-function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#121022" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
+function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
 let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
@@ -81,13 +105,18 @@ const ini = (n) => ((n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] |
 const pal = [["#E6E3FF", "#3A2FA0"], ["#FFE1E7", "#8A1F36"], ["#DDF3E4", "#14532D"], ["#DCEBFF", "#1E4F8F"], ["#FFEFD2", "#7A4A05"]];
 const av = (n, s, on, id) => {
   const p = pal[(n || "").length % 5];
-  const a = id && PH[id] ? '<img class="av" alt="" decoding="async" src="' + esc(PH[id]) + '" style="width:' + s + 'px;height:' + s + 'px;object-fit:cover">' : '<span class="av" style="width:' + s + 'px;height:' + s + 'px;background:' + p[0] + ';color:' + p[1] + ';font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>";
+  const a = id && PH[id] ? '<img class="av" alt="" decoding="async" src="' + esc(PH[id]) + '" style="width:' + s + 'px;height:' + s + 'px;object-fit:cover">' : '<span class="av" style="width:' + s + 'px;height:' + s + 'px;font-size:' + Math.round(s * 0.36) + 'px">' + esc(ini(n)) + "</span>";
   return on ? '<span style="position:relative;display:inline-flex;flex:none">' + a + '<span style="position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;background:var(--ok);border:2px solid var(--bg)"></span></span>' : a;
 };
+const tmt = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const dayLabel = (t) => { const d = new Date(t), n = new Date(), y = new Date(n); y.setDate(n.getDate() - 1); if (d.toDateString() == n.toDateString()) return "Today"; if (d.toDateString() == y.toDateString()) return "Yesterday"; return d.toLocaleDateString([], d.getFullYear() == n.getFullYear() ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" }); };
+const dsep = (x, prev) => !prev || new Date(x.created_at).toDateString() != new Date(prev.created_at).toDateString() ? '<div class="dsep">' + dayLabel(x.created_at) + "</div>" : "";
 const tm = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() == n.toDateString() ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString([], { day: "2-digit", month: "2-digit" }); };
 const toast = (m) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; app.appendChild(t); setTimeout(() => t.remove(), 2600); };
 const ico = (p) => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + p + '"/></svg>';
 const SRCH = "M20 20l-4-4M11 4a7 7 0 100 14 7 7 0 000-14z";
+const IC_PH = ico("M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"), IC_VD = ico("M23 7l-7 5 7 5zM3 5h11a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z"), IC_SEND = ico("M22 2L11 13M22 2l-7 20-4-9-9-4z");
+const IC_PIN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.5 2l7.5 7.5-2 1.2-2.6-.6-3.2 3.2.4 4.3-1.7 1.7-4-4L3 21l-1-1 5.2-5.1-4-4 1.7-1.7 4.3.4 3.2-3.2-.6-2.6z"/></svg>';
 const IC = { chats: "M4 5h16v11H9l-5 4z", status: "M12 3a9 9 0 100 18 9 9 0 000-18zM12 9a3 3 0 100 6 3 3 0 000-6z", calls: "M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z", singles: "M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z", me: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" };
 
 async function api(p, m, b) {
@@ -243,10 +272,10 @@ async function loadSChat(sc) {
   const k = JSON.stringify(j.messages);
   if (k !== sgKey) { const last = SGCM.length ? SGCM[SGCM.length - 1].id : 0; SGCM = j.messages; sgKey = k; const nl = SGCM.length ? SGCM[SGCM.length - 1].id : 0; upd(sc || nl != last); }
 }
-const smsgsHtml = () => SGCM.length ? SGCM.map((x) => '<div class="b ' + (x.from_id == U.id ? "me" : "") + '">' + esc(x.body) + '<div class="mt">' + tm(x.created_at) + "</div></div>").join("") : '<div class="empty"><b>You matched!</b>Say hello.</div>';
+const smsgsHtml = () => SGCM.length ? SGCM.map((x, i) => dsep(x, SGCM[i - 1]) + '<div class="b ' + (x.from_id == U.id ? "me" : "") + '">' + esc(x.body) + '<div class="mt">' + tmt(x.created_at) + "</div></div>").join("") : '<div class="empty"><b>You matched!</b>Say hello.</div>';
 function schatView() {
   const p = SGPEER || SGM.find((x) => x.user_id == V.cid) || { nick: "Chat" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button><span class="av" style="width:40px;height:40px;font-size:14px;background:' + sgGrad(p.nick) + ';color:#fff">' + esc(ini(p.nick)) + '</span><div style="flex:1;min-width:0"><b>' + esc(p.nick) + '</b><small class="mut" style="display:block">Singles' + (p.age ? " · " + p.age : "") + '</small></div><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="msgs" id="msgs">' + smsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="sgsend">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button><span class="av" style="width:40px;height:40px;font-size:14px;background:' + sgGrad(p.nick) + ';color:#fff">' + esc(ini(p.nick)) + '</span><div style="flex:1;min-width:0"><b>' + esc(p.nick) + '</b><small class="mut" style="display:block">Singles' + (p.age ? " · " + p.age : "") + '</small></div><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="msgs" id="msgs">' + smsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="sgsend" aria-label="Send">' + IC_SEND + '</button></div>';
 }
 async function sendS() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
@@ -389,18 +418,18 @@ const callLabel = (x) => {
   return x.status == "active" ? "In call" : "Ringing";
 };
 function callsTab() {
-  const rows = CALLS.map((x) => { const miss = !x.outgoing && x.status == "missed"; const nm = esc(x.peer_name); return '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(x.peer_name, 52, false, x.peer_id) + '<span class="t"><b' + (miss ? ' style="color:var(--cr)"' : "") + ">" + nm + "</b><small>" + (x.outgoing ? "↗" : "↙") + " " + (x.kind == "video" ? "Video" : "Voice") + " · " + callLabel(x) + " · " + tm(x.created_at) + '</small></span></div><button class="ib" data-a="callv" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Video call">🎥</button></div>'; }).join("");
+  const rows = CALLS.map((x) => { const miss = !x.outgoing && x.status == "missed"; const nm = esc(x.peer_name); return '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(x.peer_name, 52, false, x.peer_id) + '<span class="t"><b' + (miss ? ' style="color:var(--cr)"' : "") + ">" + nm + "</b><small>" + (x.outgoing ? "↗" : "↙") + " " + (x.kind == "video" ? "Video" : "Voice") + " · " + callLabel(x) + " · " + tm(x.created_at) + '</small></span></div><button class="ib" data-a="callv" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Voice call">' + IC_PH + '</button><button class="ib" data-a="callvid" data-id="' + x.peer_id + '" data-n="' + nm + '" aria-label="Video call">' + IC_VD + '</button></div>'; }).join("");
   return '<div class="cd"><b>Calls</b><span class="mut">Voice and video calls with your contacts.</span><button class="btn" data-a="newcall">Call a contact</button></div>' + (rows || '<div class="empty"><b>No calls yet</b>Open a chat and tap 📞 or 🎥. You can call people who have saved your number.</div>');
 }
 // ---- Orivoclass AI ----
-const AISVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2l2.1 5.9L20 10l-5.9 2.1L12 18l-2.1-5.9L4 10l5.9-2.1z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>';
-const aiLogo = (n) => '<span class="av" style="width:' + n + 'px;height:' + n + 'px;background:linear-gradient(135deg,var(--ac),#ff8fb1)">' + AISVG.replace('width="26" height="26"', 'width="' + Math.round(n * 0.55) + '" height="' + Math.round(n * 0.55) + '"') + "</span>";
+const AISVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.1 5.9L20 10l-5.9 2.1L12 18l-2.1-5.9L4 10l5.9-2.1z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>';
+const aiLogo = (n) => '<span class="av" style="width:' + n + 'px;height:' + n + 'px;background:linear-gradient(135deg,var(--ac),#ff8fb1);color:#fff">' + AISVG.replace('width="26" height="26"', 'width="' + Math.round(n * 0.55) + '" height="' + Math.round(n * 0.55) + '"') + "</span>";
 function aimsgsHtml() {
   if (!AIM.length) return '<div class="empty">' + aiLogo(72) + '<b>Orivoclass AI</b>Ask me anything. I can help you write a message, explain something or answer a question.<span class="note">AI can make mistakes. Do not share passwords or private details. What you type here is sent to an AI service. You choose whether chats are saved in ⚙ settings.</span></div>';
   return AIM.map((m) => '<div class="b ' + (m.role == "user" ? "me" : "") + '">' + esc(m.content) + "</div>").join("") + (AIB ? '<div class="b">…</div>' : "");
 }
 function aiView() {
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiset" aria-label="AI settings">⚙</button><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="btn" data-a="aisend">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiset" aria-label="AI settings">⚙</button><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="sendb" data-a="aisend" aria-label="Send">' + IC_SEND + '</button></div>';
 }
 function refreshAI(sc) {
   if (V.scr != "ai") return;
@@ -584,7 +613,7 @@ function lastSeenText(p) {
 function prHtml() {
   if (!PR) return "";
   const g = PR.online || PR.typing;
-  return '<span style="color:' + (g ? "var(--ok)" : "var(--mu)") + '">' + (g ? "● " : "") + esc(lastSeenText(PR)) + "</span>";
+  return '<span style="color:' + (g ? "var(--ok)" : "var(--mu)") + '">' + "" + esc(lastSeenText(PR)) + "</span>";
 }
 async function loadPr() {
   const id = V.cid; const j = await api("/presence/" + id);
@@ -689,8 +718,7 @@ async function otpGo() {
     RC = j.recovery_code; V.scr = "code"; render();
   } catch (e) { const x = $("err"); if (x) x.textContent = e.message; else { V.scr = null; render(); toast(e.message); } }
 }
-
-function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
+  function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
 function listHtml() {
   const q = V.q.trim().toLowerCase();
   const nArch = CH.filter((x) => x.archived).length;
@@ -698,7 +726,7 @@ function listHtml() {
   if (q) { L = L.filter((x) => (x.display + " " + (x.pname || "")).toLowerCase().indexOf(q) > -1); G = G.filter((g) => g.name.toLowerCase().indexOf(q) > -1); }
   if (V.f == "unread") { L = []; G = []; }
   if (V.f == "groups") L = [];
-  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">● Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? " · Pinned" : "") + "</small></button>";
+  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? ' <span class="pin">' + IC_PIN + "</span>" : "") + "</small></button>";
   const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind == "poll" ? "📊 " + esc(g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
   if (!V.arch && V.f == "all" && AIM.length && (!q || "orivoclass ai".indexOf(q) > -1)) {
@@ -749,7 +777,7 @@ function meTab() {
 }
 function topbar() {
   const T4 = [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
-  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="My profile" style="padding:0">' + av(U.name, 40, false, U.id) + '</button><h1 style="text-align:center;color:var(--ink);font-size:20px">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
+  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="My profile" style="padding:0">' + av(U.name, 40, false, U.id) + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
     T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div>";
 }
 function main() {
@@ -772,7 +800,7 @@ function bodyHtml(x, me) {
 }
 function msgsHtml() {
   if (!MS.length) return MSL ? '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>' : '<div class="empty"><b>No messages yet</b>Say hello.</div>';
-  return MS.map((x) => { const me = x.from_id == U.id; return '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + (me ? (x.tmp ? " 🕓" : x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '</div>' : ""); }).join("");
+  return MS.map((x, i) => { const me = x.from_id == U.id; return dsep(x, MS[i - 1]) + '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tmt(x.created_at) + (me ? (x.tmp ? " 🕓" : x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '</div>' : ""); }).join("");
 }
 const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
 function peer() {
@@ -782,7 +810,7 @@ function peer() {
 }
 function chatView() {
   const c = peer() || { name: "Chat", phone: "" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.saved === false && c.pname ? c.pname : c.name, 40, false, c.id) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b>' + (c.saved === false && c.pname ? ' <small class="mut">~' + esc(c.pname) + '</small>' : '') + '<small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">🎥</button><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div>' + (c.saved === false ? '<div class="rp"><span>Not in your contacts</span><button class="lnk" style="min-height:36px" data-a="saveper">Add</button></div>' : "") + '<div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="send">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(c.saved === false && c.pname ? c.pname : c.name, 40, false, c.id) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b>' + (c.saved === false && c.pname ? ' <small class="mut">~' + esc(c.pname) + '</small>' : '') + '<small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">' + IC_PH + '</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">' + IC_VD + '</button><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div>' + (c.saved === false ? '<div class="rp"><span>Not in your contacts</span><button class="lnk" style="min-height:36px" data-a="saveper">Add</button></div>' : "") + '<div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="send" aria-label="Send">' + IC_SEND + '</button></div>';
 }
 async function loadGInfo() { GI = await api("/groups/" + V.gid); const e = $("gsub"); if (e) e.textContent = GI.members.length + " members"; }
 async function loadGMsgs(sc) {
@@ -800,7 +828,7 @@ async function loadGMsgs(sc) {
 function gmsgsHtml() {
   if (!MG.length) return gLoad ? '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>' : '<div class="empty"><b>No messages yet</b>Say hello.</div>';
   const nm = (id, n) => id == U.id ? "You" : n;
-  return MG.map((x) => {
+  return MG.map((x, i) => dsep(x, MG[i - 1]) + ((x) => {
     if (x.kind == "poll") return pollHtml(x);
     if (x.kind != "text") {
       const a = nm(x.from_id, x.from_name), t = nm(x.target_id, x.target_name);
@@ -808,12 +836,12 @@ function gmsgsHtml() {
       return '<div class="note" style="align-self:center;text-align:center;background:var(--sf);padding:4px 12px;border-radius:12px">' + esc(tx) + "</div>";
     }
     const me = x.from_id == U.id;
-    return '<button class="b ' + (me ? "me" : "") + '" data-a="gsel" data-m="' + x.id + '">' + (me ? "" : '<div style="font-size:12px;font-weight:700;color:var(--ac)">' + esc(x.from_name) + "</div>") + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tm(x.created_at) + (x.tmp ? " 🕓" : "") + "</div></button>" + (V.sel == x.id ? '<div class="act"><button data-a="greply" data-m="' + x.id + '">Reply</button></div>' : "");
-  }).join("");
+    return '<button class="b ' + (me ? "me" : "") + '" data-a="gsel" data-m="' + x.id + '">' + (me ? "" : '<div style="font-size:12px;font-weight:700;color:var(--ac)">' + esc(x.from_name) + "</div>") + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + esc(x.body) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tmt(x.created_at) + (x.tmp ? " 🕓" : "") + "</div></button>" + (V.sel == x.id ? '<div class="act"><button data-a="greply" data-m="' + x.id + '">Reply</button></div>' : "");
+  })(x)).join("");
 }
 function gchatView() {
   const g = GL.find((x) => x.id == V.gid) || {}, name = (GI && GI.name) || g.name || "Group";
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(name, 40) + '<button style="flex:1;min-width:0;border:0;background:none;color:var(--ink);text-align:left;padding:0" data-a="ginfo"><b>' + esc(name) + '</b><small id="gsub" class="mut" style="display:block">' + (GI ? GI.members.length + " members" : g.members ? g.members + " members" : "") + '</small></button><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + gmsgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="btn" data-a="gsend">Send</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">←</button>' + av(name, 40) + '<button style="flex:1;min-width:0;border:0;background:none;color:var(--ink);text-align:left;padding:0" data-a="ginfo"><b>' + esc(name) + '</b><small id="gsub" class="mut" style="display:block">' + (GI ? GI.members.length + " members" : g.members ? g.members + " members" : "") + '</small></button><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + gmsgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="gsend" aria-label="Send">' + IC_SEND + '</button></div>';
 }
 async function sendG() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
@@ -878,22 +906,22 @@ const LEGAL = {
     ["Orivoclass AI", "The AI button sends what you type to an outside AI service so that it can answer. Do not share passwords or private details with it. By default we do not store your AI conversation and it is cleared when you log out. If you turn on saving in Settings, we keep your AI messages for the time you choose (or until you delete them) so you can read them on any phone, and you can delete them whenever you want. The AI service may handle your messages under its own rules."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
-    ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
+    ["Who we are", "[mtaanitech technology ltd] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
   rules: ["Community Rules", [
     ["Be respectful", "No insults, harassment, threats or hate. Do not send nude or sexual images to people who did not ask for them."],
     ["No spam or scams", "No mass messages, fake offers, scam links or pretending to be someone else."],
     ["Keep Singles safe", "Singles is for adults only. Be honest, respectful and never share other people’s private details."],
     ["Step 1: Warning", "A message tells you what went wrong. Nothing else changes."],
     ["Step 2: Soft restriction (24 hours)", "You cannot send View Once messages, post in Singles or add people to groups. Normal chats keep working."],
-    ["Step 3: Resting period (3 or 7 days)", "For serious or repeated breaks, such as porn on status, scam links or many reports. You can appeal once."],
+    ["Step 3: Resting period (2 or 7 days)", "For serious or repeated breaks, such as porn on status, scam links or many reports. You can appeal once."],
     ["Step 4: Permanent ban", "Only for child abuse, threats, hacking and doxxing. Cases of child abuse are also reported to the authorities."],
     ["Trust score", "Your trust score starts at 100%. It drops when your account is reported and confirmed to have broken the rules. After a day with no new problems it slowly goes back up, 2 points a day."]]],
   about: ["About Us", [
     ["Orivoclass", "A private messaging app built so conversations stay between the people in them."],
     ["What we care about", "Privacy first, simple design and fair rules that give people a second chance."],
     ["Version", "Web version 0.4. More features are on the way."],
-    ["Contact", "[YOUR SUPPORT EMAIL]"]]]
-  };
+    ["Contact", "[mtaanitech76@gmail.com ]"]]]
+};
 const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
 const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
 function recCard() {
@@ -976,7 +1004,7 @@ function overlays() {
   if (o == "joinp" && JP) return '<div class="ov"><div class="wrap pad center">' + av(JP.name, 84) + '<div style="font-size:24px;font-weight:800">' + esc(JP.name) + '</div><p class="mut">' + JP.members + " members</p>" + (JP.description ? '<p class="mut">' + esc(JP.description) + "</p>" : "") + (JP.full ? '<p class="err">This group is full.</p>' : JP.already ? '<button class="btn" style="width:100%" data-a="joinopen">Open group</button>' : '<button class="btn" style="width:100%" data-a="joingo">Join group</button>') + '<button class="lnk" data-a="joinno">Not now</button></div></div>';
   if (o == "ginfo" && GI) return ginfoHtml();
   if (o == "gadd" && GI) { const inG = new Set(GI.members.map((m) => m.id)), cand = CT.filter((c) => !inG.has(c.id)); return '<div class="ov"><div class="hd"><button class="ib" data-a="gaddback" aria-label="Back">←</button><h1>Add members</h1></div><div class="body"><div class="cd">' + (cand.length ? cand.map((c) => '<label class="chk"><input type="checkbox" class="gm" value="' + c.id + '"> ' + esc(c.name) + "</label>").join("") + '<button class="btn" data-a="gadd">Add</button>' : '<span class="mut">All your contacts are already in this group.</span>') + "</div></div></div>"; }
-  if (o == "cc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Call a contact</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">📞</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">🎥</button></div>').join("") : '<p class="mut" style="padding:16px">Add a contact first.</p>') + "</div></div>";
+  if (o == "cc") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Call a contact</h1></div><div class="body">' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><div class="row" style="border:0;flex:1">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">' + IC_PH + '</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">' + IC_VD + '</button></div>').join("") : '<p class="mut" style="padding:16px">Add a contact first.</p>') + "</div></div>";
   if (o == "sgp") return sgpHtml();
   if (o == "sgmatch" && SGMP) return '<div class="ov"><div class="wrap pad center"><div style="font-size:56px">💜</div><div class="logo">It’s a match!</div><p class="mut">You and ' + esc(SGMP.nick) + ' like each other.</p><button class="btn" style="width:100%" data-a="sgsay">Say hello</button><button class="btn o" style="width:100%" data-a="cov">Keep browsing</button></div></div>';
   if (o == "pg") return pageOv();
