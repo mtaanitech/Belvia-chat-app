@@ -96,7 +96,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "chats", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -472,6 +472,120 @@ function drawUpd() {
 const updView = () => '<div class="wrap pad center"><div class="logo">Update needed</div><p class="mut">A newer version of Orivoclass is available. Refresh to continue.</p><button class="btn" style="width:100%" data-a="reload">Refresh</button></div>';
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 setInterval(checkUpdate, 15 * 60000);
+// ---- Public posts: Feed, posting, likes, comments, followers, profiles, creator dashboard ----
+const SIZE_OK = (d) => d.length <= 160000;
+function postCard(p) {
+  const me = p.user_id == U.id, clk = p.created_at ? tm(p.created_at) : "";
+  return '<article style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
+    '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(me ? "You" : p.name) + '</b><small class="mut">' + clk + "</small></span></button>" +
+    (me ? '<button class="ib" data-a="postdel" data-id="' + p.id + '" aria-label="Delete post" style="color:var(--mu)">🗑</button>' : (p.following ? "" : '<button class="btn o" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + p.user_id + '">Follow</button>')) + "</div>" +
+    (p.body ? '<div style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "") +
+    (p.has_image ? '<div data-img="' + p.id + '" style="border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="note">Loading photo…</span></div>' : "") +
+    '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px"><button data-a="like" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:' + (p.liked ? "var(--cr)" : "var(--mu)") + ';font:inherit;display:flex;align-items:center;gap:6px">' + (p.liked ? "♥" : "♡") + " " + p.likes + '</button><button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit">💬 ' + p.comments + '</button>' + (me ? "" : '<button data-a="postrep" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;margin-left:auto">Report</button>') + "</div></article>";
+}
+function feedTab() {
+  const tabs = '<div class="chips" style="padding:10px 14px 4px">' + [["all", "For you"], ["following", "Following"]].map((x) => '<button class="chip ' + (FSC == x[0] ? "on" : "") + '" data-a="fsc" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '<span style="flex:1"></span><button class="chip" data-a="dash">Dashboard</button></div>';
+  const list = FEED.length ? FEED.map(postCard).join("") : (FEEDOK ? '<div class="empty"><b>Nothing here yet</b>' + (FSC == "following" ? "Follow people to see their posts here." : "Be the first to post a meme or a thought.") + '<button class="btn" data-a="post">Create a post</button></div>' : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>');
+  const more = FEED.length >= 15 ? '<div style="text-align:center;padding:12px"><button class="btn o" data-a="feedmore">Show more</button></div>' : "";
+  return tabs + '<div id="feedl">' + list + "</div>" + more;
+}
+const feedRefresh = () => { if (V.tab != "feed" || V.scr || V.ov) return; const l = $("feedl"); if (l) { const f = FEED.length ? FEED.map(postCard).join("") : ""; if (l._h !== f) { l.innerHTML = f || l.innerHTML; l._h = f; } } };
+async function loadFeed(more) {
+  if (FEEDBUSY) return; FEEDBUSY = true;
+  try {
+    const before = more && FEED.length ? FEED[FEED.length - 1].id : "";
+    const j = await api("/feed?scope=" + FSC + (before ? "&before=" + before : ""));
+    FEED = more ? FEED.concat(j.posts) : j.posts; FEEDOK = true;
+    if (V.tab == "feed" && !V.scr && !V.ov) render();
+    loadPostImages(); // after the screen is drawn, so the picture slots exist
+    const ids = j.posts.map((p) => p.id); if (ids.length) api("/posts/views", "POST", { ids }).catch(() => {});
+  } catch (e) { FEEDOK = true; if (!FEED.length) toast(e.message); }
+  finally { FEEDBUSY = false; }
+}
+async function loadPostImages() {
+  for (const p of FEED) {
+    if (!p.has_image || p._img) continue;
+    const el = document.querySelector('[data-img="' + p.id + '"]'); if (!el) continue;
+    try { const j = await api("/posts/" + p.id + "/image"); p._img = j.image; el.innerHTML = '<img alt="" decoding="async" src="' + esc(j.image) + '" style="width:100%;display:block;border-radius:12px">'; }
+    catch (e) { el.innerHTML = '<span class="note">Photo not available</span>'; }
+  }
+}
+function composeView() {
+  const C = CMP, ok = (C.body || "").trim() || C.image;
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmpx" aria-label="Close">←</button><h1>New post</h1><span style="flex:1"></span><button class="btn" style="min-height:40px;padding:0 16px;' + (ok ? "" : "opacity:.5") + '" data-a="cmpgo">Post</button></div><div class="body"><div class="cd"><label>What is on your mind? (memes, thoughts, anything public)<textarea id="cpb" rows="4" maxlength="500" placeholder="Say something…">' + esc(C.body) + '</textarea></label>' +
+    (C.image ? '<img alt="" src="' + esc(C.image) + '" style="width:100%;max-height:360px;object-fit:contain;border-radius:12px;background:var(--sf)"><button class="lnk" data-a="cmprm">Remove photo</button>' : '<input id="cpf" type="file" accept="image/*" style="display:none"><button class="btn o" data-a="cmppick">📷 Add a photo</button>') +
+    '<span class="note">Anyone with an Orivoclass account can see what you post publicly. Do not post other people’s private details, and keep it respectful. Up to 20 posts a day.</span></div></div></div>';
+}
+async function shareCmp() {
+  const body = ($("cpb") ? $("cpb").value : CMP.body).trim(); if (!body && !CMP.image) return toast("Write something or add a photo first.");
+  try { await api("/posts", "POST", { body, image: CMP.image || null }); CMP = { body: "", image: "" }; V.ov = null; V.tab = "feed"; FSC = "all"; render(); await loadFeed(false); toast("Posted"); }
+  catch (e) { toast(e.message); }
+}
+function commentsView() {
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">←</button><h1>Comments</h1></div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div><div class="comp"><input id="cmtin" placeholder="Write a comment" maxlength="300" autocomplete="off"><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + "</button></div></div>";
+}
+function cmtsHtml() {
+  return (CMTS.list.length ? CMTS.list.map((c) => '<div style="display:flex;gap:10px;padding:10px 14px;align-items:flex-start">' + av(c.name, 34, false, c.user_id) + '<div style="flex:1;min-width:0"><b style="font-size:14px">' + esc(c.user_id == U.id ? "You" : c.name) + '</b> <small class="mut">' + tm(c.created_at) + '</small><div style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(c.body) + "</div></div>" + (c.user_id == U.id || CMTS.mine ? '<button class="ib" style="min-width:32px;min-height:32px;color:var(--mu)" data-a="cmtdel" data-id="' + c.id + '" aria-label="Delete">🗑</button>' : "") + "</div>").join("") : '<div class="empty"><b>No comments yet</b>Be the first to comment.</div>');
+}
+async function openComments(id) { CMTS = { id, list: [], mine: false }; V.ov = "cmts"; render(); await refreshComments(); }
+async function refreshComments() {
+  if (!CMTS) return; const id = CMTS.id;
+  try { const j = await api("/posts/" + id + "/comments"); if (!CMTS || CMTS.id != id) return; CMTS.list = j.comments; CMTS.mine = j.post_owner == U.id; const b = $("cmtb"); if (b && V.ov == "cmts") b.innerHTML = cmtsHtml(); }
+  catch (e) { toast(e.message); }
+}
+function dashView() {
+  const D = DASH || {};
+  const stat = (n, l) => '<div class="cd" style="flex:1;align-items:center;text-align:center;padding:12px"><b style="font-size:22px">' + (n == null ? "–" : n) + '</b><small class="mut">' + l + "</small></div>";
+  const li = (arr) => (arr && arr.length ? arr.map((x) => '<button class="row" data-a="profopen" data-id="' + x.id + '">' + av(x.name, 40, false, x.id) + '<span class="t"><b>' + esc(x.name) + "</b></span></button>").join("") : '<p class="mut" style="padding:8px 16px">Nobody yet.</p>');
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="dashx" aria-label="Back">←</button><h1>Dashboard</h1></div><div class="body">' +
+    (DASH ? '<div style="display:flex;gap:8px;padding:8px 16px 0;flex-wrap:wrap">' + stat(DASH.followers, "Followers") + stat(DASH.likes, "Likes") + "</div>" + '<div style="display:flex;gap:8px;padding:8px 16px">' + stat(DASH.views, "Views") + stat(DASH.comments, "Comments") + stat(DASH.posts, "Posts") + "</div>" +
+      '<div class="cd"><span class="mut">' + (DASH.new_followers ? "+" + DASH.new_followers + " followers in the last 7 days" : "No new followers in the last 7 days") + ". Views count each person once per post.</span></div>" +
+      '<div class="sec">YOUR LATEST POSTS</div>' + (DASH.recent.length ? DASH.recent.map((p) => '<div class="row" style="cursor:default"><span class="t"><b style="font-weight:500">' + esc((p.body || "[photo]").slice(0, 60)) + '</b><small>' + p.likes + " likes · " + p.comments + " comments · " + p.views + " views</small></span></div>").join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') +
+      '<div class="sec">FOLLOWERS</div>' + li(DASH.followers_list) + '<div class="sec">FOLLOWING</div>' + li(DASH.following_list)
+      : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + "</div></div>";
+}
+function profView() {
+  const P = PROF; if (!P) return "";
+  const cover = coverBg(P.cover);
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="profx" aria-label="Back">←</button><h1 style="font-size:18px">' + esc(P.name) + '</h1></div><div class="body">' +
+    '<div style="position:relative;margin-bottom:46px"><div style="height:110px;background:' + cover + '"></div><div style="position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)">' + av(P.name, 80, false, P.id) + "</div></div>" +
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px"><b style="font-size:20px">' + esc(P.name) + (P.mood ? " " + esc(P.mood) : "") + "</b>" + (P.about ? '<span class="mut" style="text-align:center">' + esc(P.about) + "</span>" : "") +
+    '<div style="display:flex;gap:22px;margin:10px 0"><div style="text-align:center"><b>' + P.posts + '</b><br><small class="mut">Posts</small></div><div style="text-align:center"><b>' + P.followers + '</b><br><small class="mut">Followers</small></div><div style="text-align:center"><b>' + P.following + '</b><br><small class="mut">Following</small></div></div>' +
+    (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
+    '<div class="sec">POSTS</div><div id="profl">' + (PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
+}
+async function openProfile(id) {
+  PROF = null; PROFP = []; V.ov = "prof"; V.profId = id; render();
+  try { PROF = await api("/profile/" + id); PROFP = (await api("/users/" + id + "/posts")).posts; } catch (e) { toast(e.message); V.ov = null; PROF = null; }
+  if (V.ov == "prof" && V.profId == id) { render(); loadPostImages(); }
+}
+async function toggleLike(id, btn) {
+  const p = FEED.find((x) => x.id == id) || PROFP.find((x) => x.id == id); if (!p) return;
+  const on = !p.liked; p.liked = on; p.likes += on ? 1 : -1;
+  if (btn) { btn.innerHTML = (on ? "♥" : "♡") + " " + p.likes; btn.style.color = on ? "var(--cr)" : "var(--mu)"; }
+  try { const j = await api("/posts/" + id + "/like", "POST", { like: on }); p.likes = j.likes; }
+  catch (e) { p.liked = !on; p.likes += on ? -1 : 1; toast(e.message); }
+}
+async function doFollow(uid) {
+  const everywhere = (fn) => { FEED.forEach((p) => { if (p.user_id == uid) fn(p); }); PROFP.forEach((p) => { if (p.user_id == uid) fn(p); }); };
+  const isOn = (PROF && PROF.id == uid) ? PROF.am_following : FEED.some((p) => p.user_id == uid && p.following);
+  try {
+    if (isOn) await api("/follow/" + uid, "DELETE"); else await api("/follow/" + uid, "POST", {});
+    everywhere((p) => { p.following = !isOn; });
+    if (PROF && PROF.id == uid) { PROF.am_following = !isOn; PROF.followers += isOn ? -1 : 1; }
+    render(); toast(isOn ? "Unfollowed" : "Following");
+  } catch (e) { toast(e.message); }
+}
+async function doReport(id) {
+  const reason = prompt("Why are you reporting this post? (Spam, Harassment or insults, Unsolicited nudes, Scam or fake links, Other)", "Spam"); if (reason === null) return;
+  try { await api("/posts/" + id + "/report", "POST", { reason: reason.trim() || "Other" }); toast("Report sent. Thank you."); } catch (e) { toast(e.message); }
+}
+async function doDelPost(id) {
+  if (!confirm("Delete this post? It cannot be undone.")) return;
+  try { await api("/posts/" + id, "DELETE"); FEED = FEED.filter((p) => p.id != id); PROFP = PROFP.filter((p) => p.id != id); render(); toast("Post deleted"); } catch (e) { toast(e.message); }
+}
+async function doDash() { V.ov = "dash"; render(); try { DASH = await api("/me/dashboard"); } catch (e) { toast(e.message); DASH = null; } if (V.ov == "dash") render(); }
+
 async function doLogout() { try { await api("/logout", "POST"); } catch (e) {} logout(); }
 function waitView() {
   return '<div class="wrap pad center"><div class="spin"></div><h2 style="margin:0">Waiting for approval</h2><p class="mut">We asked your other device. Open Orivoclass there and tap “Yes, it’s me”. This request expires in 5 minutes.</p><button class="btn o" style="width:100%" data-a="waitcancel">Cancel</button><button class="lnk" data-a="waitrec">I can’t use my other device</button></div>';
@@ -718,7 +832,8 @@ async function otpGo() {
     RC = j.recovery_code; V.scr = "code"; render();
   } catch (e) { const x = $("err"); if (x) x.textContent = e.message; else { V.scr = null; render(); toast(e.message); } }
 }
-  function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
+
+function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
 function listHtml() {
   const q = V.q.trim().toLowerCase();
   const nArch = CH.filter((x) => x.archived).length;
@@ -733,20 +848,7 @@ function listHtml() {
     const m = AIM[AIM.length - 1];
     items.push({ pin: 0, t: m.t || 0, h: '<button class="row" data-a="ai">' + aiLogo(52) + '<span class="t"><b>Orivoclass AI</b><small>' + esc((m.role == "user" ? "You: " : "") + m.content) + "</small></span><small>" + (m.t ? tm(m.t) : "") + "</small></button>" });
   }
-  items.sort((a, b) => b.pin - a.pin || b.t - a.t);
-  let top = "";
-  if (V.arch) top = '<button class="row" data-a="arch" style="min-height:48px"><b>← Back to chats</b></button>';
-  else if (nArch && !q && V.f == "all") top = '<button class="row" data-a="arch" style="min-height:48px"><span class="t"><b>Archived</b></span><small>' + nArch + "</small></button>";
-  if (!items.length) {
-    if (V.arch) return top + '<div class="empty"><b>No archived chats</b>Archive a chat from its ⋮ menu.</div>';
-    if (V.f == "unread") return top + '<div class="empty"><b>Nothing unread</b>Unread counts arrive in the next update.</div>';
-    if (V.f == "groups") return top + '<div class="empty"><b>No groups yet</b>Create a group to chat with several contacts at once.<button class="btn" data-a="newgrp">Create a group</button></div>';
-    if (q) return top + '<div class="empty"><b>No matches</b>Try another name.</div>';
-    return top + '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
-  }
-  return top + items.map((i) => i.h).join("");
-}
-function menuHtml() {
+  function menuHtml() {
   if (!V.menu) return "";
   if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
   if (V.scr == "gchat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="ginfo">Group info</button><button data-a="pollnew">Poll</button><button data-a="dm">Disappearing</button><button data-a="gleave" style="color:var(--cr)">Leave group</button></div>';
@@ -776,7 +878,7 @@ function meTab() {
     '<div class="cd" style="margin-top:16px"><b>Screenshot protection</b><span class="mut">Works in the Android app only. Web browsers cannot block screenshots.</span></div><div class="cd"><button class="btn d" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="btn d" data-a="pg" data-p="del">Delete my account</button></div>';
 }
 function topbar() {
-  const T4 = [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
+  const T4 = [["feed", "Feed"], ["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
   return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="My profile" style="padding:0">' + av(U.name, 40, false, U.id) + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
     T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div>";
 }
@@ -789,6 +891,7 @@ function main() {
   }
   else if (t == "status") b = statusTab();
   else if (t == "calls") b = callsTab();
+  else if (t == "feed") { b = feedTab(); f = '<button class="fab" data-a="post" aria-label="New post">+</button>'; }
   else if (t == "singles") b = singlesTab();
   else b = meTab();
   return topbar() + '<div class="body">' + b + "</div>" + f;
@@ -906,21 +1009,21 @@ const LEGAL = {
     ["Orivoclass AI", "The AI button sends what you type to an outside AI service so that it can answer. Do not share passwords or private details with it. By default we do not store your AI conversation and it is cleared when you log out. If you turn on saving in Settings, we keep your AI messages for the time you choose (or until you delete them) so you can read them on any phone, and you can delete them whenever you want. The AI service may handle your messages under its own rules."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
-    ["Who we are", "[mtaanitech technology ltd] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
+    ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
   rules: ["Community Rules", [
     ["Be respectful", "No insults, harassment, threats or hate. Do not send nude or sexual images to people who did not ask for them."],
     ["No spam or scams", "No mass messages, fake offers, scam links or pretending to be someone else."],
     ["Keep Singles safe", "Singles is for adults only. Be honest, respectful and never share other people’s private details."],
     ["Step 1: Warning", "A message tells you what went wrong. Nothing else changes."],
     ["Step 2: Soft restriction (24 hours)", "You cannot send View Once messages, post in Singles or add people to groups. Normal chats keep working."],
-    ["Step 3: Resting period (2 or 7 days)", "For serious or repeated breaks, such as porn on status, scam links or many reports. You can appeal once."],
+    ["Step 3: Resting period (3 or 7 days)", "For serious or repeated breaks, such as porn on status, scam links or many reports. You can appeal once."],
     ["Step 4: Permanent ban", "Only for child abuse, threats, hacking and doxxing. Cases of child abuse are also reported to the authorities."],
     ["Trust score", "Your trust score starts at 100%. It drops when your account is reported and confirmed to have broken the rules. After a day with no new problems it slowly goes back up, 2 points a day."]]],
   about: ["About Us", [
     ["Orivoclass", "A private messaging app built so conversations stay between the people in them."],
     ["What we care about", "Privacy first, simple design and fair rules that give people a second chance."],
     ["Version", "Web version 0.4. More features are on the way."],
-    ["Contact", "[mtaanitech76@gmail.com ]"]]]
+    ["Contact", "[YOUR SUPPORT EMAIL]"]]]
 };
 const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
 const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
@@ -996,6 +1099,10 @@ function overlays() {
   const o = V.ov;
   if (o == "contacts") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Contacts</h1></div><div class="body"><button class="row" data-a="newgrp"><span class="av" style="width:44px;height:44px;background:var(--ac);color:var(--on);font-size:20px">👥</span><span class="t"><b>New group</b><small>Chat with several contacts</small></span></button><div class="cd"><label>Friend’s phone number<input id="cp" inputmode="tel" placeholder="+254 712 345 678"></label><label>Name (optional)<input id="cn" placeholder="How you want to see them"></label><button class="btn" data-a="addc">Add contact</button><p id="ce" class="err"></p></div>' + (CT.length ? CT.map((c) => '<div style="display:flex;align-items:center;border-bottom:1px solid var(--ln)"><button class="row" style="border:0;flex:1" data-a="open" data-id="' + c.id + '">' + av(c.name, 44, false, c.id) + '<span class="t"><b>' + esc(c.name) + "</b><small>" + esc(c.phone) + '</small></span></button><button class="ib" style="color:var(--cr);font-size:13px;padding:0 10px" data-a="delc" data-id="' + c.id + '">Remove</button></div>').join("") : '<p class="mut" style="padding:8px 16px">No contacts yet. Type a friend’s phone number above. If they are not on Orivoclass yet, you can invite them.</p>') + "</div></div>";
   if (o == "apl") return '<div class="ov"><div class="hd"><button class="ib" data-a="aplcancel" aria-label="Close">←</button><h1>Appeal</h1></div><div class="body"><div class="cd"><span class="mut">Tell us why this decision should be changed. You can appeal once.</span><label>Your message<textarea id="apt" rows="5" maxlength="500"></textarea></label><button class="btn" data-a="aplsend">Send appeal</button></div></div></div>';
+  if (o == "cmp") return composeView();
+  if (o == "cmts") return commentsView();
+  if (o == "dash") return dashView();
+  if (o == "prof") return profView();
   if (o == "dmo") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">←</button><h1>Disappearing messages</h1></div><div class="body"><div class="cd"><span class="mut">New messages in this chat will be deleted after the time you choose. This applies to both people. Messages sent before stay.</span>' + [[0, "Off"], [86400, "24 hours"], [604800, "7 days"]].map((x) => '<button class="btn ' + (TT == x[0] ? "" : "o") + '" data-a="dmset" data-s="' + x[0] + '">' + x[1] + "</button>").join("") + "</div></div></div>";
   if (o == "vws") return '<div class="ov"><div class="hd"><button class="ib" data-a="vwback" aria-label="Back">←</button><h1>Viewed by</h1></div><div class="body">' + (VW.length ? VW.map((v) => '<div class="row">' + av(v.name, 44, false, v.id) + '<span class="t"><b>' + esc(v.name) + "</b><small>" + tm(v.viewed_at) + "</small></span></div>").join("") : '<p class="mut" style="padding:16px">No one has viewed this status yet.</p>') + "</div></div>";
   if (o == "bkv") return bkvHtml();
@@ -1056,6 +1163,25 @@ app.addEventListener("click", async (e) => {
     if (a == "tologin") { V.mode = "login"; return render(); }
     if (a == "recover") return recover();
     if (a == "otpgo") return otpGo();
+    if (a == "post") { CMP = CMP || { body: "", image: "" }; V.ov = "cmp"; return render(); }
+    if (a == "cmpx") { V.ov = null; return render(); }
+    if (a == "cmppick") { const f = $("cpf"); if (f) f.click(); return; }
+    if (a == "cmprm") { CMP.image = ""; return render(); }
+    if (a == "cmpgo") return shareCmp();
+    if (a == "fsc") { FSC = b.dataset.t; FEED = []; FEEDOK = false; render(); return loadFeed(false); }
+    if (a == "feedmore") return loadFeed(true);
+    if (a == "like") return toggleLike(id, b);
+    if (a == "cmts") return openComments(id);
+    if (a == "cmtx") { CMTS = null; V.ov = null; return render(); }
+    if (a == "cmtsend") { const t = $("cmtin").value.trim(); if (!t || !CMTS) return; $("cmtin").value = ""; try { await api("/posts/" + CMTS.id + "/comments", "POST", { body: t }); await refreshComments(); } catch (e) { toast(e.message); $("cmtin").value = t; } return; }
+    if (a == "cmtdel") { try { await api("/comments/" + id, "DELETE"); await refreshComments(); } catch (e) { toast(e.message); } return; }
+    if (a == "dash") return doDash();
+    if (a == "dashx") { V.ov = null; DASH = null; return render(); }
+    if (a == "profopen") return openProfile(id);
+    if (a == "profx") { V.ov = null; PROF = null; PROFP = []; return render(); }
+    if (a == "follow") return doFollow(id);
+    if (a == "postrep") return doReport(id);
+    if (a == "postdel") return doDelPost(id);
     if (a == "reload") { location.reload(); return; }
     if (a == "doinstall") { if (!DIP) return; DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
     if (a == "gdescsave") { await api("/groups/" + V.gid + "/description", "PUT", { description: $("gdesc").value }); await loadGInfo(); await loadGMsgs(true); render(); return toast("Description saved"); }
@@ -1211,6 +1337,7 @@ app.addEventListener("click", async (e) => {
     if (a == "auth") return auth();
     if (a == "tab") {
       const tb = b.dataset.t; V.tab = tb; V.scr = null; V.lo = false; render();
+      if (tb == "feed") { if (!FEEDOK || !FEED.length) loadFeed(false); }
       const still = () => V.tab == tb && !V.scr && !V.ov; // only redraw if the person is still on this tab (never wipe what they are typing elsewhere)
       if (tb == "status") { await loadST(); if (still()) render(); }
       if (tb == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } if (still()) render(); }
@@ -1281,6 +1408,7 @@ app.addEventListener("input", (e) => {
   else if (e.target.id == "msg" && V.scr == "chat" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
 });
 app.addEventListener("change", async (e) => {
+  if (e.target.id == "cpf" && e.target.files && e.target.files[0]) { try { const d = await fitImg(e.target.files[0]); CMP = { body: $("cpb") ? $("cpb").value : CMP.body, image: d }; render(); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "aik") { try { const k = +e.target.value; await api("/ai/settings", "PUT", { keep: k }); AIKEEP = k; toast(k === 0 ? "AI chats will not be saved" : "Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "gs1" || e.target.id == "gs2") { try { await api("/groups/" + V.gid + "/settings", "PUT", { only_admins_send: $("gs1").checked, members_can_add: $("gs2").checked }); await loadGInfo(); render(); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "sif" && e.target.files && e.target.files[0]) { try { SIMG = await fitImg(e.target.files[0]); render(); } catch (err) { toast(err.message); } return; }
@@ -1317,3 +1445,17 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
+
+  items.sort((a, b) => b.pin - a.pin || b.t - a.t);
+  let top = "";
+  if (V.arch) top = '<button class="row" data-a="arch" style="min-height:48px"><b>← Back to chats</b></button>';
+  else if (nArch && !q && V.f == "all") top = '<button class="row" data-a="arch" style="min-height:48px"><span class="t"><b>Archived</b></span><small>' + nArch + "</small></button>";
+  if (!items.length) {
+    if (V.arch) return top + '<div class="empty"><b>No archived chats</b>Archive a chat from its ⋮ menu.</div>';
+    if (V.f == "unread") return top + '<div class="empty"><b>Nothing unread</b>Unread counts arrive in the next update.</div>';
+    if (V.f == "groups") return top + '<div class="empty"><b>No groups yet</b>Create a group to chat with several contacts at once.<button class="btn" data-a="newgrp">Create a group</button></div>';
+    if (q) return top + '<div class="empty"><b>No matches</b>Try another name.</div>';
+    return top + '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
+  }
+  return top + items.map((i) => i.h).join("");
+}
