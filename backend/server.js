@@ -1499,6 +1499,15 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS n_views boolean NOT NULL DEFAULT true
 ALTER TABLE users ADD COLUMN IF NOT EXISTS cover int NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS n_calls boolean NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_keep int NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS posts(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL DEFAULT '', image text, removed boolean NOT NULL DEFAULT false, removed_reason text, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS posts_recent ON posts(id DESC) WHERE NOT removed;
+CREATE INDEX IF NOT EXISTS posts_user ON posts(user_id, id DESC);
+CREATE TABLE IF NOT EXISTS post_likes(post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(post_id,user_id));
+CREATE TABLE IF NOT EXISTS post_comments(id bigserial PRIMARY KEY, post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, removed boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS post_comments_post ON post_comments(post_id, id);
+CREATE TABLE IF NOT EXISTS post_views(post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, viewer uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(post_id,viewer));
+CREATE TABLE IF NOT EXISTS follows(follower uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, followee uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(follower,followee));
+CREATE INDEX IF NOT EXISTS follows_followee ON follows(followee, created_at DESC);
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
@@ -1533,7 +1542,6 @@ CREATE INDEX IF NOT EXISTS sgmsg_pair ON singles_messages(from_id,to_id,id);
 CREATE TABLE IF NOT EXISTS singles_blocked(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, until timestamptz, reason text);
 CREATE TABLE IF NOT EXISTS sanctions(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, reason text NOT NULL, report_id bigint, penalty int NOT NULL DEFAULT 0, until timestamptz, seen boolean NOT NULL DEFAULT false, appeal_status text, appeal_text text, appealed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS blocked_phones(phone text PRIMARY KEY, until timestamptz, reason text, created_at timestamptz NOT NULL DEFAULT now());`;
-
 db.query(schema)
   .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Orivoclass API running")))
   .catch((e) => { console.error("Database setup failed:", e.message); process.exit(1); });
