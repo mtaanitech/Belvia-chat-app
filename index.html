@@ -848,6 +848,19 @@ function listHtml() {
     const m = AIM[AIM.length - 1];
     items.push({ pin: 0, t: m.t || 0, h: '<button class="row" data-a="ai">' + aiLogo(52) + '<span class="t"><b>Orivoclass AI</b><small>' + esc((m.role == "user" ? "You: " : "") + m.content) + "</small></span><small>" + (m.t ? tm(m.t) : "") + "</small></button>" });
   }
+  items.sort((a, b) => b.pin - a.pin || b.t - a.t);
+  let top = "";
+  if (V.arch) top = '<button class="row" data-a="arch" style="min-height:48px"><b>← Back to chats</b></button>';
+  else if (nArch && !q && V.f == "all") top = '<button class="row" data-a="arch" style="min-height:48px"><span class="t"><b>Archived</b></span><small>' + nArch + "</small></button>";
+  if (!items.length) {
+    if (V.arch) return top + '<div class="empty"><b>No archived chats</b>Archive a chat from its ⋮ menu.</div>';
+    if (V.f == "unread") return top + '<div class="empty"><b>Nothing unread</b>Unread counts arrive in the next update.</div>';
+    if (V.f == "groups") return top + '<div class="empty"><b>No groups yet</b>Create a group to chat with several contacts at once.<button class="btn" data-a="newgrp">Create a group</button></div>';
+    if (q) return top + '<div class="empty"><b>No matches</b>Try another name.</div>';
+    return top + '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
+  }
+  return top + items.map((i) => i.h).join("");
+}
   function menuHtml() {
   if (!V.menu) return "";
   if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
@@ -1445,17 +1458,3 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
-
-  items.sort((a, b) => b.pin - a.pin || b.t - a.t);
-  let top = "";
-  if (V.arch) top = '<button class="row" data-a="arch" style="min-height:48px"><b>← Back to chats</b></button>';
-  else if (nArch && !q && V.f == "all") top = '<button class="row" data-a="arch" style="min-height:48px"><span class="t"><b>Archived</b></span><small>' + nArch + "</small></button>";
-  if (!items.length) {
-    if (V.arch) return top + '<div class="empty"><b>No archived chats</b>Archive a chat from its ⋮ menu.</div>';
-    if (V.f == "unread") return top + '<div class="empty"><b>Nothing unread</b>Unread counts arrive in the next update.</div>';
-    if (V.f == "groups") return top + '<div class="empty"><b>No groups yet</b>Create a group to chat with several contacts at once.<button class="btn" data-a="newgrp">Create a group</button></div>';
-    if (q) return top + '<div class="empty"><b>No matches</b>Try another name.</div>';
-    return top + '<div class="empty"><b>No chats yet</b>Your chats show up here once you start talking. Tap + to message a contact.<button class="btn" data-a="cov">Add or pick a contact</button></div>';
-  }
-  return top + items.map((i) => i.h).join("");
-}
