@@ -1044,7 +1044,7 @@ function listHtml() {
   if (q) { L = L.filter((x) => (x.display + " " + (x.pname || "")).toLowerCase().indexOf(q) > -1); G = G.filter((g) => g.name.toLowerCase().indexOf(q) > -1); }
   if (V.f == "unread") { L = []; G = []; }
   if (V.f == "groups") L = [];
-  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? ' <span class="pin">' + IC_PIN + "</span>" : "") + "</small></button>";
+  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b' + (x.unread ? ' style="font-weight:800"' : '') + '>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? ' <span class="pin">' + IC_PIN + "</span>" : "") + (x.unread ? ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--ac);color:var(--on);font-size:12px;font-weight:700">' + x.unread + '</span>' : "") + "</small></button>";
   const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind == "poll" ? "📊 " + esc(g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
   if (!V.arch && V.f == "all" && AIM.length && (!q || "orivoclass ai".indexOf(q) > -1)) {
@@ -1097,6 +1097,13 @@ function meTab() {
     sec("HELP AND LEGAL") + row("terms", "Terms of Service", "Last updated: November 2026", "📄") + row("privacy", "Privacy Policy", "How we handle your data", "🛡") + row("rules", "Community Rules", "What is allowed on Orivoclass", "📜") + row("about", "About Us", "Who we are", "ℹ") + row("help", "Help and contact", "Questions and support", "❓") +
     '<div class="cd" style="margin-top:16px"><button class="btn o" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="btn d" data-a="pg" data-p="del">Delete my account</button></div>';
 }
+function installBanner() {
+  if (isStandalone()) return "";
+  let dismissed = false; try { dismissed = !!localStorage.getItem("bv.nobanner"); } catch (e) {}
+  if (dismissed) return "";
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  return '<div style="margin:10px 14px 0;padding:12px 14px;border-radius:14px;background:var(--acs);display:flex;align-items:center;gap:12px"><span style="flex:1;min-width:0"><b style="display:block">Install Orivoclass</b><small class="mut">' + (ios ? "Tap Share, then Add to Home Screen" : "Use it like an app, full screen") + '</small></span>' + (DIP || ios ? '<button class="btn" style="min-height:36px;padding:0 14px" data-a="inst">' + (DIP ? "Install" : "How?") + '</button>' : '<button class="btn o" style="min-height:36px;padding:0 14px" data-a="inst">How?</button>') + '<button class="ib" data-a="instx" aria-label="Hide">✕</button></div>';
+}
 function topbar() {
   const T4 = [["feed", "Feed"], ["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
   return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="Menu" style="padding:0;color:var(--ink)">' + IC_MENU + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
@@ -1114,7 +1121,7 @@ function main() {
   else if (t == "feed") { b = feedTab(); }
   else if (t == "singles") b = singlesTab();
   else b = meTab();
-  return topbar() + '<div class="body">' + b + "</div>" + f;
+  return installBanner() + topbar() + '<div class="body">' + b + "</div>" + f;
 }
 function bodyHtml(x, me) {
   if (!x.view_once) return (x.forwarded ? '<div class="q">Forwarded</div>' : "") + esc(x.body);
@@ -1286,7 +1293,7 @@ function pageOv() {
     const N = NOTIF || {};
     b = !N.available
       ? '<div class="cd"><b>Not set up yet</b><span class="mut">Notifications need to be switched on in the server settings first.</span></div>'
-      : '<div class="cd"><b>This device</b><span class="mut">' + (PUSH == "unsupported" ? "This browser does not support notifications." : PUSH == "on" ? "Notifications are on for this device." : "Notifications are off for this device.") + "</span>" + (PUSH == "unsupported" ? "" : PUSH == "on" ? '<button class="btn o" data-a="pushoff">Turn off on this device</button>' : '<button class="btn" data-a="pushon">Turn on notifications</button>') + '</div><div class="cd"><b>Tell me about</b><label class="chk"><input type="checkbox" id="nfm"' + (N.msg ? " checked" : "") + '> New messages</label><label class="chk"><input type="checkbox" id="nfs"' + (N.status ? " checked" : "") + '> Status updates from my contacts</label><label class="chk"><input type="checkbox" id="nfv"' + (N.views ? " checked" : "") + '> When someone views my status</label><label class="chk"><input type="checkbox" id="nfc"' + (N.calls !== false ? " checked" : "") + '> Incoming calls</label><span class="note">Notifications show who it is from, never the message text. Sound and vibration follow your phone settings.</span></div>';
+      : '<div class="cd"><b>This device</b><span class="mut">' + (PUSH == "unsupported" ? "This browser does not support notifications." : PUSH == "on" ? "Notifications are on for this device." : "Notifications are off for this device.") + "</span>" + (PUSH == "unsupported" ? "" : PUSH == "on" ? '<button class="btn o" data-a="pushoff">Turn off on this device</button>' : '<button class="btn" data-a="pushon">Turn on notifications</button>') + '</div><div class="cd"><b>Tell me about</b><label class="chk"><input type="checkbox" id="nfm"' + (N.msg ? " checked" : "") + '> New messages</label><label class="chk"><input type="checkbox" id="nfs"' + (N.status ? " checked" : "") + '> Status updates from my contacts</label><label class="chk"><input type="checkbox" id="nfv"' + (N.views ? " checked" : "") + '> When someone views my status</label><label class="chk"><input type="checkbox" id="nfc"' + (N.calls !== false ? " checked" : "") + '> Incoming calls</label><span class="note">Notifications show who it is from, never the message text. Sound and vibration follow your phone settings.</span></div><div class="cd"><b>Test</b><span class="mut">Close the app, then tap this. You should get a notification within a few seconds.</span><button class="btn o" data-a="pushtest">Send a test notification</button></div>';
   } else if (p == "backup") {
     t = "Backup";
     b = '<div class="cd"><b>Download a backup</b><span class="mut">Saves your chats and your status updates (with who viewed them) as a file on this phone. View Once messages and disappearing messages that already expired are not included.</span><label>Password for the file (optional, at least 8 characters)<input id="bkp" type="password" autocomplete="new-password"></label><button class="btn" data-a="bkdl">Download backup</button><span class="note">Without a password, anyone who gets the file can read your chats.</span></div>' +
@@ -1454,6 +1461,16 @@ app.addEventListener("click", async (e) => {
     if (a == "fapprove") { try { await api("/follow-requests/" + id + "/approve", "POST", {}); await loadExtra(); toast("Approved"); } catch (e) { toast(e.message); } return render(); }
     if (a == "fdecline") { try { await api("/follow-requests/" + id, "DELETE"); await loadExtra(); } catch (e) { toast(e.message); } return render(); }
     if (a == "reload") { location.reload(); return; }
+    if (a == "instx") { try { localStorage.setItem("bv.nobanner", "1"); } catch (e) {} return render(); }
+    if (a == "inst") {
+      if (DIP) { DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
+      const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      return toast(ios ? "Tap the Share button, then Add to Home Screen." : "Open the browser menu (⋮) and tap Install app.");
+    }
+    if (a == "pushtest") {
+      try { const j = await api("/push/test", "POST", {}); if (j.message) return toast(j.message); if (j.sent) return toast("Sent to " + j.sent + " device(s). Check your notifications."); return toast("Not sent. " + (j.failed || []).join(", ")); }
+      catch (e) { return toast(e.message); }
+    }
     if (a == "doinstall") { if (!DIP) return; DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
     if (a == "gdescsave") { await api("/groups/" + V.gid + "/description", "PUT", { description: $("gdesc").value }); await loadGInfo(); await loadGMsgs(true); render(); return toast("Description saved"); }
     if (a == "ginvon") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: true }); await loadGInfo(); return render(); }
