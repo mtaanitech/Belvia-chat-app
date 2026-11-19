@@ -832,7 +832,6 @@ async function otpGo() {
     RC = j.recovery_code; V.scr = "code"; render();
   } catch (e) { const x = $("err"); if (x) x.textContent = e.message; else { V.scr = null; render(); toast(e.message); } }
 }
-
 function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
 function listHtml() {
   const q = V.q.trim().toLowerCase();
@@ -861,7 +860,7 @@ function listHtml() {
   }
   return top + items.map((i) => i.h).join("");
 }
-  function menuHtml() {
+function menuHtml() {
   if (!V.menu) return "";
   if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
   if (V.scr == "gchat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="ginfo">Group info</button><button data-a="pollnew">Poll</button><button data-a="dm">Disappearing</button><button data-a="gleave" style="color:var(--cr)">Leave group</button></div>';
