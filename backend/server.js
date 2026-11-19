@@ -797,7 +797,7 @@ async function notify(uid, kind, payload) {
     }));
   } catch (e) { console.error("push:", e.message); }
 }
-app.get("/api/push/key", need, (req, res) => webpush ? res.json({ key: process.env.VAPID_PUBLIC }) : bad(res, "Notifications are not set up on the server yet.", 503));
+app.get("/api/push/key", need, (req, res) => webpush ? res.json({ key: VAPID_PUB }) : bad(res, "Notifications are not set up on the server yet.", 503));
 app.post("/api/push/subscribe", need, wrap(async (req, res) => {
   const sub = req.body.subscription || {};
   const ep = String(sub.endpoint || ""), k = sub.keys || {};
@@ -1959,5 +1959,29 @@ app.put("/api/admin/boost-plans", adminLimit, adminOnly, wrap(async (req, res) =
   await db.query("INSERT INTO app_settings(key,value,updated_at) VALUES('boost_plans',$1,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()", [JSON.stringify(out)]);
   res.json({ ok: true, plans: out });
 }));
+// ---- Push notifications: the server makes its own keys once and keeps them in the database. Nothing has to be typed into Render. ----
+let VAPID_PUB = process.env.VAPID_PUBLIC || "";
+async function setupPush() {
+  let wp;
+  try { wp = require("web-push"); } catch (e) { console.warn("web-push is not installed yet (add it to package.json and redeploy)."); return; }
+  try {
+    let pub = process.env.VAPID_PUBLIC, priv = process.env.VAPID_PRIVATE;
+    if (!pub || !priv) {
+      let row = (await db.query("SELECT value FROM app_settings WHERE key='vapid'")).rows[0];
+      if (!row) {
+        const k = wp.generateVAPIDKeys();
+        await db.query("INSERT INTO app_settings(key,value) VALUES('vapid',$1) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ pub: k.publicKey, priv: k.privateKey })]);
+        row = (await db.query("SELECT value FROM app_settings WHERE key='vapid'")).rows[0];
+      }
+      pub = row.value.pub; priv = row.value.priv;
+    }
+    wp.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@orivoclass.app", pub, priv);
+    webpush = wp; VAPID_PUB = pub;
+    console.log("Push notifications are on.");
+  } catch (e) { console.error("Push setup failed:", e.message); }
+}
+(async function waitForDatabase(tries) { // the database tables are created at start-up, so wait until they exist
+  try { await db.query("SELECT 1 FROM app_settings LIMIT 1"); await setupPush(); }
+  catch (e) { if (tries < 40) setTimeout(() => waitForDatabase(tries + 1), 2000); }
+})(0);
 // END OF PART 10
-   
