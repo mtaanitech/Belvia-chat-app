@@ -1465,7 +1465,7 @@ app.post("/api/groups/:id/leave", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 // END OF PART 7
- const schema = `
+const schema = `
 CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), phone text UNIQUE NOT NULL, name text NOT NULL, about text NOT NULL DEFAULT 'Hey there! I am using Orivoclass.', pass_hash text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS contacts(owner uuid REFERENCES users(id) ON DELETE CASCADE, contact uuid REFERENCES users(id) ON DELETE CASCADE, alias text, PRIMARY KEY(owner,contact));
 CREATE TABLE IF NOT EXISTS messages(id bigserial PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, reply text, reaction text, del_from boolean NOT NULL DEFAULT false, del_to boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
@@ -1526,6 +1526,8 @@ CREATE INDEX IF NOT EXISTS boost_views_c ON boost_views(campaign_id, viewer);
 ALTER TABLE boost_orders ADD COLUMN IF NOT EXISTS reach int NOT NULL DEFAULT 200;
 ALTER TABLE boost_orders ADD COLUMN IF NOT EXISTS repeat_hours int NOT NULL DEFAULT 24;
 CREATE TABLE IF NOT EXISTS app_settings(key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS image text;
+CREATE TABLE IF NOT EXISTS post_comment_likes(comment_id bigint NOT NULL REFERENCES post_comments(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(comment_id,user_id));
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
@@ -1577,9 +1579,10 @@ const jpegOk = (p, max) => {
   const b = Buffer.from(m[1], "base64");
   return b.length > 100 && b[0] === 0xff && b[1] === 0xd8;
 };
-const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
+const REACTIONS = ["❤️", "😂", "😭", "🥰", "😮", "👍", "🔥"];
 const POST_COLS = `p.id, p.user_id, u.name, p.body, p.audience, (p.image IS NOT NULL) AS has_image, p.created_at,
-  NULL::int AS likes,
+  (SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes,
+  (SELECT COALESCE(json_agg(t.e), '[]'::json) FROM (SELECT l.emoji AS e FROM post_likes l WHERE l.post_id=p.id GROUP BY l.emoji ORDER BY count(*) DESC LIMIT 3) t) AS top_reactions,
   (SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND NOT c.removed) AS comments,
   (SELECT l.emoji FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS my_reaction,
   EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id) AS following,
@@ -1686,7 +1689,7 @@ app.post("/api/posts/:id/like", need, socialLimit, wrap(async (req, res) => {
     await db.query("INSERT INTO post_likes(post_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT (post_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji", [req.params.id, req.uid, emoji]);
   }
   const mine = (await db.query("SELECT emoji FROM post_likes WHERE post_id=$1 AND user_id=$2", [req.params.id, req.uid])).rows[0];
-  res.json({ ok: true, my_reaction: mine ? mine.emoji : null }); // reaction counts are not sent to anyone
+  res.json({ ok: true, my_reaction: mine ? mine.emoji : null });
 }));
 
 app.get("/api/posts/:id/comments", need, wrap(async (req, res) => {
@@ -1694,7 +1697,7 @@ app.get("/api/posts/:id/comments", need, wrap(async (req, res) => {
   const p = await visiblePost(req.uid, req.params.id);
   if (!p) return bad(res, "This post is not available.", 404);
   const r = await db.query(
-    `SELECT * FROM (SELECT c.id, c.user_id, u.name, c.body, c.created_at, c.parent_id FROM post_comments c JOIN users u ON u.id=c.user_id
+    `SELECT * FROM (SELECT c.id, c.user_id, u.name, c.body, c.created_at, c.parent_id, (c.image IS NOT NULL) AS has_image, (SELECT count(*)::int FROM post_comment_likes l WHERE l.comment_id=c.id) AS likes, EXISTS (SELECT 1 FROM post_comment_likes l WHERE l.comment_id=c.id AND l.user_id=$1) AS liked FROM post_comments c JOIN users u ON u.id=c.user_id
        WHERE c.post_id=$2 AND NOT c.removed AND NOT u.banned
          AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=c.user_id) OR (b.blocker=c.user_id AND b.blocked=$1))
        ORDER BY c.id DESC LIMIT 60) t ORDER BY id`, [req.uid, req.params.id]);
@@ -1704,7 +1707,9 @@ app.post("/api/posts/:id/comments", need, commentLimit, wrap(async (req, res) =>
   if (!numId(req.params.id)) return bad(res, "Invalid id.");
   if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot comment for now.", 403);
   const body = String(req.body.body || "").trim().slice(0, 300);
-  if (!body) return bad(res, "Write a comment first.");
+  const image = req.body.image || null;
+  if (image && !jpegOk(image, 160000)) return bad(res, "Please choose a smaller picture.");
+  if (!body && !image) return bad(res, "Write a comment or add a photo first.");
   if (!(await visiblePost(req.uid, req.params.id))) return bad(res, "This post is not available.", 404);
   let parent = null;
   if (numId(req.body.parent_id)) {
@@ -1712,7 +1717,7 @@ app.post("/api/posts/:id/comments", need, commentLimit, wrap(async (req, res) =>
     if (!pc) return bad(res, "That comment is no longer there.", 404);
     parent = pc.parent_id || pc.id; // replies sit under the main comment (one level)
   }
-  await db.query("INSERT INTO post_comments(post_id,user_id,body,parent_id) VALUES($1,$2,$3,$4)", [req.params.id, req.uid, body, parent]);
+  await db.query("INSERT INTO post_comments(post_id,user_id,body,parent_id,image) VALUES($1,$2,$3,$4,$5)", [req.params.id, req.uid, body, parent, image]);
   res.json({ ok: true });
 }));
 app.delete("/api/comments/:id", need, wrap(async (req, res) => { // your own comment, or any comment on your own post
@@ -1986,4 +1991,24 @@ async function setupPush() {
   try { await db.query("SELECT 1 FROM app_settings LIMIT 1"); await setupPush(); }
   catch (e) { if (tries < 40) setTimeout(() => waitForDatabase(tries + 1), 2000); }
 })(0);
+// Like a comment (only on posts you are allowed to see).
+app.post("/api/comments/:id/like", need, socialLimit, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const c = (await db.query(`SELECT c.id FROM post_comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.user_id
+    WHERE c.id=$2 AND NOT c.removed AND ${POST_OK}`, [req.uid, req.params.id])).rows[0];
+  if (!c) return bad(res, "This comment is not available.", 404);
+  const on = req.body.like !== false;
+  if (on) await db.query("INSERT INTO post_comment_likes(comment_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [c.id, req.uid]);
+  else await db.query("DELETE FROM post_comment_likes WHERE comment_id=$1 AND user_id=$2", [c.id, req.uid]);
+  const n = (await db.query("SELECT count(*)::int AS n FROM post_comment_likes WHERE comment_id=$1", [c.id])).rows[0].n;
+  res.json({ liked: on, likes: n });
+}));
+// The photo of a comment (fetched when the comment is on screen).
+app.get("/api/comments/:id/image", need, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const r = (await db.query(`SELECT c.image FROM post_comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.user_id
+    WHERE c.id=$2 AND c.image IS NOT NULL AND NOT c.removed AND ${POST_OK}`, [req.uid, req.params.id])).rows[0];
+  if (!r) return bad(res, "Not found.", 404);
+  res.json({ image: r.image });
+}));
 // END OF PART 10
