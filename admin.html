@@ -6,94 +6,261 @@
 <meta name="robots" content="noindex">
 <title>Orivoclass Admin</title>
 <style>
-:root{--bg:#121022;--sf:#1D1A35;--ink:#F1EFFA;--mu:#B7B2D6;--ln:#2C2850;--ac:#9B87FF;--on:#121022;--cr:#FF8C75;--ok:#3DD9A0;color-scheme:dark}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Roboto,sans-serif}
-main{max-width:820px;margin:0 auto;padding:20px 16px 60px}h1{margin:0 0 4px;color:var(--ac)}h2{margin:28px 0 10px}
-.mu{color:var(--mu)}.card{background:var(--sf);border-radius:16px;padding:14px;margin:10px 0;display:flex;flex-direction:column;gap:8px}
-input,textarea,select{font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--ln);border-radius:12px;padding:10px 12px;width:100%}
-button{font:inherit;cursor:pointer;border:0;border-radius:20px;padding:9px 14px;font-weight:700;background:var(--ac);color:var(--on)}
-button.o{background:none;border:1.5px solid var(--ac);color:var(--ac)}button.d{background:var(--cr)}button.g{background:var(--ok)}
-.row{display:flex;flex-wrap:wrap;gap:8px}.ev{border-left:3px solid var(--ln);padding-left:10px;font-size:13px;color:var(--mu);white-space:pre-wrap;overflow-wrap:anywhere}
-.err{color:var(--cr);min-height:1.2em}small{color:var(--mu)}
+:root{--bg:#F4F5F8;--card:#FFFFFF;--ink:#101828;--mu:#667085;--ln:#E4E7EC;--ac:#6247F5;--acs:#ECE9FE;--ok:#079455;--oks:#E6F6EE;--cr:#D92D20;--crs:#FDECEA;--wa:#B54708;--was:#FEF0C7;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Roboto,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--ln);position:sticky;top:0;z-index:5}
+.bar{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:18px;color:var(--ac);margin-right:8px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:9px 14px;border-radius:10px;color:var(--mu);font:inherit;font-weight:600;cursor:pointer;display:flex;gap:8px;align-items:center}
+nav button.on{background:var(--acs);color:var(--ac)}
+nav .n{background:var(--ln);color:var(--ink);border-radius:999px;padding:1px 8px;font-size:12px}
+nav button.on .n{background:var(--ac);color:#fff}
+.spacer{flex:1}
+main{max-width:1200px;margin:0 auto;padding:22px 20px 60px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.head h1{margin:0;font-size:22px}
+.head p{margin:4px 0 0;color:var(--mu)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.box{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.box h3{margin:0;font-size:15px}
+.kv{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--ln);color:var(--ink)}
+.tag.red{background:var(--crs);color:var(--cr)}
+.tag.green{background:var(--oks);color:var(--ok)}
+.tag.amber{background:var(--was);color:var(--wa)}
+.tag.blue{background:var(--acs);color:var(--ac)}
+.muted{color:var(--mu);font-size:12.5px}
+.quote{background:#F9FAFB;border:1px solid var(--ln);border-radius:12px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto}
+.label{font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+textarea,input,select{font:inherit;color:var(--ink);background:#fff;border:1px solid #D0D5DD;border-radius:10px;padding:9px 11px;width:100%}
+textarea{resize:vertical;min-height:58px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+button.b{font:inherit;font-weight:600;border:1px solid transparent;border-radius:10px;padding:8px 12px;cursor:pointer;background:var(--ac);color:#fff}
+button.b.sec{background:#fff;color:var(--ink);border-color:#D0D5DD}
+button.b.ok{background:var(--ok);color:#fff}
+button.b.warn{background:var(--wa);color:#fff}
+button.b.danger{background:var(--cr);color:#fff}
+button.b.ghost{background:none;color:var(--ac);border-color:var(--ln)}
+button.b:disabled{opacity:.5;cursor:default}
+.empty{background:var(--card);border:1px dashed #D0D5DD;border-radius:16px;padding:40px;text-align:center;color:var(--mu)}
+.thumb{width:100%;max-height:260px;object-fit:contain;border-radius:12px;background:#0B0B0F}
+.note{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--was);color:var(--wa)}
+.err{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--crs);color:var(--cr);display:none}
+.plans{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.plan{border:1px solid var(--ln);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.plan h3{margin:0}
+.login{max-width:380px;margin:12vh auto;background:var(--card);border:1px solid var(--ln);border-radius:18px;padding:26px;display:flex;flex-direction:column;gap:12px}
+.login h1{margin:0;color:var(--ac);font-size:22px}
+pre{margin:0;background:#0B0B0F;color:#D0FFE0;border-radius:12px;padding:14px;overflow:auto;max-height:420px;font-size:12.5px}
+.hide{display:none!important}
+@media (max-width:640px){.grid{grid-template-columns:1fr}.bar{padding:12px}}
 </style>
 </head>
 <body>
-<main id="m"></main>
+
+<div id="gate" class="login">
+  <h1>Orivoclass Admin</h1>
+  <span class="muted">Enter the admin key. It stays in this page only and is never saved.</span>
+  <input id="key" type="password" placeholder="Admin key" autocomplete="off">
+  <button class="b" id="enter">Open</button>
+  <div class="err" id="gerr"></div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <div class="bar">
+      <span class="brand">Orivoclass Admin</span>
+      <nav id="tabs"></nav>
+      <span class="spacer"></span>
+      <button class="b sec" id="refresh">Refresh</button>
+    </div>
+  </header>
+  <main>
+    <div id="view"></div>
+    <div class="err" id="err"></div>
+  </main>
+</div>
+
 <script>
-// Same address as in index.html. The admin key is the ADMIN_KEY you set on Render. It is kept in memory only.
 const API = "https://orivoclass.onrender.com";
 let KEY = "";
-const m = document.getElementById("m");
+const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const fd = (x) => new Date(x).toLocaleString();
+const fd = (x) => (x ? new Date(x).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+const TABS = [["reports", "Reports"], ["appeals", "Appeals"], ["posts", "Posts"], ["photos", "Singles photos"], ["plans", "Boost plans"], ["ai", "AI check"]];
+let TAB = "reports", DATA = {};
+
 async function call(path, method, body) {
   const r = await fetch(API + "/api/admin" + path, { method: method || "GET", headers: { "Content-Type": "application/json", "x-admin-key": KEY }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || "Something went wrong.");
   return j;
 }
-function loginView() {
-  m.innerHTML = '<h1>Orivoclass Admin</h1><p class="mu">Enter your admin key.</p><div class="card"><input id="k" type="password" placeholder="Admin key" autocomplete="off"><button id="go">Open</button><div class="err" id="e"></div></div>';
-  document.getElementById("go").onclick = async () => {
-    KEY = document.getElementById("k").value;
-    try { await load(); } catch (e) { KEY = ""; document.getElementById("e").textContent = e.message; }
+function showErr(e) { const x = $("err"); x.textContent = e.message; x.style.display = "block"; setTimeout(() => (x.style.display = "none"), 6000); }
+function setTabs() {
+  const counts = { reports: (DATA.reports || []).length, appeals: (DATA.appeals || []).length, photos: (DATA.photos || []).length };
+  $("tabs").innerHTML = TABS.map(([k, l]) => '<button data-t="' + k + '" class="' + (TAB === k ? "on" : "") + '">' + l + (counts[k] ? '<span class="n">' + counts[k] + "</span>" : "") + "</button>").join("");
+  $("tabs").querySelectorAll("button").forEach((b) => (b.onclick = () => { TAB = b.dataset.t; render(); }));
+}
+async function loadAll() {
+  const [r, a, p, po, bp] = await Promise.all([call("/reports"), call("/appeals"), call("/singles/photos"), call("/posts"), call("/boost-plans")]);
+  DATA = { reports: r.reports, appeals: a.appeals, photos: p.photos, posts: po.posts, plans: bp.plans };
+  render();
+}
+function render() {
+  setTabs();
+  const v = $("view");
+  const map = { reports: viewReports, appeals: viewAppeals, posts: viewPosts, photos: viewPhotos, plans: viewPlans, ai: viewAI };
+  v.innerHTML = map[TAB]();
+  bind();
+}
+const head = (title, sub) => '<div class="head"><div><h1>' + title + "</h1>" + (sub ? "<p>" + sub + "</p>" : "") + "</div></div>";
+const emptyBox = (t) => '<div class="empty">' + t + "</div>";
+
+// ---------- Reports ----------
+function viewReports() {
+  const list = DATA.reports || [];
+  let h = head("Reports", list.length + " open " + (list.length === 1 ? "report" : "reports") + ". Read the evidence, then choose one action.");
+  if (!list.length) return h + emptyBox("No open reports. You are all caught up.");
+  h += '<div class="grid">' + list.map((x) => `
+    <div class="box" data-r="${x.id}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+        <div><h3>${esc(x.reported_name)}</h3><span class="muted">${esc(x.reported_phone)}</span></div>
+        <div class="kv">${x.banned ? '<span class="tag red">Banned</span>' : ""}<span class="tag ${x.trust_score < 60 ? "amber" : "green"}">Trust ${x.trust_score}%</span></div>
+      </div>
+      <div class="kv"><span class="tag blue">${esc(x.reason)}</span><span class="tag">${x.total_reports} report(s)</span><span class="tag">${x.past_sanctions} earlier action(s)</span></div>
+      ${x.note ? '<div><span class="label">Note from reporter</span><div>' + esc(x.note) + "</div></div>" : ""}
+      <div><span class="label">Evidence</span>
+        ${x.evidence && x.evidence.length ? '<div class="quote">' + x.evidence.map((e) => esc(e.body || (e.has_image ? "[photo]" : ""))).join("\n— ") + "</div>" : '<div class="muted">No message evidence.</div>'}
+      </div>
+      <span class="muted">Reported by ${esc(x.reporter_name)} (${esc(x.reporter_phone)}) · ${fd(x.created_at)}</span>
+      <textarea rows="2" maxlength="300" placeholder="Message the user will see (optional)"></textarea>
+      <div class="actions">
+        <button class="b sec" data-act="dismiss">Dismiss</button>
+        <button class="b" data-act="warning">Warning</button>
+        <button class="b warn" data-act="restriction">Restrict 24h</button>
+        <button class="b danger" data-act="rest3">Rest 3 days</button>
+        <button class="b danger" data-act="rest7">Rest 7 days</button>
+        <button class="b danger" data-act="ban">Permanent ban</button>
+      </div>
+    </div>`).join("") + "</div>";
+  return h;
+}
+// ---------- Appeals ----------
+function viewAppeals() {
+  const list = DATA.appeals || [];
+  let h = head("Appeals", list.length + " waiting for a decision");
+  if (!list.length) return h + emptyBox("No appeals waiting.");
+  h += '<div class="grid">' + list.map((x) => `
+    <div class="box" data-a="${x.id}">
+      <div><h3>${esc(x.name)}</h3><span class="muted">${esc(x.phone)} · trust ${x.trust_score}%</span></div>
+      <div class="kv"><span class="tag amber">${esc(x.kind)}</span><span class="tag">${fd(x.appealed_at)}</span></div>
+      <div><span class="label">Original reason</span><div>${esc(x.reason)}</div></div>
+      <div><span class="label">Their appeal</span><div class="quote">${esc(x.appeal_text)}</div></div>
+      <div class="actions"><button class="b ok" data-dec="accept">Accept and lift it</button><button class="b sec" data-dec="reject">Reject</button></div>
+    </div>`).join("") + "</div>";
+  return h;
+}
+// ---------- Posts ----------
+function viewPosts() {
+  const list = DATA.posts || [];
+  let h = head("Posts", "The 30 latest posts. Open a post to see its picture, or remove it.");
+  if (!list.length) return h + emptyBox("No posts yet.");
+  h += '<div class="grid">' + list.map((x) => `
+    <div class="box" data-p="${x.id}">
+      <div style="display:flex;justify-content:space-between;gap:8px"><div><h3>${esc(x.name)}</h3><span class="muted">${fd(x.created_at)} · post #${x.id}</span></div>
+        <div class="kv">${x.removed ? '<span class="tag red">Removed</span>' : '<span class="tag green">Live</span>'}${x.has_image ? '<span class="tag blue">Photo</span>' : ""}</div></div>
+      <div class="quote" style="max-height:120px">${esc(x.body || (x.has_image ? "[photo only]" : "[no caption]"))}</div>
+      <div data-view></div>
+      <div class="actions"><button class="b sec" data-pview="${x.id}">Open</button>${x.removed ? "" : '<button class="b danger" data-premove="' + x.id + '">Remove post</button>'}</div>
+    </div>`).join("") + "</div>";
+  return h;
+}
+// ---------- Singles photos ----------
+function viewPhotos() {
+  const list = DATA.photos || [];
+  let h = head("Singles photos", "New profile photos waiting for a check.");
+  if (!list.length) return h + emptyBox("No photos to check.");
+  h += '<div class="grid">' + list.map((x) => `
+    <div class="box" data-p="${x.user_id}">
+      <img class="thumb" alt="" src="${esc(x.photo)}">
+      <div><h3>${esc(x.nick)}, ${x.age}</h3><span class="muted">Remove it if it shows nudity, violence, a minor, or someone else’s identity.</span></div>
+      <div class="actions"><button class="b ok" data-ph="approve">Looks fine</button><button class="b warn" data-ph="remove">Remove photo</button><button class="b danger" data-ph="hide">Hide profile</button></div>
+    </div>`).join("") + "</div>";
+  return h;
+}
+// ---------- Boost plans ----------
+function viewPlans() {
+  const P = DATA.plans || {};
+  let h = head("Boost plans", "What users pay for a boost. Changes apply to new boosts only.");
+  h += '<div class="plans" id="plans">' + [1, 2, 3, 4, 5].map((d) => { const x = P[String(d)] || {}; return `
+    <div class="plan" data-day="${d}">
+      <h3>${d} day${d > 1 ? "s" : ""}</h3>
+      <div class="label">Price (KSh)</div><input data-k="price" type="number" min="10" value="${x.price ?? ""}">
+      <div class="label">Reach (people outside followers)</div><input data-k="reach" type="number" min="10" value="${x.reach ?? ""}">
+      <div class="label">Repeat (hours before the same person sees it again)</div><input data-k="repeat" type="number" min="1" value="${x.repeat ?? ""}">
+    </div>`; }).join("") + "</div>";
+  h += '<div class="actions" style="margin-top:16px"><button class="b" id="psave">Save plans</button></div>';
+  return h;
+}
+// ---------- AI ----------
+function viewAI() {
+  return head("AI check", "Sends a test message to the AI service and shows what it answers. The key is never shown.") +
+    '<div class="box" style="max-width:720px"><div class="actions" style="margin:0"><button class="b" id="aitest">Run the test</button></div><pre id="aiout">Press “Run the test”.</pre></div>';
+}
+
+// ---------- actions ----------
+function bind() {
+  document.querySelectorAll("[data-act]").forEach((b) => (b.onclick = async () => {
+    const box = b.closest("[data-r]"), act = b.dataset.act;
+    const labels = { dismiss: "Dismiss this report?", warning: "Send a warning?", restriction: "Restrict this person for 24 hours?", rest3: "Rest this account for 3 days?", rest7: "Rest this account for 7 days?", ban: "Permanently ban this account? This cannot be undone." };
+    if (!confirm(labels[act])) return;
+    try { await call("/reports/" + box.dataset.r, "POST", { action: act, message: box.querySelector("textarea").value }); await loadAll(); } catch (e) { showErr(e); }
+  }));
+  document.querySelectorAll("[data-dec]").forEach((b) => (b.onclick = async () => {
+    const box = b.closest("[data-a]");
+    if (!confirm(b.dataset.dec === "accept" ? "Accept the appeal and lift the action?" : "Reject this appeal?")) return;
+    try { await call("/appeals/" + box.dataset.a, "POST", { decision: b.dataset.dec }); await loadAll(); } catch (e) { showErr(e); }
+  }));
+  document.querySelectorAll("[data-pview]").forEach((b) => (b.onclick = async () => {
+    const box = b.closest("[data-p]"), slot = box.querySelector("[data-view]");
+    if (slot.innerHTML) { slot.innerHTML = ""; return; }
+    try { const p = await call("/posts/" + b.dataset.pview); slot.innerHTML = (p.image ? '<img class="thumb" alt="" src="' + esc(p.image) + '">' : "") + '<div class="muted">Author ID: ' + esc(p.user_id) + "</div>"; } catch (e) { showErr(e); }
+  }));
+  document.querySelectorAll("[data-premove]").forEach((b) => (b.onclick = async () => {
+    const why = prompt("Why is this post removed? The author will see this.", "Breaks our Community Rules"); if (why === null) return;
+    const restrict = confirm("Also stop this person from posting for 24 hours?\n\nOK for nudity or other serious breaks.");
+    try { await call("/posts/" + b.dataset.premove + "/remove", "POST", { reason: why, restrict }); await loadAll(); } catch (e) { showErr(e); }
+  }));
+  document.querySelectorAll("[data-ph]").forEach((b) => (b.onclick = async () => {
+    const box = b.closest("[data-p]");
+    if (b.dataset.ph !== "approve" && !confirm("Apply this to the photo or profile?")) return;
+    try { await call("/singles/" + box.dataset.p, "POST", { action: b.dataset.ph }); await loadAll(); } catch (e) { showErr(e); }
+  }));
+  const ps = $("psave");
+  if (ps) ps.onclick = async () => {
+    const out = {};
+    document.querySelectorAll("#plans .plan").forEach((c) => { const o = {}; c.querySelectorAll("input").forEach((i) => (o[i.dataset.k] = Number(i.value))); out[c.dataset.day] = o; });
+    try { await call("/boost-plans", "PUT", { plans: out }); await loadAll(); alert("Saved. New boosts use these prices."); } catch (e) { showErr(e); }
+  };
+  const at = $("aitest");
+  if (at) at.onclick = async () => {
+    $("aiout").textContent = "Testing…";
+    try { $("aiout").textContent = JSON.stringify(await call("/ai-test"), null, 2); } catch (e) { $("aiout").textContent = e.message; }
   };
 }
-async function load() {
-  const [r, a, p, po] = await Promise.all([call("/reports"), call("/appeals"), call("/singles/photos"), call("/posts")]);
-  draw(r.reports, a.appeals, p.photos, po.posts);
+
+// ---------- login ----------
+async function open() {
+  KEY = $("key").value.trim();
+  try { await loadAll(); $("gate").classList.add("hide"); $("app").classList.remove("hide"); }
+  catch (e) { KEY = ""; $("gerr").textContent = e.message; $("gerr").style.display = "block"; }
 }
-function draw(reports, appeals, photos, posts) {
-  let h = '<h1>Orivoclass Admin</h1><p class="mu">Open reports and appeals.</p><h2>Reports (' + reports.length + ')</h2>';
-  if (!reports.length) h += '<p class="mu">No open reports.</p>';
-  h += reports.map((x) => '<div class="card" data-r="' + x.id + '"><div><b>' + esc(x.reported_name) + "</b> " + esc(x.reported_phone) + (x.banned ? " · <b>BANNED</b>" : "") + '</div><small>Trust ' + x.trust_score + "% · " + x.total_reports + " report(s) · " + x.past_sanctions + " earlier sanction(s)</small><div>Reason: <b>" + esc(x.reason) + "</b>" + (x.note ? " — " + esc(x.note) : "") + "</div><small>Reported by " + esc(x.reporter_name) + " " + esc(x.reporter_phone) + " · " + fd(x.created_at) + "</small>" +
-    (x.evidence && x.evidence.length ? '<div class="ev"><b>Last messages sent to the reporter:</b>\n' + x.evidence.map((e) => esc(e.body)).join("\n— ") + "</div>" : '<small>No message evidence.</small>') +
-    '<textarea rows="2" maxlength="300" placeholder="Message the user will see (what went wrong). Optional."></textarea><div class="row"><button class="o" data-act="dismiss">Dismiss</button><button data-act="warning">Warning</button><button data-act="restriction">Restrict 24h</button><button data-act="rest3" class="d">Rest 3 days</button><button data-act="rest7" class="d">Rest 7 days</button><button data-act="ban" class="d">Permanent ban</button></div></div>').join("");
-  h += "<h2>Appeals (" + appeals.length + ")</h2>";
-  if (!appeals.length) h += '<p class="mu">No pending appeals.</p>';
-  h += appeals.map((x) => '<div class="card" data-a="' + x.id + '"><div><b>' + esc(x.name) + "</b> " + esc(x.phone) + '</div><small>' + esc(x.kind) + " · trust " + x.trust_score + "% · " + fd(x.appealed_at) + "</small><div>Original reason: " + esc(x.reason) + '</div><div class="ev">' + esc(x.appeal_text) + '</div><div class="row"><button class="g" data-dec="accept">Accept (lift it)</button><button class="o" data-dec="reject">Reject</button></div></div>').join("");
-  h += "<h2>Posts (latest 30)</h2>";
-  h += (posts || []).map((x) => '<div class="card" data-post="' + x.id + '"><div><b>' + esc(x.name) + '</b> · post #' + x.id + (x.removed ? ' · <b>REMOVED</b>' : "") + '</div><div class="ev">' + esc(x.body || (x.has_image ? "[photo only]" : "")) + '</div><small>' + fd(x.created_at) + '</small><div class="row"><button class="o" data-pview="' + x.id + '">Open</button>' + (x.removed ? "" : '<button class="d" data-premove="' + x.id + '">Remove post</button>') + "</div></div>").join("") || '<p class="mu">No posts yet.</p>';
-  h += "<h2>Singles photos to check (" + photos.length + ")</h2>";
-  if (!photos.length) h += '<p class="mu">No new photos.</p>';
-  h += photos.map((x) => '<div class="card" data-p="' + x.user_id + '"><div class="row"><img src="' + esc(x.photo) + '" alt="" style="width:140px;height:140px;object-fit:cover;border-radius:12px"><div><b>' + esc(x.nick) + "</b>, " + x.age + '<br><small>Remove it if it shows nudity, violence, a minor, or someone else’s identity.</small></div></div><div class="row"><button class="g" data-ph="approve">Looks fine</button><button class="d" data-ph="remove">Remove photo</button><button class="o" data-ph="hide">Hide profile</button></div></div>').join("");
-  h += '<p><button class="o" id="rf">Refresh</button> <button class="o" id="aitest">Test AI</button></p><pre id="aiout" class="ev"></pre><div class="err" id="e"></div>';
-  m.innerHTML = h;
-  document.getElementById("rf").onclick = () => load().catch(fail);
-  document.getElementById("aitest").onclick = async () => {
-    const o = document.getElementById("aiout"); o.textContent = "Testing…";
-    try { o.textContent = JSON.stringify(await call("/ai-test"), null, 2); } catch (e) { o.textContent = e.message; }
-  };
-  m.querySelectorAll("[data-act]").forEach((b) => b.onclick = async () => {
-    const c = b.closest("[data-r]"), act = b.dataset.act;
-    if (act != "dismiss" && !confirm("Apply: " + b.textContent + "?")) return;
-    try { await call("/reports/" + c.dataset.r, "POST", { action: act, message: c.querySelector("textarea").value }); await load(); } catch (e) { fail(e); }
-  });
-  m.querySelectorAll("[data-pview]").forEach((b) => b.onclick = async () => {
-    try {
-      const p = await call("/posts/" + b.dataset.pview), c = b.closest("[data-post]");
-      let old = c.querySelector(".pview"); if (old) { old.remove(); return; }
-      const box = document.createElement("div"); box.className = "pview"; box.style.cssText = "display:flex;flex-direction:column;gap:8px";
-      box.innerHTML = (p.image ? '<img alt="" src="' + esc(p.image) + '" style="max-width:100%;max-height:420px;object-fit:contain;border-radius:12px;background:#000">' : "") + '<div class="ev">' + esc(p.body || "[no caption]") + '</div><small>Posted by ' + esc(p.name) + " (" + esc(p.user_id) + ")</small>";
-      c.appendChild(box);
-    } catch (e) { fail(e); }
-  });
-  m.querySelectorAll("[data-premove]").forEach((b) => b.onclick = async () => {
-    const why = prompt("Why is this post removed? (the author will see this)", "Breaks our Community Rules");
-    if (why === null) return;
-    try { await call("/posts/" + b.dataset.premove + "/remove", "POST", { reason: why }); await load(); } catch (e) { fail(e); }
-  });
-  m.querySelectorAll("[data-ph]").forEach((b) => b.onclick = async () => {
-    const c = b.closest("[data-p]");
-    try { await call("/singles/" + c.dataset.p, "POST", { action: b.dataset.ph }); await load(); } catch (e) { fail(e); }
-  });
-  m.querySelectorAll("[data-dec]").forEach((b) => b.onclick = async () => {
-    const c = b.closest("[data-a]");
-    try { await call("/appeals/" + c.dataset.a, "POST", { decision: b.dataset.dec }); await load(); } catch (e) { fail(e); }
-  });
-}
-function fail(e) { const x = document.getElementById("e"); if (x) x.textContent = e.message; }
-loginView();
+$("enter").onclick = open;
+$("key").addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
+$("refresh").onclick = () => loadAll().catch(showErr);
 </script>
 </body>
 </html>
