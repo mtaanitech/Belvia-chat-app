@@ -1463,7 +1463,7 @@ app.post("/api/groups/:id/leave", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 // END OF PART 7
-const schema = `
+ const schema = `
 CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), phone text UNIQUE NOT NULL, name text NOT NULL, about text NOT NULL DEFAULT 'Hey there! I am using Orivoclass.', pass_hash text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS contacts(owner uuid REFERENCES users(id) ON DELETE CASCADE, contact uuid REFERENCES users(id) ON DELETE CASCADE, alias text, PRIMARY KEY(owner,contact));
 CREATE TABLE IF NOT EXISTS messages(id bigserial PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, reply text, reaction text, del_from boolean NOT NULL DEFAULT false, del_to boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
@@ -1508,6 +1508,22 @@ CREATE INDEX IF NOT EXISTS post_comments_post ON post_comments(post_id, id);
 CREATE TABLE IF NOT EXISTS post_views(post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, viewer uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(post_id,viewer));
 CREATE TABLE IF NOT EXISTS follows(follower uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, followee uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(follower,followee));
 CREATE INDEX IF NOT EXISTS follows_followee ON follows(followee, created_at DESC);
+ALTER TABLE post_likes ADD COLUMN IF NOT EXISTS emoji text NOT NULL DEFAULT '❤️';
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS parent_id bigint;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locked boolean NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS no_suggest boolean NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS follow_requests(follower uuid REFERENCES users(id) ON DELETE CASCADE, followee uuid REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(follower,followee));
+CREATE TABLE IF NOT EXISTS post_boosts(post_id bigint PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, until timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS boosts_user ON post_boosts(user_id, created_at DESC);
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS audience text NOT NULL DEFAULT 'public';
+CREATE TABLE IF NOT EXISTS boost_orders(reference text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, days int NOT NULL, amount int NOT NULL, status text NOT NULL DEFAULT 'pending', created_at timestamptz NOT NULL DEFAULT now(), paid_at timestamptz);
+CREATE TABLE IF NOT EXISTS boost_campaigns(id bigserial PRIMARY KEY, post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, days int NOT NULL, reach_max int NOT NULL, repeat_hours int NOT NULL, starts_at timestamptz NOT NULL, ends_at timestamptz NOT NULL, reference text, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS boost_campaigns_live ON boost_campaigns(ends_at);
+CREATE TABLE IF NOT EXISTS boost_views(campaign_id bigint NOT NULL REFERENCES boost_campaigns(id) ON DELETE CASCADE, viewer uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, shown_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS boost_views_c ON boost_views(campaign_id, viewer);
+ALTER TABLE boost_orders ADD COLUMN IF NOT EXISTS reach int NOT NULL DEFAULT 200;
+ALTER TABLE boost_orders ADD COLUMN IF NOT EXISTS repeat_hours int NOT NULL DEFAULT 24;
+CREATE TABLE IF NOT EXISTS app_settings(key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
@@ -1542,6 +1558,7 @@ CREATE INDEX IF NOT EXISTS sgmsg_pair ON singles_messages(from_id,to_id,id);
 CREATE TABLE IF NOT EXISTS singles_blocked(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, until timestamptz, reason text);
 CREATE TABLE IF NOT EXISTS sanctions(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, reason text NOT NULL, report_id bigint, penalty int NOT NULL DEFAULT 0, until timestamptz, seen boolean NOT NULL DEFAULT false, appeal_status text, appeal_text text, appealed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS blocked_phones(phone text PRIMARY KEY, until timestamptz, reason text, created_at timestamptz NOT NULL DEFAULT now());`;
+
 db.query(schema)
   .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Orivoclass API running")))
   .catch((e) => { console.error("Database setup failed:", e.message); process.exit(1); });
@@ -1558,13 +1575,17 @@ const jpegOk = (p, max) => {
   const b = Buffer.from(m[1], "base64");
   return b.length > 100 && b[0] === 0xff && b[1] === 0xd8;
 };
-const POST_COLS = `p.id, p.user_id, u.name, p.body, (p.image IS NOT NULL) AS has_image, p.created_at,
-  (SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes,
+const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
+const POST_COLS = `p.id, p.user_id, u.name, p.body, p.audience, (p.image IS NOT NULL) AS has_image, p.created_at,
+  NULL::int AS likes,
   (SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND NOT c.removed) AS comments,
-  EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked,
-  EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id) AS following`;
+  (SELECT l.emoji FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS my_reaction,
+  EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id) AS following,
+  EXISTS (SELECT 1 FROM post_boosts b WHERE b.post_id=p.id AND b.until > now()) AS boosted`;
 const POST_OK = `NOT p.removed AND NOT u.banned AND (u.rest_until IS NULL OR u.rest_until < now())
-  AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=p.user_id) OR (b.blocker=p.user_id AND b.blocked=$1))`;
+  AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=p.user_id) OR (b.blocker=p.user_id AND b.blocked=$1))
+  AND (NOT u.locked OR p.user_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id))
+  AND (p.audience='public' OR p.user_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id))`;
 const numId = (s) => /^\d+$/.test(String(s || ""));
 async function visiblePost(uid, id) {
   return (await db.query(
@@ -1580,18 +1601,49 @@ app.post("/api/posts", need, postLimit, wrap(async (req, res) => {
   if (!body && !image) return bad(res, "Write something or add a photo first.");
   const n = (await db.query("SELECT count(*)::int AS n FROM posts WHERE user_id=$1 AND created_at > now() - interval '24 hours'", [req.uid])).rows[0].n;
   if (n >= POST_LIMIT) return bad(res, "You have reached today's limit of " + POST_LIMIT + " posts. Try again tomorrow.", 429);
-  const r = await db.query("INSERT INTO posts(user_id,body,image) VALUES($1,$2,$3) RETURNING id", [req.uid, body, image]);
+  const r = await db.query("INSERT INTO posts(user_id,body,image,audience) VALUES($1,$2,$3,$4) RETURNING id", [req.uid, body, image, req.body.audience === "followers" ? "followers" : "public"]);
   res.json({ id: r.rows[0].id });
 }));
 
 app.get("/api/feed", need, wrap(async (req, res) => {
   const following = req.query.scope === "following";
-  const before = numId(req.query.before) ? req.query.before : null;
-  const r = await db.query(
-    `SELECT ${POST_COLS} FROM posts p JOIN users u ON u.id=p.user_id
-     WHERE ${POST_OK} ${following ? "AND (p.user_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id))" : ""}
-       AND ($2::bigint IS NULL OR p.id < $2::bigint) ORDER BY p.id DESC LIMIT 15`, [req.uid, before]);
-  res.json({ posts: r.rows });
+  const off = Math.max(0, Math.min(100000, parseInt(req.query.offset, 10) || 0));
+  if (following) {
+    const r = await db.query(`SELECT ${POST_COLS} FROM posts p JOIN users u ON u.id=p.user_id
+      WHERE ${POST_OK} AND (p.user_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id))
+      ORDER BY p.id DESC LIMIT 15 OFFSET $2`, [req.uid, off]);
+    return res.json({ posts: r.rows });
+  }
+  // For you: a mix of the strongest posts (of today and of the days before) and the newest ones.
+  // Posts set to Followers only appear here for the people who follow the author (POST_OK checks that).
+  // Posts this person already scrolled past go to the back of the line, not out of the feed.
+  const score = `((SELECT count(*) FROM post_likes l WHERE l.post_id=p.id) + 2*(SELECT count(*) FROM post_comments c WHERE c.post_id=p.id AND NOT c.removed) + 0.2*(SELECT count(*) FROM post_views v WHERE v.post_id=p.id) + 1)::float8 / power((extract(epoch FROM (now() - p.created_at))/3600.0 + 2)::float8, 1.2)`;
+  const base = `SELECT ${POST_COLS} FROM posts p JOIN users u ON u.id=p.user_id WHERE ${POST_OK}`;
+  const unseen = `AND NOT EXISTS (SELECT 1 FROM post_views v WHERE v.post_id=p.id AND v.viewer=$1)`;
+  const [top, fresh, old] = await Promise.all([
+    db.query(`${base} ${unseen} ORDER BY ${score} DESC, p.id DESC LIMIT 300`, [req.uid]),
+    db.query(`${base} ${unseen} ORDER BY p.id DESC LIMIT 300`, [req.uid]),
+    db.query(`${base} ORDER BY ${score} DESC, p.id DESC LIMIT 300`, [req.uid])]);
+  const seen = new Set(), list = [];
+  const add = (x) => { if (x && !seen.has(x.id)) { seen.add(x.id); list.push(x); } };
+  for (let i = 0; i < Math.max(top.rows.length, fresh.rows.length); i++) { add(top.rows[i]); add(fresh.rows[i]); }
+  // Everything else (already seen, and older posts) comes after, so the feed keeps going and never ends.
+  for (const x of old.rows) add(x);
+  if (off === 0) {
+    const paid = await boostsFor(req.uid);
+    let n = 0;
+    for (const sp of paid) {
+      const at = Math.min(list.length, 1 + 5 * n); n++;
+      const i = list.findIndex((x) => x.id === sp.id); if (i >= 0) list.splice(i, 1);
+      list.splice(at, 0, { ...sp, sponsored: true });
+      await db.query("INSERT INTO boost_views(campaign_id,viewer) VALUES($1,$2)", [sp.cid, req.uid]);
+    }
+  }
+  if (off + 15 > list.length) { // a little more from anywhere, so scrolling never runs out
+    const more = await db.query(`${base} ORDER BY random() LIMIT 40`, [req.uid]);
+    for (const x of more.rows) add(x);
+  }
+  res.json({ posts: list.slice(off, off + 15) });
 }));
 
 app.get("/api/users/:id/posts", need, wrap(async (req, res) => {
@@ -1627,9 +1679,12 @@ app.post("/api/posts/:id/like", need, socialLimit, wrap(async (req, res) => {
   if (!numId(req.params.id)) return bad(res, "Invalid id.");
   if (!(await visiblePost(req.uid, req.params.id))) return bad(res, "This post is not available.", 404);
   if (req.body.like === false) await db.query("DELETE FROM post_likes WHERE post_id=$1 AND user_id=$2", [req.params.id, req.uid]);
-  else await db.query("INSERT INTO post_likes(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.params.id, req.uid]);
-  const n = (await db.query("SELECT count(*)::int AS n FROM post_likes WHERE post_id=$1", [req.params.id])).rows[0].n;
-  res.json({ likes: n });
+  else {
+    const emoji = REACTIONS.includes(req.body.emoji) ? req.body.emoji : "❤️";
+    await db.query("INSERT INTO post_likes(post_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT (post_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji", [req.params.id, req.uid, emoji]);
+  }
+  const mine = (await db.query("SELECT emoji FROM post_likes WHERE post_id=$1 AND user_id=$2", [req.params.id, req.uid])).rows[0];
+  res.json({ ok: true, my_reaction: mine ? mine.emoji : null }); // reaction counts are not sent to anyone
 }));
 
 app.get("/api/posts/:id/comments", need, wrap(async (req, res) => {
@@ -1637,7 +1692,7 @@ app.get("/api/posts/:id/comments", need, wrap(async (req, res) => {
   const p = await visiblePost(req.uid, req.params.id);
   if (!p) return bad(res, "This post is not available.", 404);
   const r = await db.query(
-    `SELECT * FROM (SELECT c.id, c.user_id, u.name, c.body, c.created_at FROM post_comments c JOIN users u ON u.id=c.user_id
+    `SELECT * FROM (SELECT c.id, c.user_id, u.name, c.body, c.created_at, c.parent_id FROM post_comments c JOIN users u ON u.id=c.user_id
        WHERE c.post_id=$2 AND NOT c.removed AND NOT u.banned
          AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=c.user_id) OR (b.blocker=c.user_id AND b.blocked=$1))
        ORDER BY c.id DESC LIMIT 60) t ORDER BY id`, [req.uid, req.params.id]);
@@ -1649,7 +1704,13 @@ app.post("/api/posts/:id/comments", need, commentLimit, wrap(async (req, res) =>
   const body = String(req.body.body || "").trim().slice(0, 300);
   if (!body) return bad(res, "Write a comment first.");
   if (!(await visiblePost(req.uid, req.params.id))) return bad(res, "This post is not available.", 404);
-  await db.query("INSERT INTO post_comments(post_id,user_id,body) VALUES($1,$2,$3)", [req.params.id, req.uid, body]);
+  let parent = null;
+  if (numId(req.body.parent_id)) {
+    const pc = (await db.query("SELECT id, parent_id FROM post_comments WHERE id=$1 AND post_id=$2 AND NOT removed", [req.body.parent_id, req.params.id])).rows[0];
+    if (!pc) return bad(res, "That comment is no longer there.", 404);
+    parent = pc.parent_id || pc.id; // replies sit under the main comment (one level)
+  }
+  await db.query("INSERT INTO post_comments(post_id,user_id,body,parent_id) VALUES($1,$2,$3,$4)", [req.params.id, req.uid, body, parent]);
   res.json({ ok: true });
 }));
 app.delete("/api/comments/:id", need, wrap(async (req, res) => { // your own comment, or any comment on your own post
@@ -1662,24 +1723,31 @@ app.post("/api/follow/:uid", need, socialLimit, wrap(async (req, res) => {
   if (!isId(req.params.uid) || req.params.uid.toLowerCase() === req.uid) return bad(res, "Invalid id.");
   const t = req.params.uid.toLowerCase();
   if (!(await db.query("SELECT 1 FROM users WHERE id=$1 AND NOT banned", [t])).rowCount || (await sgBlocked(req.uid, t))) return bad(res, "This person is not available.", 404);
+  const lk = (await db.query("SELECT locked FROM users WHERE id=$1", [t])).rows[0];
+  if (lk && lk.locked) { // private account: they approve the request first
+    await db.query("INSERT INTO follow_requests(follower,followee) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.uid, t]);
+    return res.json({ ok: true, requested: true });
+  }
   await db.query("INSERT INTO follows(follower,followee) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.uid, t]);
   res.json({ ok: true });
 }));
 app.delete("/api/follow/:uid", need, socialLimit, wrap(async (req, res) => {
   if (!isId(req.params.uid)) return bad(res, "Invalid id.");
   await db.query("DELETE FROM follows WHERE follower=$1 AND followee=$2", [req.uid, req.params.uid.toLowerCase()]);
+  await db.query("DELETE FROM follow_requests WHERE follower=$1 AND followee=$2", [req.uid, req.params.uid.toLowerCase()]);
   res.json({ ok: true });
 }));
 
 app.get("/api/profile/:uid", need, wrap(async (req, res) => {
   if (!isId(req.params.uid)) return bad(res, "Invalid id.");
   const r = await db.query(
-    `SELECT u.id, u.name, u.about, u.cover, u.mood, u.created_at,
+    `SELECT u.id, u.name, u.about, u.cover, u.mood, u.created_at, u.locked,
        (SELECT count(*)::int FROM posts p WHERE p.user_id=u.id AND NOT p.removed) AS posts,
        (SELECT count(*)::int FROM follows f WHERE f.followee=u.id) AS followers,
        (SELECT count(*)::int FROM follows f WHERE f.follower=u.id) AS following,
        EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=u.id) AS am_following,
-       EXISTS (SELECT 1 FROM follows f WHERE f.follower=u.id AND f.followee=$1) AS follows_me
+       EXISTS (SELECT 1 FROM follows f WHERE f.follower=u.id AND f.followee=$1) AS follows_me,
+       EXISTS (SELECT 1 FROM follow_requests fr WHERE fr.follower=$1 AND fr.followee=u.id) AS requested
      FROM users u WHERE u.id=$2 AND NOT u.banned
        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=u.id) OR (b.blocker=u.id AND b.blocked=$1))`, [req.uid, req.params.uid.toLowerCase()]);
   if (!r.rows[0]) return bad(res, "This profile is not available.", 404);
@@ -1701,7 +1769,8 @@ app.get("/api/me/dashboard", need, wrap(async (req, res) => {
     `SELECT p.id, p.body, (p.image IS NOT NULL) AS has_image, p.created_at,
        (SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes,
        (SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND NOT c.removed) AS comments,
-       (SELECT count(*)::int FROM post_views v WHERE v.post_id=p.id) AS views
+       (SELECT count(*)::int FROM post_views v WHERE v.post_id=p.id) AS views,
+       EXISTS (SELECT 1 FROM post_boosts b WHERE b.post_id=p.id AND b.until > now()) AS boosted
      FROM posts p WHERE p.user_id=$1 AND NOT p.removed ORDER BY p.id DESC LIMIT 20`, [req.uid]);
   const fl = await db.query("SELECT u.id, u.name FROM follows f JOIN users u ON u.id=f.follower WHERE f.followee=$1 ORDER BY f.created_at DESC LIMIT 50", [req.uid]);
   const fg = await db.query("SELECT u.id, u.name FROM follows f JOIN users u ON u.id=f.followee WHERE f.follower=$1 ORDER BY f.created_at DESC LIMIT 50", [req.uid]);
@@ -1733,8 +1802,162 @@ app.get("/api/admin/posts/:id", adminLimit, adminOnly, wrap(async (req, res) => 
 }));
 app.post("/api/admin/posts/:id/remove", adminLimit, adminOnly, wrap(async (req, res) => {
   if (!numId(req.params.id)) return bad(res, "Invalid id.");
-  const r = await db.query("UPDATE posts SET removed=true, removed_reason=$2 WHERE id=$1 RETURNING id", [req.params.id, String(req.body.reason || "Removed by an admin").slice(0, 200)]);
+  const reason = String(req.body.reason || "Removed by an admin").slice(0, 200);
+  const r = await db.query("UPDATE posts SET removed=true, removed_reason=$2 WHERE id=$1 RETURNING id, user_id", [req.params.id, reason]);
   if (!r.rowCount) return bad(res, "Post not found.", 404);
-  res.json({ ok: true });
+  const restrict = req.body.restrict === true;
+  if (restrict) await applySanction(r.rows[0].user_id, "restriction", "Posted content that breaks the rules: " + reason); // 24 hours without posting
+  res.json({ ok: true, restricted: restrict });
 }));
 // END OF PART 9
+// ---- Private accounts, follow requests, boosting a post, suggestions and privacy settings ----
+const privacyLimit = rateLimit({ windowMs: 60 * 60000, max: 60, keyGenerator: (req) => String(req.uid) });
+const boostLimit = rateLimit({ windowMs: 60 * 60000, max: 20, keyGenerator: (req) => String(req.uid) });
+
+// Everything the Me and Dashboard screens need that is not in the basic profile.
+app.get("/api/me/extras", need, wrap(async (req, res) => {
+  const u = (await db.query("SELECT locked, no_suggest FROM users WHERE id=$1", [req.uid])).rows[0];
+  const reqs = await db.query(
+    `SELECT u.id, COALESCE(NULLIF(c.alias,''), u.name) AS name, fr.created_at FROM follow_requests fr
+     JOIN users u ON u.id=fr.follower LEFT JOIN contacts c ON c.owner=$1 AND c.contact=u.id
+     WHERE fr.followee=$1 ORDER BY fr.created_at DESC LIMIT 50`, [req.uid]);
+  res.json({ locked: !!(u && u.locked), suggest: !(u && u.no_suggest), requests: reqs.rows });
+}));
+
+app.put("/api/me/privacy", need, privacyLimit, wrap(async (req, res) => {
+  const b = req.body || {};
+  if (typeof b.locked === "boolean") {
+    await db.query("UPDATE users SET locked=$2 WHERE id=$1", [req.uid, b.locked]);
+    if (b.locked) await db.query("UPDATE post_boosts SET until=now() WHERE user_id=$1 AND until > now()", [req.uid]); // a private account stops boosting at once
+    else await db.query("DELETE FROM follow_requests WHERE followee=$1", [req.uid]); // turning the lock off clears waiting requests
+  }
+  if (typeof b.suggest === "boolean") await db.query("UPDATE users SET no_suggest=$2 WHERE id=$1", [req.uid, !b.suggest]);
+  res.json({ ok: true });
+}));
+
+app.post("/api/follow-requests/:uid/approve", need, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  const f = req.params.uid.toLowerCase();
+  const r = await db.query("DELETE FROM follow_requests WHERE follower=$1 AND followee=$2 RETURNING follower", [f, req.uid]);
+  if (!r.rowCount) return bad(res, "This request is no longer there.", 404);
+  await db.query("INSERT INTO follows(follower,followee) VALUES($1,$2) ON CONFLICT DO NOTHING", [f, req.uid]);
+  res.json({ ok: true });
+}));
+app.delete("/api/follow-requests/:uid", need, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  await db.query("DELETE FROM follow_requests WHERE follower=$1 AND followee=$2", [req.params.uid.toLowerCase(), req.uid]);
+  res.json({ ok: true });
+}));
+
+// ---- Paid boosts (Paystack). Money first, then reach. Reach counts people who do not follow the author. ----
+const BOOST_DEFAULT = { 1: { price: 50, reach: 200, repeat: 24 }, 2: { price: 90, reach: 300, repeat: 12 }, 3: { price: 120, reach: 400, repeat: 8 }, 4: { price: 150, reach: 500, repeat: 6 }, 5: { price: 180, reach: 600, repeat: 3 } };
+// Plans can be changed by the admin (admin.html). They are kept in the database.
+async function boostPlans() {
+  const r = await db.query("SELECT value FROM app_settings WHERE key='boost_plans'");
+  return r.rows[0] ? r.rows[0].value : BOOST_DEFAULT;
+}
+const APP_URL = process.env.APP_URL || "https://orivoclass.onrender.com/";
+const paystack = async (method, path, body) => {
+  const r = await fetch("https://api.paystack.co" + path, { method, headers: { Authorization: "Bearer " + process.env.PAYSTACK_SECRET_KEY, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  return { ok: r.ok, json: await r.json().catch(() => ({})) };
+};
+app.get("/api/boosts/plans", need, wrap(async (req, res) => { const P = await boostPlans(); res.json({ paid: !!process.env.PAYSTACK_SECRET_KEY, plans: Object.entries(P).map(([d, p]) => ({ days: +d, ...p })) }); }));
+app.post("/api/boosts/checkout", need, boostLimit, wrap(async (req, res) => {
+  if (!process.env.PAYSTACK_SECRET_KEY) return bad(res, "Payments are not set up yet.", 503);
+  const plan = (await boostPlans())[String(Number(req.body.days))];
+  if (!plan) return bad(res, "Choose 1 to 5 days.");
+  if (!numId(req.body.post_id)) return bad(res, "Invalid id.");
+  if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot boost posts for now.", 403);
+  const me = (await db.query("SELECT locked FROM users WHERE id=$1", [req.uid])).rows[0];
+  if (me && me.locked) return bad(res, "Private accounts cannot boost. Turn off Private account in Privacy to boost posts.", 403);
+  const p = (await db.query("SELECT id FROM posts WHERE id=$1 AND user_id=$2 AND NOT removed", [req.body.post_id, req.uid])).rows[0];
+  if (!p) return bad(res, "Post not found.", 404);
+  if ((await db.query("SELECT 1 FROM boost_campaigns WHERE post_id=$1 AND ends_at > now()", [p.id])).rowCount) return bad(res, "This post is already boosted.", 409);
+  const ref = "ORB" + crypto.randomBytes(9).toString("hex");
+  await db.query("INSERT INTO boost_orders(reference,user_id,post_id,days,amount,status,reach,repeat_hours) VALUES($1,$2,$3,$4,$5,'pending',$6,$7)", [ref, req.uid, p.id, Number(req.body.days), plan.price, plan.reach, plan.repeat]);
+  const email = "u" + req.uid.replace(/-/g, "").slice(0, 16) + "@orivoclass.app"; // Paystack needs an email; replace with the real one if you collect it
+  const r = await paystack("POST", "/transaction/initialize", { email, amount: plan.price * 100, currency: "KES", reference: ref, callback_url: APP_URL, metadata: { kind: "boost", post_id: p.id, days: Number(req.body.days) } });
+  if (!r.ok || !r.json.status) { await db.query("UPDATE boost_orders SET status='failed' WHERE reference=$1", [ref]); return bad(res, "Could not start the payment. Try again.", 502); }
+  res.json({ reference: ref, authorization_url: r.json.data.authorization_url });
+}));
+// Called when the person comes back from Paystack: checks the payment with Paystack itself before turning the boost on.
+app.post("/api/boosts/verify", need, wrap(async (req, res) => {
+  const ref = String(req.body.reference || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40);
+  const o = (await db.query("SELECT * FROM boost_orders WHERE reference=$1 AND user_id=$2", [ref, req.uid])).rows[0];
+  if (!o) return bad(res, "Payment not found.", 404);
+  if (o.status === "paid") return res.json({ ok: true, status: "paid" });
+  const r = await paystack("GET", "/transaction/verify/" + ref);
+  const d = (r.json && r.json.data) || {};
+  if (!r.ok || d.status !== "success") return res.json({ ok: false, status: d.status || "pending" });
+  if (Number(d.amount) !== o.amount * 100 || d.currency !== "KES") { await db.query("UPDATE boost_orders SET status='mismatch' WHERE reference=$1", [ref]); return bad(res, "The payment does not match this plan.", 400); }
+  const done = await db.query("UPDATE boost_orders SET status='paid', paid_at=now() WHERE reference=$1 AND status<>'paid' RETURNING reference", [ref]);
+  if (done.rowCount) { // turn the boost on exactly once
+    await db.query("INSERT INTO boost_campaigns(post_id,user_id,days,reach_max,repeat_hours,starts_at,ends_at,reference) VALUES($1,$2,$3,$4,$5,now(), now() + make_interval(days => $3), $6)", [o.post_id, o.user_id, o.days, o.reach, o.repeat_hours, ref]);
+    await db.query("INSERT INTO post_boosts(post_id,user_id,until) VALUES($1,$2,now() + make_interval(days => $3)) ON CONFLICT (post_id) DO UPDATE SET until=EXCLUDED.until, user_id=EXCLUDED.user_id", [o.post_id, o.user_id, o.days]);
+  }
+  res.json({ ok: true, status: "paid" });
+}));
+// Your boosts: how many people outside your followers they reached, and until when.
+app.get("/api/boosts/mine", need, wrap(async (req, res) => {
+  const r = await db.query(
+    `SELECT c.id, c.post_id, c.days, c.reach_max, c.ends_at, p.body,
+       (SELECT count(DISTINCT bv.viewer) FROM boost_views bv WHERE bv.campaign_id=c.id)::int AS reach_used
+     FROM boost_campaigns c JOIN posts p ON p.id=c.post_id WHERE c.user_id=$1 ORDER BY c.id DESC LIMIT 20`, [req.uid]);
+  res.json({ campaigns: r.rows });
+}));
+// Which paid boosts should this person see right now (at most 2 boosted posts; each person sees a boost at most twice).
+async function boostsFor(uid) {
+  const r = await db.query(
+    `SELECT ${POST_COLS}, c.id AS cid FROM boost_campaigns c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.user_id
+     WHERE ${POST_OK} AND p.audience='public' AND c.starts_at <= now() AND c.ends_at > now() AND c.user_id<>$1
+       AND NOT EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id)
+       AND (SELECT count(DISTINCT bv.viewer) FROM boost_views bv WHERE bv.campaign_id=c.id) < c.reach_max
+       AND (SELECT count(*) FROM boost_views bv WHERE bv.campaign_id=c.id AND bv.viewer=$1) < 2
+       AND NOT EXISTS (SELECT 1 FROM boost_views bv WHERE bv.campaign_id=c.id AND bv.viewer=$1 AND bv.shown_at > now() - make_interval(hours => c.repeat_hours))
+     ORDER BY c.starts_at DESC LIMIT 2`, [uid]);
+  return r.rows;
+}
+
+// Search for accounts by name (shown in the Feed search bar).
+app.get("/api/search", need, wrap(async (req, res) => {
+  const q = String(req.query.q || "").trim().slice(0, 40);
+  if (q.length < 2) return res.json({ people: [] });
+  const like = "%" + q.replace(/[\\%_]/g, (m) => "\\" + m) + "%";
+  const r = await db.query(
+    `SELECT u.id, u.name, u.locked, (SELECT count(*)::int FROM follows f WHERE f.followee=u.id) AS followers,
+       EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=u.id) AS am_following
+     FROM users u WHERE u.id<>$1 AND NOT u.banned AND u.name ILIKE $2
+       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=u.id) OR (b.blocker=u.id AND b.blocked=$1))
+     ORDER BY followers DESC, u.name LIMIT 20`, [req.uid, like]);
+  res.json({ people: r.rows });
+}));
+// "Suggested for you": people with public accounts who posted in the last week, who you do not follow yet.
+// Nobody is suggested to a person they have blocked or who blocked them, and nobody with suggestions turned off or a private account.
+app.get("/api/suggestions", need, wrap(async (req, res) => {
+  const r = await db.query(
+    `SELECT u.id, u.name, (SELECT count(*)::int FROM follows f WHERE f.followee=u.id) AS followers
+     FROM users u
+     WHERE u.id<>$1 AND NOT u.banned AND NOT u.locked AND NOT u.no_suggest
+       AND (u.rest_until IS NULL OR u.rest_until < now())
+       AND EXISTS (SELECT 1 FROM posts p WHERE p.user_id=u.id AND NOT p.removed AND p.created_at > now() - interval '7 days')
+       AND NOT EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=u.id)
+       AND NOT EXISTS (SELECT 1 FROM follow_requests fr WHERE fr.follower=$1 AND fr.followee=u.id)
+       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=u.id) OR (b.blocker=u.id AND b.blocked=$1))
+     ORDER BY followers DESC, random() LIMIT 8`, [req.uid]);
+  res.json({ people: r.rows });
+}));
+// Admin: read and change the boost plans (price in KSh, reach = people outside followers, repeat = hours before a person sees the same boost again).
+app.get("/api/admin/boost-plans", adminLimit, adminOnly, wrap(async (req, res) => res.json({ plans: await boostPlans() })));
+app.put("/api/admin/boost-plans", adminLimit, adminOnly, wrap(async (req, res) => {
+  const out = {};
+  for (let d = 1; d <= 5; d++) {
+    const p = (req.body.plans || {})[String(d)] || {};
+    const price = Math.round(Number(p.price)), reach = Math.round(Number(p.reach)), repeat = Math.round(Number(p.repeat));
+    if (!(price >= 10 && price <= 100000) || !(reach >= 10 && reach <= 100000) || !(repeat >= 1 && repeat <= 168)) return bad(res, "Day " + d + ": check the price (10 to 100000), reach (10 to 100000) and repeat hours (1 to 168).");
+    out[String(d)] = { price, reach, repeat };
+  }
+  await db.query("INSERT INTO app_settings(key,value,updated_at) VALUES('boost_plans',$1,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()", [JSON.stringify(out)]);
+  res.json({ ok: true, plans: out });
+}));
+// END OF PART 10
+   
