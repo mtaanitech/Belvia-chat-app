@@ -103,7 +103,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -122,6 +122,7 @@ const tm = (t) => { const d = new Date(t), n = new Date(); return d.toDateString
 const toast = (m) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; app.appendChild(t); setTimeout(() => t.remove(), 2600); };
 const ico = (p) => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + p + '"/></svg>';
 const SRCH = "M20 20l-4-4M11 4a7 7 0 100 14 7 7 0 000-14z";
+const IC_MENU = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 const IC_BACK = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
 const IC_PH = ico("M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"), IC_VD = ico("M23 7l-7 5 7 5zM3 5h11a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z"), IC_SEND = ico("M22 2L11 13M22 2l-7 20-4-9-9-4z");
 const IC_PIN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.5 2l7.5 7.5-2 1.2-2.6-.6-3.2 3.2.4 4.3-1.7 1.7-4-4L3 21l-1-1 5.2-5.1-4-4 1.7-1.7 4.3.4 3.2-3.2-.6-2.6z"/></svg>';
@@ -484,26 +485,35 @@ setInterval(checkUpdate, 15 * 60000);
 const SIZE_OK = (d) => d.length <= 160000;
 const IC_CMT = ico("M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z");
 const IC_SHARE = ico("M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13");
+const IC_DOTS = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>';
 function postCard(p) {
   const me = p.user_id == U.id, clk = p.created_at ? tm(p.created_at) : "", r = p.my_reaction;
   const who = p.audience == "followers" ? ' · <span class="mut">Followers only</span>' : "";
+  const top = (p.top_reactions || []).slice(0, 3).join("");
+  const photo = p._img ? '<img alt="" decoding="async" src="' + esc(p._img) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
     '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b><small class="mut">' + clk + who + "</small></span></button>" +
-    (me ? '<button class="ib" data-a="postdel" data-id="' + p.id + '" aria-label="Delete post" style="color:var(--mu)">🗑</button>' : (p.following ? "" : '<button class="btn o" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + p.user_id + '">Follow</button>')) + "</div>" +
+    (!me && !p.following ? '<button class="btn o" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + p.user_id + '">Follow</button>' : "") +
+    '<button class="ib" data-a="pmenu" data-id="' + p.id + '" aria-label="More" style="color:var(--mu)">' + IC_DOTS + "</button></div>" +
     (p.sponsored ? '<span class="pill" style="align-self:flex-start">Sponsored</span>' : "") +
     (p.body ? '<div data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "") +
-    (p.has_image ? '<div data-img="' + p.id + '" style="border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="note">Loading photo…</span></div>' : "") +
-    '<div style="display:flex;gap:20px;align-items:center;color:var(--mu);font-size:14px">' +
-      '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;min-width:30px;font:inherit;font-size:19px;line-height:1;color:' + (r ? "var(--ink)" : "var(--mu)") + '">' + (r || "♡") + "</button>" +
+    (p.has_image ? '<div data-img="' + p.id + '" style="border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
+    '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px">' +
+      '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
       '<button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px">' + IC_CMT + "<span>" + p.comments + "</span></button>" +
-      '<button data-a="share" data-id="' + p.id + '" aria-label="Share" style="border:0;background:none;padding:6px 0;color:var(--mu);display:flex">' + IC_SHARE + "</button>" +
-      (me ? '<button data-a="boostpick" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;margin-left:auto;font:inherit;font-weight:600;color:' + (p.boosted ? "var(--ac)" : "var(--mu)") + '">' + (p.boosted ? "Boosted" : "Boost") + "</button>" : '<button data-a="postrep" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;margin-left:auto">Report</button>') +
     "</div></article>";
+}
+function pmenuView() {
+  const id = V.pmid, p = findPost(id); if (!p) return "";
+  const me = p.user_id == U.id;
+  const item = (k, label, color) => '<button data-a="pmact" data-k="' + k + '" data-id="' + id + '" style="border:0;background:none;text-align:left;padding:14px 20px;font:inherit;font-size:16px;color:' + (color || "var(--ink)") + ';width:100%">' + label + "</button>";
+  const items = me ? item("boost", "Boost post") + item("share", "Share") + item("copy", "Copy link") + item("delete", "Delete post", "var(--cr)") : item("share", "Share") + item("copy", "Copy link") + item("report", "Report post", "var(--cr)");
+  return '<div data-a="pmclose" style="position:absolute;inset:0;background:rgba(16,24,40,.35);z-index:45;display:flex;align-items:flex-end"><div style="width:100%;background:var(--bg);border-radius:18px 18px 0 0;padding:8px 0 calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(16,24,40,.2)"><div style="width:44px;height:5px;border-radius:3px;background:var(--ln);margin:6px auto 8px"></div>' + items + "</div></div>";
 }
 function feedTab() {
   const tabs = '<div class="chips" style="padding:10px 14px 4px">' + [["all", "For you"], ["following", "Following"]].map((x) => '<button class="chip ' + (FSC == x[0] ? "on" : "") + '" data-a="fsc" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '<span style="flex:1"></span><button class="chip" data-a="dash">Dashboard</button></div>';
-  const search = '<input id="fsearch" class="srch" style="margin-top:10px" placeholder="Search accounts" aria-label="Search accounts" autocomplete="off" value="' + esc(FQ) + '">';
-  return search + tabs + '<div id="feedl">' + feedListHtml() + '</div><div id="feedend" style="height:24px"></div>';
+  const row = '<div style="display:flex;gap:10px;align-items:center;padding:0 16px"><input id="fsearch" class="srch" style="margin:10px 0 0;width:auto;flex:1" placeholder="Search accounts" aria-label="Search accounts" autocomplete="off" value="' + esc(FQ) + '"><button data-a="post" aria-label="New post" style="flex:none;width:44px;height:44px;margin-top:10px;border-radius:22px;border:0;background:var(--ac);color:var(--on);font-size:26px;line-height:1">+</button></div>';
+  return row + tabs + '<div id="feedl">' + feedListHtml() + '</div><div id="feedend" style="height:24px"></div>';
 }
 function personRow(x) {
   return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ln)"><button data-a="profopen" data-id="' + x.id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:var(--ink)">' + av(x.name, 44, false, x.id) + '<span style="text-align:left;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.name) + '</b><small class="mut">' + x.followers + (x.followers == 1 ? " follower" : " followers") + (x.locked ? " · Private" : "") + "</small></span></button>" +
@@ -519,6 +529,8 @@ async function loadFeed(more) {
   if (FEEDBUSY) return; FEEDBUSY = true;
   try {
     const j = await api("/feed?scope=" + FSC + "&offset=" + (more ? FEED.length : 0));
+    const known = new Map(FEED.filter((x) => x._img).map((x) => [x.id, x._img]));
+    j.posts.forEach((p) => { if (known.has(p.id)) p._img = known.get(p.id); }); // photos already loaded are kept, not fetched again
     const fresh = j.posts.filter((p) => !FEED.some((x) => x.id == p.id));
     if (more && !fresh.length) FEEDIDLE = Date.now() + 4000; // nothing new came back: pause before asking again
     FEED = more ? FEED.concat(fresh) : j.posts; FEEDOK = true;
@@ -555,12 +567,13 @@ function markSeen(id, el) {
 }
 
 async function loadPostImages() {
-  for (const p of FEED) {
-    if (!p.has_image || p._img) continue;
-    const el = document.querySelector('[data-img="' + p.id + '"]'); if (!el) continue;
-    try { const j = await api("/posts/" + p.id + "/image"); p._img = j.image; el.innerHTML = '<img alt="" decoding="async" src="' + esc(j.image) + '" style="width:100%;display:block;border-radius:12px">'; }
-    catch (e) { el.innerHTML = '<span class="note">Photo not available</span>'; }
-  }
+  const todo = FEED.filter((p) => p.has_image && !p._img && document.querySelector('[data-img="' + p.id + '"]'));
+  await Promise.all(todo.map(async (p) => {
+    if (p._loading) return; p._loading = true;
+    try { const j = await api("/posts/" + p.id + "/image"); p._img = j.image; const el = document.querySelector('[data-img="' + p.id + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(p._img) + '" style="width:100%;display:block;border-radius:12px">'; }
+    catch (e) { const el = document.querySelector('[data-img="' + p.id + '"]'); if (el) el.innerHTML = '<span class="note">Photo not available</span>'; }
+    finally { p._loading = false; }
+  }));
 }
 function composeView() {
   const C = CMP, ok = (C.body || "").trim() || C.image, aud = C.aud || "public";
@@ -577,25 +590,40 @@ async function shareCmp() {
 }
 function commentsView() {
   const bar = CMTS && CMTS.replyTo ? 'Replying to <b>' + esc(CMTS.replyTo.name) + '</b> <button class="lnk" data-a="cmtrpx" style="min-height:30px">✕</button>' : "";
-  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div><div id="cmtrp" class="rp">' + bar + '</div><div class="comp"><input id="cmtin" placeholder="Write a comment" maxlength="300" autocomplete="off"><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + "</button></div></div>";
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div>' +
+    '<div id="cmtrp" class="rp">' + bar + '</div><div id="cmtprev">' + cmtPrevHtml() + '</div>' +
+    '<div class="comp"><button class="ib" data-a="cmtpick" aria-label="Add a photo" style="font-size:30px;line-height:1;color:var(--ac);min-width:40px">+</button><input id="cmtin" placeholder="Write a comment" maxlength="300" autocomplete="off"><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + '</button></div>' +
+    '<input id="cmtfile" type="file" accept="image/*" style="display:none"></div>';
 }
+function cmtPrevHtml() {
+  return CMTIMG ? '<div class="rp" style="justify-content:flex-start;gap:10px"><img alt="" src="' + esc(CMTIMG) + '" style="height:48px;width:48px;object-fit:cover;border-radius:10px"><span style="flex:1">Photo ready to send</span><button class="lnk" data-a="cmtimgx" style="min-height:30px">✕</button></div>' : "";
+}
+function cmtPrev() { const el = $("cmtprev"); if (el) el.innerHTML = cmtPrevHtml(); }
 function cmtsHtml() {
   const list = CMTS.list || [];
   if (!list.length) return '<div class="empty"><b>No comments yet</b>Be the first to comment.</div>';
   const ids = new Set(list.map((c) => c.id));
   const tops = list.filter((c) => !c.parent_id || !ids.has(c.parent_id));
   const kids = {}; list.forEach((c) => { if (c.parent_id && ids.has(c.parent_id)) (kids[c.parent_id] = kids[c.parent_id] || []).push(c); });
+  const pic = (c) => c.has_image ? '<div data-cimg="' + c.id + '" style="margin-top:6px;border-radius:12px;overflow:hidden;background:var(--sf);max-width:260px;min-height:80px">' + (c._img ? '<img alt="" decoding="async" src="' + esc(c._img) + '" style="width:100%;display:block">' : '<span class="note">Loading photo…</span>') + "</div>" : "";
   const row = (c, sub) => '<div style="display:flex;gap:10px;padding:10px 14px;align-items:flex-start;' + (sub ? "padding-left:58px;" : "") + '">' + av(c.name, sub ? 28 : 34, false, c.user_id) +
-    '<div style="flex:1;min-width:0"><b style="font-size:14px">' + esc(c.name) + '</b> <small class="mut">' + tm(c.created_at) + '</small><div style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(c.body) + '</div>' +
-    '<button data-a="cmtreply" data-id="' + c.id + '" data-n="' + esc(c.name) + '" style="border:0;background:none;padding:4px 0 0;color:var(--mu);font-size:12px;font-weight:600">Reply</button></div>' +
+    '<div style="flex:1;min-width:0"><b style="font-size:14px">' + esc(c.name) + '</b> <small class="mut">' + tm(c.created_at) + '</small>' + (c.body ? '<div style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(c.body) + "</div>" : "") + pic(c) +
+    '<div style="display:flex;gap:14px;align-items:center;margin-top:4px"><button data-a="cmtreply" data-id="' + c.id + '" data-n="' + esc(c.name) + '" style="border:0;background:none;padding:4px 0 0;color:var(--mu);font-size:12px;font-weight:600">Reply</button></div></div>' +
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button data-a="cmtlike" data-id="' + c.id + '" aria-label="Like" style="border:0;background:none;padding:4px;font-size:16px;color:' + (c.liked ? "var(--cr)" : "var(--mu)") + '">' + (c.liked ? "♥" : "♡") + "</button>" + (c.likes ? '<small class="mut">' + c.likes + "</small>" : "") + "</div>" +
     (c.user_id == U.id || CMTS.mine ? '<button class="ib" style="min-width:32px;min-height:32px;color:var(--mu)" data-a="cmtdel" data-id="' + c.id + '" aria-label="Delete">🗑</button>' : "") + "</div>";
   return tops.map((c) => row(c, false) + (kids[c.id] || []).map((k) => row(k, true)).join("")).join("");
 }
-function cmtBar() { const el = $("cmtrp"); if (!el) return; const r = CMTS && CMTS.replyTo; el.innerHTML = r ? 'Replying to <b>' + esc(r.name) + '</b> <button class="lnk" data-a="cmtrpx" style="min-height:30px">✕</button>' : ""; }
+async function loadCommentImages() {
+  const todo = (CMTS && CMTS.list || []).filter((c) => c.has_image && !c._img && document.querySelector('[data-cimg="' + c.id + '"]'));
+  await Promise.all(todo.map(async (c) => {
+    try { const j = await api("/comments/" + c.id + "/image"); c._img = j.image; const el = document.querySelector('[data-cimg="' + c.id + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(c._img) + '" style="width:100%;display:block">'; }
+    catch (e) { const el = document.querySelector('[data-cimg="' + c.id + '"]'); if (el) el.innerHTML = '<span class="note">Photo not available</span>'; }
+  }));
+}
 async function openComments(id) { CMTS = { id, list: [], mine: false }; V.ov = "cmts"; render(); await refreshComments(); }
 async function refreshComments() {
   if (!CMTS) return; const id = CMTS.id;
-  try { const j = await api("/posts/" + id + "/comments"); if (!CMTS || CMTS.id != id) return; CMTS.list = j.comments; CMTS.mine = j.post_owner == U.id; const b = $("cmtb"); if (b && V.ov == "cmts") b.innerHTML = cmtsHtml(); }
+  try { const j = await api("/posts/" + id + "/comments"); if (!CMTS || CMTS.id != id) return; CMTS.list.forEach((c) => {}); const old = new Map((CMTS.list || []).filter((x) => x._img).map((x) => [x.id, x._img])); CMTS.list = j.comments.map((c) => (old.has(c.id) ? { ...c, _img: old.get(c.id) } : c)); CMTS.mine = j.post_owner == U.id; const b = $("cmtb"); if (b && V.ov == "cmts") { b.innerHTML = cmtsHtml(); loadCommentImages(); } }
   catch (e) { toast(e.message); }
 }
 function rqHtml() {
@@ -659,7 +687,7 @@ async function openProfile(id) {
   try { PROF = await api("/profile/" + id); PROFP = (await api("/users/" + id + "/posts")).posts; } catch (e) { toast(e.message); V.ov = null; PROF = null; }
   if (V.ov == "prof" && V.profId == id) { render(); loadPostImages(); }
 }
-const REACTS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
+const REACTS = ["❤️", "😂", "😭", "🥰", "😮", "👍", "🔥"];
 const findPost = (id) => FEED.find((x) => x.id == id) || PROFP.find((x) => x.id == id);
 function paintReact(id, r) { document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = r || "♡"; b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
 async function setReaction(id, emoji) {
@@ -1071,7 +1099,7 @@ function meTab() {
 }
 function topbar() {
   const T4 = [["feed", "Feed"], ["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
-  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="My profile" style="padding:0">' + av(U.name, 40, false, U.id) + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
+  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="Menu" style="padding:0;color:var(--ink)">' + IC_MENU + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
     T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div>";
 }
 function main() {
@@ -1083,7 +1111,7 @@ function main() {
   }
   else if (t == "status") b = statusTab();
   else if (t == "calls") b = callsTab();
-  else if (t == "feed") { b = feedTab(); f = '<button class="fab" data-a="post" aria-label="New post">+</button>'; }
+  else if (t == "feed") { b = feedTab(); }
   else if (t == "singles") b = singlesTab();
   else b = meTab();
   return topbar() + '<div class="body">' + b + "</div>" + f;
@@ -1295,6 +1323,7 @@ function overlays() {
   if (o == "cmts") return commentsView();
   if (o == "dash") return dashView();
   if (o == "prof") return profView();
+  if (o == "pmenu") return pmenuView();
   if (o == "reqs") return reqsView();
   if (o == "bpick") return boostPickView();
   if (o == "dmo") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">' + IC_BACK + '</button><h1>Disappearing messages</h1></div><div class="body"><div class="cd"><span class="mut">New messages in this chat will be deleted after the time you choose. This applies to both people. Messages sent before stay.</span>' + [[0, "Off"], [86400, "24 hours"], [604800, "7 days"]].map((x) => '<button class="btn ' + (TT == x[0] ? "" : "o") + '" data-a="dmset" data-s="' + x[0] + '">' + x[1] + "</button>").join("") + "</div></div></div>";
@@ -1373,7 +1402,24 @@ app.addEventListener("click", async (e) => {
     if (a == "cmtreply") { CMTS.replyTo = { id, name: b.dataset.n }; cmtBar(); const i = $("cmtin"); if (i) i.focus(); return; }
     if (a == "cmtrpx") { CMTS.replyTo = null; cmtBar(); return; }
     if (a == "react") { document.querySelectorAll("#rpick").forEach((x) => x.remove()); return setReaction(id, b.dataset.e); }
-    if (a == "cmtsend") { const t = $("cmtin").value.trim(); if (!t || !CMTS) return; $("cmtin").value = ""; const pr = CMTS.replyTo ? CMTS.replyTo.id : null; try { await api("/posts/" + CMTS.id + "/comments", "POST", { body: t, parent_id: pr }); CMTS.replyTo = null; cmtBar(); await refreshComments(); } catch (e) { toast(e.message); $("cmtin").value = t; } return; }
+    if (a == "cmtsend") {
+      const t = $("cmtin").value.trim(); if ((!t && !CMTIMG) || !CMTS) return;
+      const img = CMTIMG, pr = CMTS.replyTo ? CMTS.replyTo.id : null;
+      $("cmtin").value = ""; CMTIMG = ""; cmtPrev();
+      try { await api("/posts/" + CMTS.id + "/comments", "POST", { body: t, parent_id: pr, image: img || null }); CMTS.replyTo = null; cmtBar(); await refreshComments(); }
+      catch (e) { toast(e.message); $("cmtin").value = t; CMTIMG = img; cmtPrev(); }
+      return;
+    }
+    if (a == "cmtpick") { const f = $("cmtfile"); if (f) f.click(); return; }
+    if (a == "cmtimgx") { CMTIMG = ""; cmtPrev(); return; }
+    if (a == "cmtlike") {
+      const c = (CMTS && CMTS.list || []).find((x) => x.id == id); if (!c) return;
+      const on = !c.liked; c.liked = on; c.likes = (c.likes || 0) + (on ? 1 : -1);
+      const b2 = $("cmtb"); if (b2) { b2.innerHTML = cmtsHtml(); loadCommentImages(); }
+      try { const j = await api("/comments/" + id + "/like", "POST", { like: on }); c.liked = j.liked; c.likes = j.likes; const b3 = $("cmtb"); if (b3) b3.innerHTML = cmtsHtml(); loadCommentImages(); }
+      catch (e) { toast(e.message); }
+      return;
+    }
     if (a == "cmtdel") { try { await api("/comments/" + id, "DELETE"); await refreshComments(); } catch (e) { toast(e.message); } return; }
     if (a == "dash") return doDash();
     if (a == "dashx") { V.ov = null; DASH = null; return render(); }
@@ -1383,6 +1429,17 @@ app.addEventListener("click", async (e) => {
     if (a == "postrep") return doReport(id);
     if (a == "postdel") return doDelPost(id);
     if (a == "dtab") { DTAB = b.dataset.t; return render(); }
+    if (a == "pmenu") { V.pmid = id; V.ov = "pmenu"; return render(); }
+    if (a == "pmclose") { if (e.target !== b) return; V.ov = null; return render(); }
+    if (a == "pmact") {
+      const k = b.dataset.k, p = findPost(id); V.ov = null; render(); if (!p) return;
+      if (k == "boost") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (x) { toast(x.message); } } return render(); }
+      if (k == "share") return sharePost(id);
+      if (k == "copy") { const link = location.origin + location.pathname + "#post=" + id; if (navigator.clipboard) return navigator.clipboard.writeText(link).then(() => toast("Link copied"), () => toast("Copy is not available")); return toast("Copy is not available"); }
+      if (k == "delete") return doDelPost(id);
+      if (k == "report") return doReport(id);
+      return;
+    }
     if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
     if (a == "bpx") { V.ov = null; return render(); }
     if (a == "bpay") { try { const j = await api("/boosts/checkout", "POST", { post_id: id, days: +b.dataset.d }); try { localStorage.setItem("bv.pay", j.reference); } catch (e) {} location.href = j.authorization_url; } catch (e) { toast(e.message); } return; }
@@ -1626,6 +1683,7 @@ app.addEventListener("input", (e) => {
   else if (e.target.id == "msg" && V.scr == "chat" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
 });
 app.addEventListener("change", async (e) => {
+  if (e.target.id == "cmtfile" && e.target.files && e.target.files[0]) { try { CMTIMG = await fitImg(e.target.files[0]); cmtPrev(); } catch (err) { toast(err.message); } e.target.value = ""; return; }
   if (e.target.id == "plock" || e.target.id == "psug") { try { await api("/me/privacy", "PUT", { locked: $("plock").checked, suggest: $("psug").checked }); await loadExtra(); render(); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "cpf" && e.target.files && e.target.files[0]) { try { const d = await fitImg(e.target.files[0]); CMP = { body: $("cpb") ? $("cpb").value : CMP.body, image: d }; render(); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "aik") { try { const k = +e.target.value; await api("/ai/settings", "PUT", { keep: k }); AIKEEP = k; toast(k === 0 ? "AI chats will not be saved" : "Saved"); } catch (err) { toast(err.message); } return; }
