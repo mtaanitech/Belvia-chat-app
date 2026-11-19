@@ -134,7 +134,8 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
 // They are looked for next to server.js, in a folder called "public", or one folder above.
 const APP_FILES = ["index.html", "admin.html", "sw.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 let ICONS = {}; try { ICONS = require("./icons.js"); } catch (e) {} // icons kept as text in icons.js (optional)
-const appDir = [path.join(__dirname, "public"), __dirname, path.join(__dirname, "..")].find((d) => fs.existsSync(path.join(d, "index.html")));
+// The app files are taken from the repository root first (the newest copy), then from "public" or the backend folder. Old copies inside backend are ignored.
+const appDir = [path.join(__dirname, ".."), path.join(__dirname, "public"), __dirname].find((d) => fs.existsSync(path.join(d, "index.html")));
 if (!appDir) console.warn("App files (index.html and the others) were not found next to server.js, so the app page will not be shown.");
 for (const name of APP_FILES) {
   app.get(name === "index.html" ? ["/", "/index.html"] : ["/" + name], (req, res, next) => {
@@ -143,6 +144,7 @@ for (const name of APP_FILES) {
     next();
   });
 }
+
 // ---- SMS code (OTP) ----
 // DEV_SHOW_CODE=true  -> no SMS is sent, the code is returned to the app and shown on screen (testing only, NOT secure).
 // otherwise           -> the code is sent by SMS through Africa's Talking (AT_USERNAME, AT_API_KEY).
