@@ -423,7 +423,7 @@ app.post("/api/chats/:peer/disappear", need, wrap(async (req, res) => {
   res.json({ ok: true, ttl: sec });
 }));
 // END OF PART 2
-// ---- Chats and messages ----
+ // ---- Chats and messages ----
 app.get("/api/chats", need, wrap(async (req, res) => {
   const r = await db.query(
     `WITH m AS (
@@ -431,10 +431,11 @@ app.get("/api/chats", need, wrap(async (req, res) => {
          SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, CASE WHEN view_once THEN 'View once message' ELSE body END AS body, from_id, created_at
          FROM messages WHERE ((from_id=$1 AND NOT del_from) OR (to_id=$1 AND NOT del_to)) AND (expires_at IS NULL OR expires_at > now())
        ) x ORDER BY peer, id DESC)
-     SELECT m.*, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS display, (c.contact IS NOT NULL) AS saved, u.name AS pname,
+     SELECT m.*, (SELECT count(*)::int FROM messages x WHERE x.from_id=m.peer AND x.to_id=$1 AND x.read_at IS NULL AND NOT x.del_to AND (x.expires_at IS NULL OR x.expires_at > now())) AS unread, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS display, (c.contact IS NOT NULL) AS saved, u.name AS pname,
             EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs,
             COALESCE(p.pinned, false) AS pinned, COALESCE(p.archived, false) AS archived,
-            EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=m.peer) OR (b.blocker=m.peer AND b.blocked=$1)) AS blk
+            EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=m.peer) OR (b.blocker=m.peer AND b.blocked=$1)) AS blk,
+            (SELECT count(*)::int FROM messages x WHERE x.to_id=$1 AND x.from_id=m.peer AND x.read_at IS NULL AND NOT x.del_to AND (x.expires_at IS NULL OR x.expires_at > now())) AS unread
      FROM m JOIN users u ON u.id = m.peer
      LEFT JOIN contacts c ON c.owner=$1 AND c.contact=m.peer
      LEFT JOIN chat_prefs p ON p.owner=$1 AND p.peer=m.peer
@@ -602,6 +603,8 @@ app.delete("/api/status/:id", need, wrap(async (req, res) => {
   await db.query("DELETE FROM statuses WHERE id=$1 AND user_id=$2", [req.params.id, req.uid]);
   res.json({ ok: true });
 }));
+// END OF PART 3
+   
 // END OF PART 3
 // ---- Moderation: warnings, restrictions, resting periods, bans and appeals ----
 // Steps follow the Community Rules: warning -> 24h restriction -> resting period (3 or 7 days) -> permanent ban.
@@ -2010,5 +2013,22 @@ app.get("/api/comments/:id/image", need, wrap(async (req, res) => {
     WHERE c.id=$2 AND c.image IS NOT NULL AND NOT c.removed AND ${POST_OK}`, [req.uid, req.params.id])).rows[0];
   if (!r) return bad(res, "Not found.", 404);
   res.json({ image: r.image });
+}));
+// Test: sends one notification to every device this person turned notifications on for, and says what happened.
+app.post("/api/push/test", need, wrap(async (req, res) => {
+  if (!webpush) return bad(res, "Notifications are not set up on the server yet. Check the Render logs for 'Push notifications are on.'", 503);
+  const subs = (await db.query("SELECT endpoint, p256dh, auth FROM push_subs WHERE user_id=$1", [req.uid])).rows;
+  if (!subs.length) return res.json({ subscriptions: 0, sent: 0, failed: [], message: "This device is not subscribed. Turn notifications on first." });
+  let sent = 0; const failed = [];
+  for (const x of subs) {
+    try {
+      await webpush.sendNotification({ endpoint: x.endpoint, keys: { p256dh: x.p256dh, auth: x.auth } }, JSON.stringify({ title: "Orivoclass", body: "Test notification. It works!", tag: "test" }), { TTL: 300 });
+      sent++;
+    } catch (e) {
+      failed.push(String(e.statusCode || e.message));
+      if (e.statusCode === 404 || e.statusCode === 410) await db.query("DELETE FROM push_subs WHERE endpoint=$1", [x.endpoint]);
+    }
+  }
+  res.json({ subscriptions: subs.length, sent, failed });
 }));
 // END OF PART 10
