@@ -452,6 +452,7 @@ app.get("/api/messages/:peer", need, wrap(async (req, res) => {
     `SELECT * FROM (
        SELECT id, from_id, to_id, CASE WHEN view_once THEN NULL ELSE body END AS body, view_once, opened_at, forwarded, reply, reaction, read_at, created_at, expires_at FROM messages
        WHERE ((from_id=$1 AND to_id=$2 AND NOT del_from) OR (from_id=$2 AND to_id=$1 AND NOT del_to)) AND (expires_at IS NULL OR expires_at > now())
+       AND NOT EXISTS (SELECT 1 FROM message_hidden h WHERE h.message_id=messages.id AND h.user_id=$1)
        ORDER BY id DESC LIMIT 200) t ORDER BY id`, [req.uid, req.params.peer]);
   res.json({ messages: r.rows, ttl: await chatTtl(req.uid, req.params.peer) });
 }));
@@ -477,7 +478,7 @@ app.post("/api/messages", need, wrap(async (req, res) => {
   await db.query("UPDATE chat_prefs SET archived=false WHERE (owner=$1 AND peer=$2) OR (owner=$2 AND peer=$1)", [req.uid, req.body.to]);
   if (webpush && !hideFromThem) // never include the message text
     db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, req.body.to])
-      .then((q) => notify(req.body.to, "msg", { title: (q.rows[0] && q.rows[0].n) || "Orivoclass", body: "New message", tag: "m" + req.uid })).catch(() => {});
+      .then((q) => notify(req.body.to, "msg", { title: (q.rows[0] && q.rows[0].n) || "Orivoclass", body: "New message", tag: "m" + req.uid, type: "msg", peer: req.uid })).catch(() => {});
   res.json({ id: r.rows[0].id });
 }));
 
@@ -604,7 +605,187 @@ app.delete("/api/status/:id", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 // END OF PART 3
-   
+// ---- Chats and messages ----
+app.get("/api/chats", need, wrap(async (req, res) => {
+  const r = await db.query(
+    `WITH m AS (
+       SELECT DISTINCT ON (peer) peer, id, body, from_id, created_at FROM (
+         SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, CASE WHEN view_once THEN 'View once message' ELSE body END AS body, from_id, created_at
+         FROM messages WHERE ((from_id=$1 AND NOT del_from) OR (to_id=$1 AND NOT del_to)) AND (expires_at IS NULL OR expires_at > now())
+       ) x ORDER BY peer, id DESC)
+     SELECT m.*, (SELECT count(*)::int FROM messages x WHERE x.from_id=m.peer AND x.to_id=$1 AND x.read_at IS NULL AND NOT x.del_to AND (x.expires_at IS NULL OR x.expires_at > now())) AS unread, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS display, (c.contact IS NOT NULL) AS saved, u.name AS pname,
+            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs,
+            COALESCE(p.pinned, false) AS pinned, COALESCE(p.archived, false) AS archived,
+            EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=m.peer) OR (b.blocker=m.peer AND b.blocked=$1)) AS blk,
+            (SELECT count(*)::int FROM messages x WHERE x.to_id=$1 AND x.from_id=m.peer AND x.read_at IS NULL AND NOT x.del_to AND (x.expires_at IS NULL OR x.expires_at > now())) AS unread
+     FROM m JOIN users u ON u.id = m.peer
+     LEFT JOIN contacts c ON c.owner=$1 AND c.contact=m.peer
+     LEFT JOIN chat_prefs p ON p.owner=$1 AND p.peer=m.peer
+     ORDER BY m.id DESC`, [req.uid]);
+  res.json({
+    chats: r.rows.map((x) => ({ ...x, ...presence(x, x.theirs, x.blk), typing: !x.blk && isTyping(x.peer, req.uid), seen_privacy: undefined, theirs: undefined, blk: undefined })),
+  });
+}));
+
+app.get("/api/messages/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  await db.query("UPDATE messages SET read_at=now() WHERE to_id=$1 AND from_id=$2 AND read_at IS NULL AND NOT del_to", [req.uid, req.params.peer]);
+  const r = await db.query(
+    `SELECT * FROM (
+       SELECT id, from_id, to_id, CASE WHEN view_once THEN NULL ELSE body END AS body, view_once, opened_at, forwarded, reply, reaction, read_at, created_at, expires_at FROM messages
+       WHERE ((from_id=$1 AND to_id=$2 AND NOT del_from) OR (from_id=$2 AND to_id=$1 AND NOT del_to)) AND (expires_at IS NULL OR expires_at > now())
+       AND NOT EXISTS (SELECT 1 FROM message_hidden h WHERE h.message_id=messages.id AND h.user_id=$1)
+       ORDER BY id DESC LIMIT 200) t ORDER BY id`, [req.uid, req.params.peer]);
+  res.json({ messages: r.rows, ttl: await chatTtl(req.uid, req.params.peer) });
+}));
+
+app.post("/api/messages", need, wrap(async (req, res) => {
+  const body = String(req.body.body || "").trim().slice(0, 4000);
+  const reply = req.body.reply ? String(req.body.reply).slice(0, 120) : null;
+  if (!body) return bad(res, "Message is empty.");
+  if (!isId(req.body.to) || req.body.to === req.uid) return bad(res, "Invalid recipient.");
+  if (req.body.once && !req.body.fwd) {
+    const ru = (await db.query("SELECT restricted_until FROM users WHERE id=$1", [req.uid])).rows[0];
+    if (ru && ru.restricted_until && new Date(ru.restricted_until) > new Date()) return bad(res, "Your account is restricted, so you cannot send View Once messages for now.", 403);
+  }
+  const ok = await db.query("SELECT 1 FROM users WHERE id=$1", [req.body.to]);
+  if (!ok.rowCount) return bad(res, "Recipient not found.", 404);
+  const bl = (await db.query("SELECT blocker FROM blocks WHERE (blocker=$1 AND blocked=$2) OR (blocker=$2 AND blocked=$1)", [req.uid, req.body.to])).rows;
+  if (bl.some((x) => x.blocker === req.uid)) return bad(res, "Unblock this person to send messages.", 403);
+  const ttl = await chatTtl(req.uid, req.body.to);
+  const hideFromThem = bl.length > 0; // if they blocked you, the message is saved for you but never delivered
+  const r = await db.query(
+    "INSERT INTO messages(from_id,to_id,body,reply,view_once,forwarded,del_to,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+    [req.uid, req.body.to, body, reply, !!req.body.once && !req.body.fwd, !!req.body.fwd, hideFromThem, ttl ? new Date(Date.now() + ttl * 1000) : null]);
+  await db.query("UPDATE chat_prefs SET archived=false WHERE (owner=$1 AND peer=$2) OR (owner=$2 AND peer=$1)", [req.uid, req.body.to]);
+  if (webpush && !hideFromThem) // never include the message text
+    db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, req.body.to])
+      .then((q) => notify(req.body.to, "msg", { title: (q.rows[0] && q.rows[0].n) || "Orivoclass", body: "New message", tag: "m" + req.uid, type: "msg", peer: req.uid })).catch(() => {});
+  res.json({ id: r.rows[0].id });
+}));
+
+app.post("/api/typing/:peer", need, (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  typing.set(req.uid + ">" + req.params.peer, Date.now());
+  res.json({ ok: true });
+});
+
+app.get("/api/presence/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  const r = await db.query(
+    `SELECT u.last_seen, u.seen_privacy,
+            EXISTS (SELECT 1 FROM contacts k WHERE k.owner=u.id AND k.contact=$2) AS theirs,
+            EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$2 AND b.blocked=u.id) OR (b.blocker=u.id AND b.blocked=$2)) AS blk
+     FROM users u WHERE u.id=$1`, [req.params.peer, req.uid]);
+  if (!r.rows[0]) return bad(res, "Not found.", 404);
+  res.json({ ...presence(r.rows[0], r.rows[0].theirs, r.rows[0].blk), typing: !r.rows[0].blk && isTyping(req.params.peer, req.uid) });
+}));
+
+// View once: the text is returned a single time, then erased from the database.
+app.post("/api/messages/:id/open", need, wrap(async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
+  const r = await db.query(
+    `WITH old AS (SELECT body FROM messages WHERE id=$1 AND to_id=$2 AND view_once AND opened_at IS NULL),
+          upd AS (UPDATE messages SET opened_at=now(), body='' WHERE id=$1 AND to_id=$2 AND view_once AND opened_at IS NULL RETURNING id)
+     SELECT old.body FROM old`, [req.params.id, req.uid]);
+  if (!r.rows[0]) return bad(res, "This message was already opened.", 410);
+  res.json({ body: r.rows[0].body });
+}));
+
+app.post("/api/messages/:id/react", need, wrap(async (req, res) => {
+  const emoji = req.body.emoji ? String(req.body.emoji).slice(0, 8) : null;
+  await db.query(
+    "UPDATE messages SET reaction=$3 WHERE id=$1 AND (from_id=$2 OR to_id=$2)",
+    [req.params.id, req.uid, emoji]);
+  res.json({ ok: true });
+}));
+
+// ---- Block and report ----
+app.get("/api/blocks", need, wrap(async (req, res) => {
+  const r = await db.query("SELECT u.id, u.name, u.phone FROM blocks b JOIN users u ON u.id=b.blocked WHERE b.blocker=$1 ORDER BY u.name", [req.uid]);
+  res.json({ blocks: r.rows });
+}));
+app.post("/api/blocks/:id", need, wrap(async (req, res) => {
+  if (!isId(req.params.id) || req.params.id === req.uid) return bad(res, "Invalid id.");
+  await db.query("INSERT INTO blocks(blocker,blocked) SELECT $1, id FROM users WHERE id=$2 ON CONFLICT DO NOTHING", [req.uid, req.params.id]);
+  res.json({ ok: true });
+}));
+app.delete("/api/blocks/:id", need, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.");
+  await db.query("DELETE FROM blocks WHERE blocker=$1 AND blocked=$2", [req.uid, req.params.id]);
+  res.json({ ok: true });
+}));
+const REASONS = ["Spam", "Harassment or insults", "Unsolicited nudes", "Scam or fake links", "Other"];
+const reportLimit = rateLimit({ windowMs: 60 * 60000, max: 20 });
+app.post("/api/reports", need, reportLimit, wrap(async (req, res) => {
+  const uid2 = req.body.user_id;
+  if (!isId(uid2) || uid2 === req.uid) return bad(res, "Invalid report.");
+  const reason = REASONS.includes(req.body.reason) ? req.body.reason : "Other";
+  const note = (req.body.singles === true ? "[Singles] " : "") + String(req.body.note || "").trim().slice(0, 500);
+  // Evidence: the last messages this person sent to the reporter. View once messages are never included.
+  const m = await db.query(
+    req.body.singles === true ? "SELECT id, body, created_at FROM singles_messages WHERE from_id=$1 AND to_id=$2 ORDER BY id DESC LIMIT 5" : "SELECT id, body, created_at FROM messages WHERE from_id=$1 AND to_id=$2 AND NOT view_once AND NOT del_to AND (expires_at IS NULL OR expires_at > now()) ORDER BY id DESC LIMIT 5",
+    [uid2, req.uid]);
+  await db.query("INSERT INTO reports(reporter,reported,reason,note,evidence) VALUES($1,$2,$3,$4,$5)", [req.uid, uid2, reason, note, JSON.stringify(m.rows)]);
+  res.json({ ok: true });
+}));
+
+const setPref = (col) => wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  await db.query(
+    `INSERT INTO chat_prefs(owner,peer,${col}) VALUES($1,$2,$3)
+     ON CONFLICT (owner,peer) DO UPDATE SET ${col} = EXCLUDED.${col}`,
+    [req.uid, req.params.peer, !!req.body.value]);
+  res.json({ ok: true });
+});
+app.post("/api/chats/:peer/pin", need, setPref("pinned"));
+app.post("/api/chats/:peer/archive", need, setPref("archived"));
+
+app.delete("/api/chats/:peer", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  await db.query("UPDATE messages SET del_from=true WHERE from_id=$1 AND to_id=$2", [req.uid, req.params.peer]);
+  await db.query("UPDATE messages SET del_to=true WHERE to_id=$1 AND from_id=$2", [req.uid, req.params.peer]);
+  res.json({ ok: true });
+}));
+
+// ---- Status (text updates, 24 hours) ----
+app.get("/api/status", need, wrap(async (req, res) => {
+  const r = await db.query(
+    `SELECT s.id, s.user_id, s.body, s.color, s.created_at, COALESCE(NULLIF(k.alias,''), u.name) AS name, (s.image IS NOT NULL) AS has_image,
+            (SELECT count(*)::int FROM status_views v WHERE v.status_id=s.id AND s.user_id=$1) AS views
+     FROM statuses s JOIN users u ON u.id = s.user_id LEFT JOIN contacts k ON k.owner=$1 AND k.contact=s.user_id
+     WHERE s.created_at > now() - interval '24 hours'
+       AND (s.user_id=$1 OR EXISTS (SELECT 1 FROM contacts c WHERE c.owner=$1 AND c.contact=s.user_id))
+       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))
+     ORDER BY s.created_at DESC`, [req.uid]);
+  res.json({ status: r.rows });
+}));
+
+app.post("/api/status", need, wrap(async (req, res) => {
+  const body = String(req.body.body || "").trim().slice(0, 200);
+  const color = /^#[0-9a-f]{6}$/i.test(req.body.color || "") ? req.body.color : "#5A3FD6";
+  let image = null;
+  if (req.body.image) {
+    const p = String(req.body.image), m = /^data:image\/jpeg;base64,([A-Za-z0-9+\/]+={0,2})$/.exec(p);
+    if (!m || p.length > 160000) return bad(res, "Please choose a smaller picture.");
+    const buf = Buffer.from(m[1], "base64");
+    if (buf.length < 100 || buf[0] !== 0xff || buf[1] !== 0xd8) return bad(res, "That is not a JPEG picture.");
+    image = p;
+  }
+  if (!body && !image) return bad(res, "Write something or add a photo first.");
+  await db.query("INSERT INTO statuses(user_id,body,color,image) VALUES($1,$2,$3,$4)", [req.uid, body, color, image]);
+  if (webpush) { // tell the people who can see it (fire and forget)
+    const me = (await db.query("SELECT name FROM users WHERE id=$1", [req.uid])).rows[0];
+    const to = await db.query("SELECT owner AS contact FROM contacts WHERE contact=$1 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=contacts.owner) OR (b.blocker=contacts.owner AND b.blocked=$1))", [req.uid]);
+    to.rows.forEach((r) => notify(r.contact, "status", { title: me.name, body: "posted a status", tag: "s" + req.uid }));
+  }
+  res.json({ ok: true });
+}));
+
+app.delete("/api/status/:id", need, wrap(async (req, res) => {
+  await db.query("DELETE FROM statuses WHERE id=$1 AND user_id=$2", [req.params.id, req.uid]);
+  res.json({ ok: true });
+}));
 // END OF PART 3
 // ---- Moderation: warnings, restrictions, resting periods, bans and appeals ----
 // Steps follow the Community Rules: warning -> 24h restriction -> resting period (3 or 7 days) -> permanent ban.
@@ -859,7 +1040,40 @@ app.get("/api/backup", need, backupLimit, wrap(async (req, res) => {
 // ---- Orivoclass AI: the app talks to the AI through this server, so the AI address and key stay private and each person is rate limited ----
 // Env (all optional): AI_URL, AI_KEY (sent as "Authorization: Bearer"), AI_SYSTEM (instructions; set empty to send none), AI_FORMAT = messages | message | prompt.
 const AI_URL = process.env.AI_URL || "https://superb-owl-342.convex.site/v1/chat";
-const AI_SYSTEM = process.env.AI_SYSTEM !== undefined ? process.env.AI_SYSTEM : "You are Orivoclass AI, a friendly assistant inside the Orivoclass messaging app. Keep answers short and clear. Reply in the language the person writes in (Swahili, English or Sheng).";
+// What Orivoclass AI knows about the app. Keep this up to date when the app changes.
+const APP_GUIDE = `
+ORIVOCLASS (the app): a private messaging app with chats, groups, calls, status, a public feed, Singles (adults 18+), and an AI assistant.
+- Sign up: name, phone number and a password, then a 6-digit code is sent to the phone (or shown on screen in test mode). After sign up the app shows a RECOVERY CODE once: the person must copy and save it. It is the only way to reset the password without the phone.
+- Log in: phone number and password. If the account is already open on another phone, that phone must tap "Yes, it's me" to approve.
+- Forgot password: "Forgot password?" on the log in screen, with the phone number, the recovery code and a new password.
+- Feed (home tab): "For you" (a mix of strong and new posts) and "Following". Search bar at the top finds accounts. The + next to the search makes a post (text and/or photo, and "Everyone" or "Followers only"). Hold a post's text for 2 seconds to copy it. Tap the like heart to react; hold it to choose a reaction. The ⋮ on each post has Share, Copy link, and Report (or Boost, Delete for your own posts).
+- Boost: on your own post, ⋮ > Boost post. You pay for 1 to 5 days with Paystack. Boosted posts are shown to people who do not follow you, marked "Sponsored".
+- Chats: tap a contact to chat. Unread messages show a number. Hold or tap a message for Reply, reactions, Copy, Forward or Delete (delete only hides it for you). The ⋮ in a chat has Mark as unread, pin, archive, disappearing messages (24 hours or 7 days), block, report and delete chat. Add someone by their phone number from the + on the Chats screen; if they are not on Orivoclass you can invite them.
+- Calls: 📞 for voice and 🎥 for video, in a chat or on the Calls tab. Incoming calls show Answer and Decline. Missed calls are in the Calls tab.
+- Status: the Status tab. Add a text update or a photo with the +. Statuses last 24 hours. The owner can see who viewed them.
+- Singles: an adult-only dating space (18+). Create a profile with a nickname and date of birth. Daily limits on how many profiles you see and likes you give keep it calm. A chat opens only after both people like each other.
+- Me (the three lines at the top left): Privacy (Private account, last seen, suggestions), Account status (trust score), Linked devices (log out other phones), Dashboard (followers, reactions, views, posts, boosts, audience), Follow requests, Chat lock (PIN), Notifications (turn on, and "Send a test notification"), Backup (download your chats), Appearance (white or dark, and colour), Orivoclass AI (save AI chats or not), Profile photo, Install app, Terms, Privacy Policy, Community Rules, About, Help.
+- Install: on Android Chrome use the install banner, or ⋮ > Install app. On iPhone use Share > Add to Home Screen.
+- Notifications: they show for messages, calls, status and views, and only when the app is closed or in the background. They have buttons: calls show Answer and Decline, messages show Reply and Mark as read.
+- Community rules: no spam, scams, harassment, threats, hate, or nude images sent to people who did not ask. Accounts can get a warning, a 24-hour restriction, a resting period, or a permanent ban. Appeals are possible.`;
+const APP_UPDATES = [
+  "Notifications for messages, calls and status, with Answer/Decline and Reply/Mark as read buttons.",
+  "Unread counts on each chat.",
+  "Status posts now work, with an optional photo from the gallery.",
+  "Comments can have photos and likes.",
+  "The feed mixes strong posts with new ones and never ends.",
+  "Boost with Paystack, with days and reach set by the admin.",
+  "Chat lock with a PIN, backup, and Linked devices.",
+];
+const AI_SYSTEM = process.env.AI_SYSTEM !== undefined ? process.env.AI_SYSTEM : `You are Orivoclass AI, the assistant inside the Orivoclass app. You talk like a warm, clever friend: natural, relaxed and helpful. Reply in the language the person uses (Swahili, English or Sheng). Keep most answers short, and go longer only when the person asks for detail.
+Do not ask a question at the end of every reply. Ask one short question only when you truly need it to help. Chatting, jokes and small talk are welcome.
+You know the app well. When someone asks how to do something in the app, explain the steps simply, step by step, with the names of the buttons exactly as they appear. Help people set up their account (sign up, recovery code, notifications, privacy, chat lock, boosts) and use the settings.
+When the app has had updates, tell people what changed, using the list below.
+For general questions about the world, answer from what you know. If the person asks for something recent or looks it up, use the web results provided to you (if any) and mention where the information came from in one short phrase. If you have no web results, say you cannot check live information right now, and answer what you know.
+Never reveal secrets: other people's phone numbers, messages, private posts, passwords, recovery codes, PINs, admin keys, server details, or how to get around security. Never help someone read another person's account, chats or private information, or break into anything. Refuse those politely in one or two sentences and offer what you can do instead.
+${APP_GUIDE}
+Recent app updates:
+${APP_UPDATES.map((u) => "- " + u).join("\\n")}`;
 const AI_FORMAT = process.env.AI_FORMAT || "messages";
 const aiLimit = rateLimit({ windowMs: 10 * 60000, max: 20, keyGenerator: (req) => String(req.uid) });
 function pickReply(j) {
@@ -872,16 +1086,27 @@ function pickReply(j) {
 }
 const AI_FORMATS = ["messages", "message", "prompt"];
 let aiGood = null; // the request format that worked last, tried first next time
-const aiBody = (fmt, msgs) => {
+const aiBody = (fmt, msgs, sys) => {
+  const S = sys !== undefined ? sys : AI_SYSTEM;
   const last = msgs[msgs.length - 1].content;
-  return fmt === "message" ? { message: last, history: msgs.slice(0, -1) }
-    : fmt === "prompt" ? { prompt: last }
-    : { messages: (AI_SYSTEM ? [{ role: "system", content: AI_SYSTEM }] : []).concat(msgs) };
+  return fmt === "message" ? { message: last, history: msgs.slice(0, -1), system: S }
+    : fmt === "prompt" ? { prompt: (S ? S + "\n\n" : "") + last }
+    : { messages: (S ? [{ role: "system", content: S }] : []).concat(msgs) };
 };
-async function aiCall(fmt, msgs) {
+const SEARCH_RE = /(tafuta|search|google|habari (ya|za) leo|latest|news|leo|bei|price|who is|nani ni|what is|ni nini|update|mpya|weather|hali ya hewa|score|matokeo)/i;
+async function webSearch(q) {
+  const k = process.env.GOOGLE_API_KEY, cx = process.env.GOOGLE_CSE_ID;
+  if (!k || !cx) return null;
+  try {
+    const r = await fetch("https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(k) + "&cx=" + encodeURIComponent(cx) + "&num=5&q=" + encodeURIComponent(q));
+    const j = await r.json();
+    return (j.items || []).slice(0, 5).map((x) => ({ title: x.title, snippet: x.snippet, link: x.link }));
+  } catch (e) { return null; }
+}
+async function aiCall(fmt, msgs, sys) {
   const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 30000);
   try {
-    const r = await fetch(AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, process.env.AI_KEY ? { Authorization: "Bearer " + process.env.AI_KEY } : {}), body: JSON.stringify(aiBody(fmt, msgs)), signal: ac.signal });
+    const r = await fetch(AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, process.env.AI_KEY ? { Authorization: "Bearer " + process.env.AI_KEY } : {}), body: JSON.stringify(aiBody(fmt, msgs, sys)), signal: ac.signal });
     return { ok: r.ok, status: r.status, raw: await r.text() };
   } catch (e) { return { ok: false, status: 0, raw: "", error: e.name === "AbortError" ? "timeout" : e.message }; }
   finally { clearTimeout(timer); }
@@ -892,10 +1117,16 @@ app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") return bad(res, "Type a message first.");
+  let sysNow = AI_SYSTEM;
+  const q = msgs[msgs.length - 1].content;
+  if (SEARCH_RE.test(q)) {
+    const found = await webSearch(q);
+    if (found && found.length) sysNow = AI_SYSTEM + "\n\nWeb results for the person's latest question (use them, and name the source briefly):\n" + found.map((x, i) => (i + 1) + ". " + x.title + " (" + x.link + "): " + (x.snippet || "")).join("\n");
+  }
   const first = aiGood || AI_FORMAT, order = [first].concat(AI_FORMATS.filter((f) => f !== first));
   let last = null;
   for (const fmt of order) { // if the AI rejects one request shape (400/415/422), try the next shape
-    const r = await aiCall(fmt, msgs); last = r;
+    const r = await aiCall(fmt, msgs, sysNow); last = r;
     if (r.ok) {
       let j; try { j = JSON.parse(r.raw); } catch (e) { j = r.raw; }
       const reply = pickReply(j).slice(0, 4000);
@@ -979,7 +1210,7 @@ app.post("/api/calls", need, callStart, wrap(async (req, res) => {
   const c = await db.query("INSERT INTO calls(caller,callee,kind) VALUES($1,$2,$3) RETURNING id", [req.uid, to, kind]);
   if (webpush) {
     const q = (await db.query("SELECT COALESCE(NULLIF(k.alias,''), u.name) AS n FROM users u LEFT JOIN contacts k ON k.owner=$2 AND k.contact=u.id WHERE u.id=$1", [req.uid, to])).rows[0];
-    notify(to, "calls", { title: (q && q.n) || "Orivoclass", body: "Incoming " + kind + " call", tag: "call" + c.rows[0].id });
+    notify(to, "calls", { title: (q && q.n) || "Orivoclass", body: "Incoming " + kind + " call", tag: "call" + c.rows[0].id, type: "call", id: c.rows[0].id });
   }
   res.json({ id: c.rows[0].id });
 }));
@@ -1016,7 +1247,7 @@ app.post("/api/calls/:id/end", need, wrap(async (req, res) => {
   const c = (await db.query("UPDATE calls SET status=CASE WHEN status='ringing' THEN 'missed' ELSE 'ended' END, ended_at=now() WHERE id=$1 AND (caller=$2 OR callee=$2) AND status IN ('ringing','active') RETURNING *", [req.params.id, req.uid])).rows[0];
   if (c && c.status === "missed" && c.caller === req.uid && webpush) {
     const q = (await db.query("SELECT COALESCE(NULLIF(k.alias,''), u.name) AS n FROM users u LEFT JOIN contacts k ON k.owner=$2 AND k.contact=u.id WHERE u.id=$1", [req.uid, c.callee])).rows[0];
-    notify(c.callee, "calls", { title: (q && q.n) || "Orivoclass", body: "Missed " + c.kind + " call", tag: "call" + c.id });
+    notify(c.callee, "calls", { title: (q && q.n) || "Orivoclass", body: "Missed " + c.kind + " call", tag: "call" + c.id, type: "missed", id: c.id });
   }
   res.json({ ok: true });
 }));
@@ -1468,7 +1699,7 @@ app.post("/api/groups/:id/leave", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 // END OF PART 7
-const schema = `
+  const schema = `
 CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), phone text UNIQUE NOT NULL, name text NOT NULL, about text NOT NULL DEFAULT 'Hey there! I am using Orivoclass.', pass_hash text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS contacts(owner uuid REFERENCES users(id) ON DELETE CASCADE, contact uuid REFERENCES users(id) ON DELETE CASCADE, alias text, PRIMARY KEY(owner,contact));
 CREATE TABLE IF NOT EXISTS messages(id bigserial PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, reply text, reaction text, del_from boolean NOT NULL DEFAULT false, del_to boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
@@ -1529,8 +1760,12 @@ CREATE INDEX IF NOT EXISTS boost_views_c ON boost_views(campaign_id, viewer);
 ALTER TABLE boost_orders ADD COLUMN IF NOT EXISTS reach int NOT NULL DEFAULT 200;
 ALTER TABLE boost_orders ADD COLUMN IF NOT EXISTS repeat_hours int NOT NULL DEFAULT 24;
 CREATE TABLE IF NOT EXISTS app_settings(key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE users ALTER COLUMN n_status SET DEFAULT false, ALTER COLUMN n_views SET DEFAULT false;
+UPDATE users SET n_status=false, n_views=false WHERE NOT EXISTS (SELECT 1 FROM app_settings WHERE key='notif_v2');
+INSERT INTO app_settings(key,value) VALUES('notif_v2','{}') ON CONFLICT (key) DO NOTHING;
 ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS image text;
 CREATE TABLE IF NOT EXISTS post_comment_likes(comment_id bigint NOT NULL REFERENCES post_comments(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(comment_id,user_id));
+CREATE TABLE IF NOT EXISTS message_hidden(message_id bigint NOT NULL REFERENCES messages(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(message_id,user_id));
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
@@ -1565,7 +1800,6 @@ CREATE INDEX IF NOT EXISTS sgmsg_pair ON singles_messages(from_id,to_id,id);
 CREATE TABLE IF NOT EXISTS singles_blocked(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, until timestamptz, reason text);
 CREATE TABLE IF NOT EXISTS sanctions(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, reason text NOT NULL, report_id bigint, penalty int NOT NULL DEFAULT 0, until timestamptz, seen boolean NOT NULL DEFAULT false, appeal_status text, appeal_text text, appealed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS blocked_phones(phone text PRIMARY KEY, until timestamptz, reason text, created_at timestamptz NOT NULL DEFAULT now());`;
-
 db.query(schema)
   .then(() => app.listen(Number(process.env.PORT) || 3000, () => console.log("Orivoclass API running")))
   .catch((e) => { console.error("Database setup failed:", e.message); process.exit(1); });
@@ -1820,7 +2054,7 @@ app.post("/api/admin/posts/:id/remove", adminLimit, adminOnly, wrap(async (req, 
   res.json({ ok: true, restricted: restrict });
 }));
 // END OF PART 9
-// ---- Private accounts, follow requests, boosting a post, suggestions and privacy settings ----
+ // ---- Private accounts, follow requests, boosting a post, suggestions and privacy settings ----
 const privacyLimit = rateLimit({ windowMs: 60 * 60000, max: 60, keyGenerator: (req) => String(req.uid) });
 const boostLimit = rateLimit({ windowMs: 60 * 60000, max: 20, keyGenerator: (req) => String(req.uid) });
 
@@ -2030,5 +2264,46 @@ app.post("/api/push/test", need, wrap(async (req, res) => {
     }
   }
   res.json({ subscriptions: subs.length, sent, failed });
+}));
+// Mark a chat as unread: the last message from that person counts as unread again.
+app.post("/api/chats/:peer/unread", need, wrap(async (req, res) => {
+  if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  await db.query("UPDATE messages SET read_at=NULL WHERE id=(SELECT id FROM messages WHERE from_id=$2 AND to_id=$1 ORDER BY id DESC LIMIT 1)", [req.uid, req.params.peer.toLowerCase()]);
+  res.json({ ok: true });
+}));
+// Delete a message for me only (the other person still has it).
+app.post("/api/messages/:id/hide", need, wrap(async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
+  await db.query("INSERT INTO message_hidden(message_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.params.id, req.uid]);
+  res.json({ ok: true });
+}));
+// ---- Admin: help someone who forgot their password or recovery code ----
+// Finds an account by phone number. Never shows the password or the recovery code; a new code is shown once.
+app.get("/api/admin/accounts", adminLimit, adminOnly, wrap(async (req, res) => {
+  const ph = phoneOf(req.query.phone);
+  if (ph.length < 10) return bad(res, "Enter the full phone number, with the country code.");
+  const u = (await db.query("SELECT id, name, phone, trust_score, banned, rest_until, restricted_until, created_at FROM users WHERE phone=$1", [ph])).rows[0];
+  if (!u) return bad(res, "No account uses this number.", 404);
+  const s = (await db.query("SELECT count(*)::int AS n FROM sessions WHERE user_id=$1", [u.id])).rows[0].n;
+  res.json({ account: { id: u.id, name: u.name, phone: u.phone, trust: u.trust_score, banned: u.banned, created_at: u.created_at, devices: s } });
+}));
+// New recovery code for this account. Every device is signed out, so the old code and any old login stop working.
+app.post("/api/admin/accounts/recovery-code", adminLimit, adminOnly, wrap(async (req, res) => {
+  const u = (await db.query("SELECT id FROM users WHERE phone=$1", [phoneOf(req.body.phone)])).rows[0];
+  if (!u) return bad(res, "No account uses this number.", 404);
+  const code = makeCode();
+  await db.query("UPDATE users SET recovery_hash=$2 WHERE id=$1", [u.id, hashCode(code)]);
+  await db.query("DELETE FROM sessions WHERE user_id=$1", [u.id]);
+  res.json({ recovery_code: code });
+}));
+// A new password set by the admin. The person should change it after logging in. All devices are signed out.
+app.post("/api/admin/accounts/password", adminLimit, adminOnly, wrap(async (req, res) => {
+  const password = String(req.body.password || "");
+  if (password.length < 8) return bad(res, "The new password needs at least 8 characters.");
+  const u = (await db.query("SELECT id FROM users WHERE phone=$1", [phoneOf(req.body.phone)])).rows[0];
+  if (!u) return bad(res, "No account uses this number.", 404);
+  await db.query("UPDATE users SET pass_hash=$2 WHERE id=$1", [u.id, await bcrypt.hash(password, 10)]);
+  await db.query("DELETE FROM sessions WHERE user_id=$1", [u.id]);
+  res.json({ ok: true });
 }));
 // END OF PART 10
