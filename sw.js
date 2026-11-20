@@ -2,7 +2,7 @@
 // 1) Keeps the app updating itself: the page is always fetched from the network first, so a new push shows up the next time the app opens.
 // 2) Falls back to the saved copy when there is no internet.
 // 3) Shows push notifications. Keep this file next to index.html.
-const VERSION = "2026-11-12.1";
+const VERSION = "2026-11-13.1";
 const CACHE = "orivoclass-" + VERSION;
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
@@ -58,15 +58,28 @@ self.addEventListener("push", (e) => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (wins.some((c) => c.visibilityState === "visible")) return;
     const call = !!(d.tag && String(d.tag).indexOf("call") === 0);
-    await self.registration.showNotification(d.title || "Orivoclass", { body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: d.tag || undefined, renotify: !!d.tag, requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400] : [100] });
+    const type = d.type || "";
+    const actions = type === "call" ? [{ action: "answer", title: "Answer" }, { action: "decline", title: "Decline" }]
+      : type === "msg" ? [{ action: "reply", title: "Reply" }, { action: "read", title: "Mark as read" }] : [];
+    await self.registration.showNotification(d.title || "Orivoclass", {
+      body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: d.tag || undefined, renotify: !!d.tag,
+      requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400] : [100], actions,
+      data: { type, id: d.id || "", peer: d.peer || "" },
+    });
   })());
 });
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
+  const d = e.notification.data || {};
+  const p = { act: e.action || "", call: d.type === "call" ? String(d.id || "") : "", peer: d.type === "msg" ? String(d.peer || "") : "" };
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const c of wins) if ("focus" in c) return c.focus();
-    return self.clients.openWindow("./");
+    if (wins.length) { const c = wins[0]; if ("focus" in c) await c.focus(); c.postMessage({ type: "action", p }); return; }
+    const q = new URLSearchParams();
+    if (p.act) q.set("act", p.act);
+    if (p.call) q.set("call", p.call);
+    if (p.peer) q.set("peer", p.peer);
+    return self.clients.openWindow("./" + (q.toString() ? "?" + q.toString() : ""));
   })());
 });
