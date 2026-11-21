@@ -11,7 +11,9 @@ const jpegOk = (p, max) => {
   return b.length > 100 && b[0] === 0xff && b[1] === 0xd8;
 };
 const REACTIONS = ["❤️", "😂", "😭", "🥰", "😮", "👍", "🔥"];
-const POST_COLS = `p.id, p.user_id, u.name, p.body, p.audience, (p.image IS NOT NULL) AS has_image, p.created_at,
+const POST_COLS = `p.id, p.user_id, u.name, p.body, p.audience, (p.image IS NOT NULL) AS has_image, p.created_at, p.repost_of,
+  (SELECT json_build_object('id', o.id, 'user_id', o.user_id, 'name', ou.name, 'body', o.body, 'has_image', (o.image IS NOT NULL)) FROM posts o JOIN users ou ON ou.id=o.user_id
+     WHERE o.id=p.repost_of AND NOT o.removed AND (o.audience='public' OR o.user_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=o.user_id))) AS original,
   (SELECT count(*)::int FROM post_likes l WHERE l.post_id=p.id) AS likes,
   (SELECT COALESCE(json_agg(t.e), '[]'::json) FROM (SELECT l.emoji AS e FROM post_likes l WHERE l.post_id=p.id GROUP BY l.emoji ORDER BY count(*) DESC LIMIT 3) t) AS top_reactions,
   (SELECT count(*)::int FROM post_comments c WHERE c.post_id=p.id AND NOT c.removed) AS comments,
