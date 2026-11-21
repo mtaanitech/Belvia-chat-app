@@ -49,7 +49,7 @@ try {
 app.use(helmetMw);
 app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false, maxAge: 86400 })); // browsers remember the "may I talk to this server?" check, so each request is one trip instead of two
 app.use(express.json({ limit: "256kb" })); // status photos are up to ~160 KB; each route checks its own size
-app.use("/api/", rateLimit({ windowMs: 60000, max: 300 }));
+app.use("/api/", rateLimit({ windowMs: 60000, max: 1500, keyGenerator: (req) => (req.headers.authorization ? "t" + String(req.headers.authorization).slice(-32) : req.ip) })); // per person, not per IP: many tabs and phones behind one network are fine
 const authLimit = rateLimit({ windowMs: 15 * 60000, max: 20 });
 
 // ---- Recovery code: XXXX-XXXX-XXXX-XXXX (only the hash is stored) ----
@@ -96,15 +96,17 @@ const need = (req, res, next) => {
 };
 const isId = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ""));
 const pub = (u) => ({ id: u.id, name: u.name, phone: u.phone, about: u.about, seen_privacy: u.seen_privacy, photo_privacy: u.photo_privacy, trust: u.trust_score, cover: u.cover, mood: u.mood, created_at: u.created_at });
-const deviceName = (req) => {
+const deviceName = (req) => { // plain names only: "Phone", "iPhone", "Computer" or "Browser"
   const ua = String(req.headers["user-agent"] || "");
-  const os = /Android/i.test(ua) ? "Android" : /iPhone|iPad|iOS/i.test(ua) ? "iPhone/iPad" : /Windows/i.test(ua) ? "Windows" : /Mac OS/i.test(ua) ? "Mac" : /Linux/i.test(ua) ? "Linux" : "Unknown device";
-  const br = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "browser";
-  return os + " · " + br;
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iPhone";
+  if (/Android/i.test(ua)) return "Android phone";
+  if (/Windows|Macintosh|Mac OS|Linux|X11/i.test(ua)) return "Computer";
+  return "Browser";
 };
 // Every login creates a session. A session can be ended (log out) and is what the owner's "Is this you?" approval relies on.
 async function newSession(u, req, dev) {
   const d = dev !== undefined ? dev : String((req.body && req.body.device) || "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 80);
+  if (d) await db.query("DELETE FROM sessions WHERE user_id=$1 AND device_id=$2", [u.id, d]); // the same browser or phone logs in again: one row, not a new one
   const r = await db.query("INSERT INTO sessions(user_id,device,device_id) VALUES($1,$2,$3) RETURNING id", [u.id, deviceName(req), d || null]);
   return { token: jwt.sign({ uid: u.id, sid: r.rows[0].id }, JWT_SECRET, { expiresIn: "30d" }), user: pub(u) };
 }
