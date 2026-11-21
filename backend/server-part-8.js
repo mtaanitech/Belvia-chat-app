@@ -71,6 +71,7 @@ ALTER TABLE login_requests ADD COLUMN IF NOT EXISTS code text;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_id text;
 CREATE TABLE IF NOT EXISTS link_codes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), code_hash text NOT NULL, secret_hash text NOT NULL, status text NOT NULL DEFAULT 'pending', user_id uuid, device text, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL);
 CREATE INDEX IF NOT EXISTS link_codes_hash ON link_codes(code_hash);
+CREATE TABLE IF NOT EXISTS account_resets(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, phone text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
