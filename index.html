@@ -822,9 +822,7 @@ async function doFollow(uid) {
     render(); toast(nowOn ? "Following" : reqNow ? "Request cancelled" : "Unfollowed");
   } catch (e) { toast(e.message); }
 }
-
-
-// ---- Link a computer with a code ----
+  // ---- Link a computer with a code ----
 function linkView() {
   const c = LNK ? LNK.code : "";
   return '<div class="wrap pad"><div class="logo">Orivoclass</div><p class="mut">On your phone, open Orivoclass, go to <b>Me → Linked devices → Enter the code</b>, and type this code.</p>' +
@@ -1166,16 +1164,19 @@ function statusTab() {
   const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - new Date(t)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
   const inside = (x) => x && x.has_image
     ? '<div data-tile="' + x.id + '" style="position:absolute;inset:0">' + (x._img ? '<img src="' + esc(x._img) + '" style="width:100%;height:100%;object-fit:cover">' : "") + "</div>"
-    : '<div style="position:absolute;inset:0;padding:14px;color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere">' + esc((x && x.body) || "") + "</div>";
-  const box = (action, id, name, last, unseen) => '<button data-a="' + action + '" data-id="' + id + '" style="border:0;padding:0;background:none;text-align:left;width:100%"><div style="position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:' + (last ? last.color || "#5A3FD6" : "var(--sf)") + ';box-shadow:' + (unseen ? "0 0 0 3px var(--ac)" : "0 0 0 1px var(--ln)") + '">' +
-    (last ? inside(last) : '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mu);gap:6px"><span style="font-size:34px;line-height:1">+</span><span>Add status</span></div>') +
-    '<div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(name) + '</b><small>' + (last ? ago(last.created_at) : "Tap to add") + "</small></div></div></button>";
+    : '<div style="position:absolute;inset:0;padding:6px;color:#fff;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;overflow-wrap:anywhere">' + esc((x && x.body) || "") + "</div>";
+  // one small box per person; all of that person's statuses play inside it
+  const box = (last, unseen, plus) => '<div style="position:relative;width:76px;height:96px;flex:none;border-radius:14px;overflow:hidden;background:' + (last ? last.color || "#5A3FD6" : "var(--sf)") + ';box-shadow:' + (unseen ? "0 0 0 2px var(--ac)" : "0 0 0 1px var(--ln)") + '">' +
+    (last ? inside(last) : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:12px">Add</div>') +
+    (plus ? '<span data-a="sc" aria-label="Add status" style="position:absolute;right:4px;bottom:4px;width:24px;height:24px;border-radius:12px;background:var(--ac);color:var(--on);display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;z-index:2">+</span>' : "") + "</div>";
+  const row = (action, id, name, last, unseen, plus, sub) => '<div data-a="' + action + '" data-id="' + id + '" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--ln);cursor:pointer">' + box(last, unseen, plus) +
+    '<span style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(name) + '</b><small class="mut">' + sub + "</small></span></div>";
   const myLast = mine[mine.length - 1];
-  const myBox = myLast ? box("stopen", "me", "My status", myLast, false) : box("sc", U.id, "My status", null, false);
-  const others_ = others.map((p) => box("stopen", p.id, p.name, p.items[p.items.length - 1], p.unseen)).join("");
+  const myRow = row(myLast ? "stopen" : "sc", myLast ? "me" : U.id, "My status", myLast, false, true, myLast ? ago(myLast.created_at) + " · " + mine.length + (mine.length == 1 ? " update" : " updates") : "Tap + to add a status");
+  const sorted = others.slice().sort((x, y) => new Date(y.items[y.items.length - 1].created_at) - new Date(x.items[x.items.length - 1].created_at));
+  const rows = sorted.map((p) => { const l = p.items[p.items.length - 1]; return row("stopen", p.id, p.name, l, p.unseen, false, ago(l.created_at) + " · " + p.items.length + (p.items.length == 1 ? " update" : " updates")); }).join("");
   return '<div style="display:flex;justify-content:flex-end;padding:8px 14px 0"><button class="ib" data-a="stset" aria-label="Status settings" style="color:var(--mu)">⚙</button></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px 14px 14px">' + myBox + others_ + "</div>" +
-    (others.length ? "" : '<p class="mut" style="padding:0 16px">No updates from your contacts yet.</p>');
+    myRow + rows + (others.length ? "" : '<p class="mut" style="padding:12px 16px">No updates from your contacts yet.</p>');
 }
 function loadTileImages() {
   ST.forEach((x) => {
@@ -1192,22 +1193,24 @@ function openStories(who) {
   else { people = others; }
   let pi = people.findIndex((p) => p.id == who); if (pi < 0) pi = 0;
   let si = 0; const first = people[pi].items.findIndex((x) => !x.seen); if (!people[pi].mine && first > 0) si = first;
-  STV = { people, pi, si, timer: null }; V.ov = "stv"; showStory();
+  STV = { people, pi, si, timer: null }; V.ov = "stv"; showStory(); prefetchStory();
 }
+function paintStory() { const el = document.getElementById("stv"); if (el) el.outerHTML = stvView(); else render(); }
 function showStory() {
   if (!STV) return;
   clearTimeout(STV.timer);
   const p = STV.people[STV.pi], it = p.items[STV.si];
   if (!it) return closeStories();
   if (!p.mine && !it.seen) { it.seen = true; api("/status/" + it.id + "/view", "POST").catch(() => {}); }
-  if (it.has_image && it._img === undefined) { it._img = ""; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) render(); }).catch(() => {}); }
-  render();
+  if (it.has_image && it._img === undefined) { it._img = ""; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }).catch(() => {}); }
+  paintStory();
   STV.timer = setTimeout(nextStory, STV_LEN);
 }
+function prefetchStory() { if (!STV) return; const p = STV.people[STV.pi]; (p.items.slice(STV.si + 1, STV.si + 3)).forEach((x) => { if (x.has_image && x._img === undefined) { x._img = ""; api("/status/" + x.id + "/photo").then((j) => { x._img = j.image; }).catch(() => {}); } }); }
 function nextStory() { if (!STV) return; const p = STV.people[STV.pi]; if (STV.si < p.items.length - 1) { STV.si++; showStory(); } else if (STV.pi < STV.people.length - 1) { STV.pi++; STV.si = 0; showStory(); } else closeStories(); }
 function prevStory() { if (!STV) return; if (STV.si > 0) { STV.si--; showStory(); } else if (STV.pi > 0) { STV.pi--; STV.si = STV.people[STV.pi].items.length - 1; showStory(); } else showStory(); }
 function nextPerson() { if (!STV) return; if (STV.pi < STV.people.length - 1) { STV.pi++; STV.si = 0; showStory(); } else closeStories(); }
-function closeStories() { if (STV) clearTimeout(STV.timer); STV = null; V.ov = null; render(); }
+function closeStories() { if (STV) clearTimeout(STV.timer); STV = null; V.ov = null; loadST().then(() => { if (V.tab == "status" && !V.scr && !V.ov) render(); }).catch(() => render()); render(); }
 function stvView() {
   if (!STV) return "";
   const p = STV.people[STV.pi], it = p.items[STV.si]; if (!it) return "";
@@ -1657,7 +1660,7 @@ app.addEventListener("click", async (e) => {
     if (a == "reload") { location.reload(); return; }
     if (a == "instx") { try { localStorage.setItem("bv.nobanner", "1"); } catch (e) {} return render(); }
     if (a == "inst") {
-      if (DIP) { DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
+    if (DIP) { DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
       const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
       return toast(ios ? "Tap the Share button, then Add to Home Screen." : "Open the browser menu (⋮) and tap Install app.");
     }
