@@ -370,4 +370,32 @@ app.put("/api/me/status-privacy", need, wrap(async (req, res) => {
   }
   res.json({ ok: true, mode });
 }));
+// Countries: a country is on unless the admin turns it off.
+async function countryOff(iso) {
+  const c = String(iso || "").toUpperCase(); if (!c) return false;
+  try { const r = await db.query("SELECT value FROM app_settings WHERE key='countries'"); return !!(r.rows[0] && r.rows[0].value[c] === false); }
+  catch (e) { return false; }
+}
+// Admin: list countries with their status and how many accounts each has.
+app.get("/api/admin/countries", adminLimit, adminOnly, wrap(async (req, res) => {
+  const s = (await db.query("SELECT value FROM app_settings WHERE key='countries'")).rows[0];
+  const app = (await db.query("SELECT value FROM app_settings WHERE key='app'")).rows[0];
+  const counts = (await db.query("SELECT country, count(*)::int AS n FROM users WHERE country IS NOT NULL GROUP BY country")).rows;
+  res.json({ app_on: !app || app.value.on !== false, off: s ? Object.keys(s.value).filter((k) => s.value[k] === false) : [], counts });
+}));
+app.put("/api/admin/countries", adminLimit, adminOnly, wrap(async (req, res) => {
+  const c = String(req.body.code || "").toUpperCase().slice(0, 2);
+  if (!/^[A-Z]{2}$/.test(c)) return bad(res, "Invalid country.");
+  const cur = (await db.query("SELECT value FROM app_settings WHERE key='countries'")).rows[0];
+  const val = cur ? cur.value : {};
+  if (req.body.enabled === false) val[c] = false; else delete val[c];
+  await db.query("INSERT INTO app_settings(key,value,updated_at) VALUES('countries',$1,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()", [JSON.stringify(val)]);
+  res.json({ ok: true });
+}));
+app.put("/api/admin/app", adminLimit, adminOnly, wrap(async (req, res) => {
+  const on = req.body.on !== false;
+  await db.query("INSERT INTO app_settings(key,value,updated_at) VALUES('app',$1,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()", [JSON.stringify({ on })]);
+  APPFLAG.at = 0;
+  res.json({ ok: true, on });
+}));
 // END OF PART 10
