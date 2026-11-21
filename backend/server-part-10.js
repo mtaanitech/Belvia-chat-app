@@ -312,4 +312,17 @@ app.post("/api/admin/users/reset", adminLimit, adminOnly, wrap(async (req, res) 
   await db.query("UPDATE users SET phone=$2, pass_hash=$3, recovery_hash=NULL WHERE id=$1", [u.id, "reset:" + u.id, junk]);
   res.json({ ok: true });
 }));
+// Repost: shares someone's public post to your own profile (one repost per post).
+app.post("/api/posts/:id/repost", need, postLimit, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot repost for now.", 403);
+  const p = await visiblePost(req.uid, req.params.id);
+  if (!p) return bad(res, "This post is not available.", 404);
+  if (p.user_id === req.uid) return bad(res, "This is already your post.");
+  const o = (await db.query("SELECT audience FROM posts WHERE id=$1", [p.id])).rows[0];
+  if (!o || o.audience !== "public") return bad(res, "Only public posts can be reposted.", 403);
+  if ((await db.query("SELECT 1 FROM posts WHERE user_id=$1 AND repost_of=$2 AND NOT removed", [req.uid, p.id])).rowCount) return res.json({ ok: true, already: true });
+  await db.query("INSERT INTO posts(user_id,body,audience,repost_of) VALUES($1,'','public',$2)", [req.uid, p.id]);
+  res.json({ ok: true });
+}));
 // END OF PART 10
