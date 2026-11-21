@@ -325,4 +325,49 @@ app.post("/api/posts/:id/repost", need, postLimit, wrap(async (req, res) => {
   await db.query("INSERT INTO posts(user_id,body,audience,repost_of) VALUES($1,'','public',$2)", [req.uid, p.id]);
   res.json({ ok: true });
 }));
+// ---- Status: who can see my status (everyone who saved me, all except some, or only some) ----
+// Visibility rule for viewer $1 and status s (owner su):
+const STATUS_VIS = `(s.user_id=$1 OR (NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))
+  AND ((su.status_mode='contacts' AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=s.user_id AND c.contact=$1))
+    OR (su.status_mode='except' AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=s.user_id AND c.contact=$1)
+        AND NOT EXISTS (SELECT 1 FROM status_list l WHERE l.owner=s.user_id AND l.person=$1 AND l.kind='hide'))
+    OR (su.status_mode='only' AND EXISTS (SELECT 1 FROM status_list l WHERE l.owner=s.user_id AND l.person=$1 AND l.kind='only')))))`;
+// All statuses from the last 24 hours that this person may see, oldest first (so each person's stories play in order).
+app.get("/api/status/feed", need, wrap(async (req, res) => {
+  const r = await db.query(
+    `SELECT s.id, s.user_id, s.body, s.color, s.created_at, (s.image IS NOT NULL) AS has_image,
+       COALESCE(NULLIF(k.alias,''), su.name) AS name,
+       EXISTS (SELECT 1 FROM status_views v WHERE v.status_id=s.id AND v.viewer_id=$1) AS seen
+     FROM statuses s JOIN users su ON su.id=s.user_id LEFT JOIN contacts k ON k.owner=$1 AND k.contact=s.user_id
+     WHERE s.created_at > now() - interval '24 hours' AND ${STATUS_VIS}
+     ORDER BY s.created_at ASC`, [req.uid]);
+  res.json({ status: r.rows });
+}));
+// The picture of one status (only if this person may see it).
+app.get("/api/status/:id/photo", need, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const r = (await db.query(
+    `SELECT s.image FROM statuses s JOIN users su ON su.id=s.user_id
+     WHERE s.id=$2 AND s.image IS NOT NULL AND s.created_at > now() - interval '24 hours' AND ${STATUS_VIS}`, [req.uid, req.params.id])).rows[0];
+  if (!r) return bad(res, "Not found.", 404);
+  res.json({ image: r.image });
+}));
+app.get("/api/me/status-privacy", need, wrap(async (req, res) => {
+  const u = (await db.query("SELECT status_mode FROM users WHERE id=$1", [req.uid])).rows[0];
+  const mode = u ? u.status_mode : "contacts";
+  const kind = mode === "except" ? "hide" : mode === "only" ? "only" : null;
+  const l = kind ? (await db.query("SELECT person FROM status_list WHERE owner=$1 AND kind=$2", [req.uid, kind])).rows.map((x) => x.person) : [];
+  res.json({ mode, list: l });
+}));
+app.put("/api/me/status-privacy", need, wrap(async (req, res) => {
+  const mode = ["contacts", "except", "only"].includes(req.body.mode) ? req.body.mode : "contacts";
+  const kind = mode === "except" ? "hide" : mode === "only" ? "only" : null;
+  await db.query("UPDATE users SET status_mode=$2 WHERE id=$1", [req.uid, mode]);
+  await db.query("DELETE FROM status_list WHERE owner=$1", [req.uid]);
+  if (kind) {
+    const ids = (Array.isArray(req.body.list) ? req.body.list : []).filter(isId).map((x) => x.toLowerCase()).slice(0, 500);
+    for (const id of ids) if (id !== req.uid) await db.query("INSERT INTO status_list(owner,person,kind) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [req.uid, id, kind]);
+  }
+  res.json({ ok: true, mode });
+}));
 // END OF PART 10
