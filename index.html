@@ -99,6 +99,10 @@ const $ = (id) => document.getElementById(id);
 // This browser (and every tab of it) has one device id. A device that is known is never asked for approval again.
 const DEV = (() => { try { let d = localStorage.getItem("bv.dev"); if (!d) { d = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9-]/g, ""); localStorage.setItem("bv.dev", d); } return d; } catch (e) { return ""; } })();
 const PAL = [["#6247F5", "#9B87FF"], ["#2563EB", "#6EA0FF"], ["#0E8F63", "#3DD9A0"], ["#D6336C", "#FF7AA8"], ["#D9480F", "#FFA066"], ["#0F766E", "#4FD1C5"]];
+const COUNTRIES = "AF|Afghanistan|93;AL|Albania|355;DZ|Algeria|213;AD|Andorra|376;AO|Angola|244;AG|Antigua and Barbuda|1268;AR|Argentina|54;AM|Armenia|374;AU|Australia|61;AT|Austria|43;AZ|Azerbaijan|994;BS|Bahamas|1242;BH|Bahrain|973;BD|Bangladesh|880;BB|Barbados|1246;BY|Belarus|375;BE|Belgium|32;BZ|Belize|501;BJ|Benin|229;BT|Bhutan|975;BO|Bolivia|591;BA|Bosnia and Herzegovina|387;BW|Botswana|267;BR|Brazil|55;BN|Brunei|673;BG|Bulgaria|359;BF|Burkina Faso|226;BI|Burundi|257;KH|Cambodia|855;CM|Cameroon|237;CA|Canada|1;CV|Cape Verde|238;CF|Central African Republic|236;TD|Chad|235;CL|Chile|56;CN|China|86;CO|Colombia|57;KM|Comoros|269;CG|Congo|242;CD|Congo DR|243;CR|Costa Rica|506;CI|Ivory Coast|225;HR|Croatia|385;CU|Cuba|53;CY|Cyprus|357;CZ|Czechia|420;DK|Denmark|45;DJ|Djibouti|253;DM|Dominica|1767;DO|Dominican Republic|1809;EC|Ecuador|593;EG|Egypt|20;SV|El Salvador|503;GQ|Equatorial Guinea|240;ER|Eritrea|291;EE|Estonia|372;SZ|Eswatini|268;ET|Ethiopia|251;FJ|Fiji|679;FI|Finland|358;FR|France|33;GA|Gabon|241;GM|Gambia|220;GE|Georgia|995;DE|Germany|49;GH|Ghana|233;GR|Greece|30;GD|Grenada|1473;GT|Guatemala|502;GN|Guinea|224;GW|Guinea-Bissau|245;GY|Guyana|592;HT|Haiti|509;HN|Honduras|504;HK|Hong Kong|852;HU|Hungary|36;IS|Iceland|354;IN|India|91;ID|Indonesia|62;IR|Iran|98;IQ|Iraq|964;IE|Ireland|353;IL|Israel|972;IT|Italy|39;JM|Jamaica|1876;JP|Japan|81;JO|Jordan|962;KZ|Kazakhstan|7;KE|Kenya|254;KI|Kiribati|686;KP|North Korea|850;KR|South Korea|82;KW|Kuwait|965;KG|Kyrgyzstan|996;LA|Laos|856;LV|Latvia|371;LB|Lebanon|961;LS|Lesotho|266;LR|Liberia|231;LY|Libya|218;LI|Liechtenstein|423;LT|Lithuania|370;LU|Luxembourg|352;MO|Macau|853;MG|Madagascar|261;MW|Malawi|265;MY|Malaysia|60;MV|Maldives|960;ML|Mali|223;MT|Malta|356;MH|Marshall Islands|692;MR|Mauritania|222;MU|Mauritius|230;MX|Mexico|52;FM|Micronesia|691;MD|Moldova|373;MC|Monaco|377;MN|Mongolia|976;ME|Montenegro|382;MA|Morocco|212;MZ|Mozambique|258;MM|Myanmar|95;NA|Namibia|264;NR|Nauru|674;NP|Nepal|977;NL|Netherlands|31;NZ|New Zealand|64;NI|Nicaragua|505;NE|Niger|227;NG|Nigeria|234;MK|North Macedonia|389;NO|Norway|47;OM|Oman|968;PK|Pakistan|92;PW|Palau|680;PS|Palestine|970;PA|Panama|507;PG|Papua New Guinea|675;PY|Paraguay|595;PE|Peru|51;PH|Philippines|63;PL|Poland|48;PT|Portugal|351;PR|Puerto Rico|1787;QA|Qatar|974;RO|Romania|40;RU|Russia|7;RW|Rwanda|250;KN|Saint Kitts and Nevis|1869;LC|Saint Lucia|1758;VC|Saint Vincent|1784;WS|Samoa|685;SM|San Marino|378;ST|Sao Tome and Principe|239;SA|Saudi Arabia|966;SN|Senegal|221;RS|Serbia|381;SC|Seychelles|248;SL|Sierra Leone|232;SG|Singapore|65;SK|Slovakia|421;SI|Slovenia|386;SB|Solomon Islands|677;SO|Somalia|252;ZA|South Africa|27;SS|South Sudan|211;ES|Spain|34;LK|Sri Lanka|94;SD|Sudan|249;SR|Suriname|597;SE|Sweden|46;CH|Switzerland|41;SY|Syria|963;TW|Taiwan|886;TJ|Tajikistan|992;TZ|Tanzania|255;TH|Thailand|66;TL|Timor-Leste|670;TG|Togo|228;TO|Tonga|676;TT|Trinidad and Tobago|1868;TN|Tunisia|216;TR|Turkey|90;TM|Turkmenistan|993;TV|Tuvalu|688;UG|Uganda|256;UA|Ukraine|380;AE|United Arab Emirates|971;GB|United Kingdom|44;US|United States|1;UY|Uruguay|598;UZ|Uzbekistan|998;VU|Vanuatu|678;VA|Vatican|39;VE|Venezuela|58;VN|Vietnam|84;YE|Yemen|967;ZM|Zambia|260;ZW|Zimbabwe|263;GU|Guam|1671;AS|American Samoa|1684;BM|Bermuda|1441;KY|Cayman Islands|1345;VG|British Virgin Islands|1284;VI|US Virgin Islands|1340;AW|Aruba|297;CW|Curacao|599;SX|Sint Maarten|1721;GL|Greenland|299;FO|Faroe Islands|298;GI|Gibraltar|350;IM|Isle of Man|44;JE|Jersey|44;GG|Guernsey|44;RE|Reunion|262;YT|Mayotte|262;NC|New Caledonia|687;PF|French Polynesia|689;GP|Guadeloupe|590;MQ|Martinique|596;GF|French Guiana|594;MS|Montserrat|1664;TC|Turks and Caicos|1649;AI|Anguilla|1264;NU|Niue|683;CK|Cook Islands|682;TK|Tokelau|690;AQ|Antarctica|672;EH|Western Sahara|212;SH|Saint Helena|290;FK|Falkland Islands|500;MP|Northern Mariana Islands|1670;XK|Kosovo|383";
+const COUNTRY_LIST = COUNTRIES.split(";").map((x) => { const [iso, name, dial] = x.split("|"); return { iso, name, dial }; });
+function countryOpts() { return COUNTRY_LIST.map((c) => '<option value="+' + c.dial + '" data-iso="' + c.iso + '"' + (c.iso == "KE" ? " selected" : "") + '>' + esc(c.name) + ' (+' + c.dial + ')</option>').join(""); }
+function countryIso() { const sel = $("cc"); const o = sel && sel.selectedOptions && sel.selectedOptions[0]; return o && o.dataset.iso ? o.dataset.iso : ""; }
 const COV = [["#6247F5", "#B79CFF"], ["#2563EB", "#6EE7F9"], ["#0E8F63", "#A7F3D0"], ["#D6336C", "#FFC0A8"], ["#D9480F", "#FFD166"], ["#0F766E", "#99F6E4"], ["#7C3AED", "#F0ABFC"], ["#1F2937", "#6B7280"]];
 const MOODS = ["", "😊", "😎", "🔥", "💜", "🌍", "🎵", "📚", "⚽", "🙏"];
 const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gradient(circle at 18% 25%,rgba(255,255,255,.35) 0 14%,transparent 15%),radial-gradient(circle at 82% 70%,rgba(255,255,255,.25) 0 20%,transparent 21%),radial-gradient(circle at 60% 15%,rgba(255,255,255,.18) 0 9%,transparent 10%),linear-gradient(135deg," + c[0] + "," + c[1] + ")"; };
@@ -248,21 +252,35 @@ function sgCard(p) {
     '<div style="padding:14px;display:flex;flex-direction:column;gap:6px"><b style="font-size:22px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<span class="mut">📍 ' + esc(p.town) + "</span>" : "") + (p.bio ? "<span>" + esc(p.bio) + "</span>" : "") + "</div></div>";
 }
 function singlesTab() {
-  if (!SGP) return '<div class="cd" style="align-items:center;text-align:center"><div style="font-size:44px">💜</div><b style="font-size:20px">Singles</b><span class="mut">Meet other singles on Orivoclass. 18+ only. It is one shared room for everyone, with daily limits so it stays calm. A chat opens only when you both like each other.</span><button class="btn" data-a="sgnew">Create my Singles profile</button><span class="note">Your phone number and real name are never shown.</span></div>';
+  if (!SGP) return '<div style="padding:24px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">' +
+    '<div style="width:110px;height:110px;border-radius:55px;background:linear-gradient(135deg,var(--ac),#ff8fb1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:44px">♥</div>' +
+    '<b style="font-size:22px">Singles</b><span class="mut">Meet other adults on Orivoclass. Only people 18 and older. Photos are shown only after two people like each other.</span>' +
+    '<button class="btn" style="min-width:220px" data-a="sgnew">Create my Singles profile</button><span class="note">Your phone number and real name are never shown here.</span></div>';
   const L = SGL || {};
-  const chips = '<div class="chips">' + [["discover", "Discover"], ["matches", "Matches" + (SGM.length ? " (" + SGM.length + ")" : "")], ["me", "My profile"]].map((x) => '<button class="chip ' + (SGt == x[0] ? "on" : "") + '" data-a="sgt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>";
+  const seg = '<div style="display:flex;gap:8px;padding:12px 14px 4px">' + [["discover", "Discover"], ["matches", "Matches" + (SGM.length ? " (" + SGM.length + ")" : "")], ["me", "My profile"]].map((x) => '<button data-a="sgt" data-t="' + x[0] + '" style="flex:1;min-height:40px;border-radius:20px;border:0;font-weight:600;background:' + (SGt == x[0] ? "var(--ac)" : "var(--sf)") + ';color:' + (SGt == x[0] ? "var(--on)" : "var(--ink)") + '">' + x[1] + "</button>").join("") + "</div>";
   let b = "";
   if (SGt == "discover") {
     if (!SGP.active) b = '<div class="empty"><b>Your profile is hidden</b>Show it again to meet people.<button class="btn" data-a="sgtoggle">Show my profile</button></div>';
-    else if (SGD.length) b = sgCard(SGD[0]) + '<div class="row2" style="padding:0 16px"><button class="btn o" style="flex:1" data-a="sgpass">✕ Pass</button><button class="btn" style="flex:1" data-a="sglike">♥ Like</button></div><p class="note" style="text-align:center;padding:8px 16px 0">New profiles left today: ' + (L.views_left || 0) + " · Likes left: " + (L.likes_left || 0) + '</p><div style="text-align:center"><button class="lnk" data-a="sgrep">Report this profile</button></div>';
-    else if (!L.views_left) b = '<div class="empty"><b>That is all for today</b>You have seen today’s profiles. Come back tomorrow. The daily limit keeps Singles calm for everyone.</div>';
+    else if (SGD.length) {
+      const p = SGD[0], g = sgGrad(p.nick);
+      b = '<div style="padding:12px 14px 0"><div data-a="sgtip" style="border-radius:26px;overflow:hidden;background:' + g + ';color:#fff;height:430px;position:relative;box-shadow:0 12px 30px rgba(16,24,40,.18)">' +
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:150px;font-weight:800;opacity:.2">' + esc(ini(p.nick)) + "</div>" +
+        '<div style="position:absolute;left:0;right:0;bottom:0;padding:70px 22px 22px;background:linear-gradient(transparent,rgba(0,0,0,.6))"><div style="font-size:28px;font-weight:800">' + esc(p.nick) + ", " + p.age + "</div>" +
+        (p.town ? '<div style="opacity:.92;margin-top:2px">📍 ' + esc(p.town) + "</div>" : "") + (p.bio ? '<div style="margin-top:8px;opacity:.95;line-height:1.35">' + esc(p.bio) + "</div>" : "") +
+        '<div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);padding:6px 10px;border-radius:14px;font-size:13px">🔒 Photo opens when you both like each other</div></div></div>' +
+        '<div style="display:flex;justify-content:center;gap:34px;padding:18px 0 8px"><button data-a="sgpass" aria-label="Pass" style="width:64px;height:64px;border-radius:32px;border:1px solid var(--ln);background:var(--bg);font-size:24px;color:var(--cr);box-shadow:0 4px 12px rgba(16,24,40,.08)">✕</button><button data-a="sglike" aria-label="Like" style="width:78px;height:78px;border-radius:39px;border:0;background:var(--ac);color:#fff;font-size:32px;box-shadow:0 8px 20px rgba(98,71,245,.35)">♥</button></div>' +
+        '<p class="note" style="text-align:center;margin:0">Today: ' + (L.views_left || 0) + " new profiles · " + (L.likes_left || 0) + " likes left</p></div>";
+    } else if (!L.views_left) b = '<div class="empty"><b>That is all for today</b>Come back tomorrow. The daily limit keeps Singles calm for everyone.</div>';
     else b = '<div class="empty"><b>No one new right now</b>Check again later.<button class="btn o" data-a="sgref">Refresh</button></div>';
   } else if (SGt == "matches") {
-    b = SGM.length ? SGM.map((x) => '<button class="row" data-a="sgopen" data-id="' + x.user_id + '"><span class="av" style="width:52px;height:52px;font-size:18px;background:' + sgGrad(x.nick) + ';color:#fff">' + esc(ini(x.nick)) + '</span><span class="t"><b>' + esc(x.nick) + ", " + x.age + "</b><small>" + (x.last_body ? esc((x.last_from == U.id ? "You: " : "") + x.last_body) : "You matched. Say hello!") + "</small></span></button>").join("") : '<div class="empty"><b>No matches yet</b>When you and someone like each other, they show up here.</div>';
+    b = SGM.length ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px">' + SGM.map((x) => '<button data-a="sgopen" data-id="' + x.user_id + '" style="border:0;padding:0;background:none;text-align:left"><div style="position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:' + sgGrad(x.nick) + '">' +
+      (x.photo ? '<img src="' + esc(x.photo) + '" style="width:100%;height:100%;object-fit:cover;display:block">' : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:56px;font-weight:800">' + esc(ini(x.nick)) + "</div>") +
+      '<div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))"><b>' + esc(x.nick) + ", " + x.age + "</b>" + (x.last_body ? '<div style="font-size:12px;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc((x.last_from == U.id ? "You: " : "") + x.last_body) + "</div>" : '<div style="font-size:12px;opacity:.9">Say hello</div>') + "</div></div></button>").join("") + "</div>"
+      : '<div class="empty"><b>No matches yet</b>When you and someone like each other, they appear here with their photo.</div>';
   } else {
-    b = sgCard(SGP) + '<div class="cd"><button class="btn" data-a="sgedit">Edit profile and photo</button><button class="btn o" data-a="sgtoggle">' + (SGP.active ? "Hide my profile" : "Show my profile") + '</button><button class="btn d" data-a="sgdel">Delete my Singles profile</button></div><p class="note" style="padding:0 20px 8px">Each day you can see up to ' + (L.view_cap || 30) + " new profiles and send " + (L.like_cap || 15) + " likes. Each profile is shown to a limited number of people and can receive a limited number of likes a day.</p>";
+    b = sgCard(SGP) + '<div class="cd"><button class="btn" data-a="sgedit">Edit profile and photo</button><button class="btn o" data-a="sgtoggle">' + (SGP.active ? "Hide my profile" : "Show my profile") + '</button><button class="btn d" data-a="sgdel">Delete my Singles profile</button></div><p class="note" style="padding:0 20px 8px">Each day you can see up to ' + (L.view_cap || 30) + " new profiles and send " + (L.like_cap || 15) + " likes.</p>";
   }
-  return chips + b;
+  return seg + b;
 }
 function sgpHtml() {
   const e = SGP || {}, isNew = !SGP;
@@ -1020,7 +1038,7 @@ function welcome() {
   const s = V.mode == "signup";
   return '<div class="wrap pad"><div class="logo">Orivoclass</div><p class="mut">' + (s ? "Private messaging. Create your account to start." : "Welcome back. Log in to continue.") + "</p>" +
     (s ? '<label>Your name<input id="nm" placeholder="e.g. Juma Otieno" autocomplete="name"></label>' : "") +
-    '<div class="row2"><label style="width:96px">Code<input id="cc" value="+254" inputmode="tel"></label><label style="flex:1">Phone number<input id="ph" inputmode="tel" placeholder="712 345 678" autocomplete="tel-national"></label></div>' +
+    '<label>Country<select id="cc">' + countryOpts() + '</select></label><label>Phone number<input id="ph" inputmode="tel" placeholder="712 345 678" autocomplete="tel-national"></label>' +
     '<p id="ln" class="note" style="margin-top:-8px"></p>' +
     '<label>Password<input id="pw" type="password" placeholder="At least 8 characters" autocomplete="' + (s ? "new-password" : "current-password") + '"></label>' +
     (s ? '<p class="note">We will send a 6-digit code to your number to verify it.</p><label class="chk"><input type="checkbox" id="ag"> I agree to the Terms of Service and Privacy Policy</label>' : "") +
@@ -1068,7 +1086,7 @@ async function auth() {
   if (s && !$("ag").checked) { er.textContent = "Please accept the Terms to continue."; return; }
   er.textContent = "";
   if (s) {
-    try { const j = await api("/otp/send", "POST", { phone: ph }); PEND = { nm, ph, pw }; DC = j.dev_code || ""; V.scr = "otp"; render(); }
+    try { const j = await api("/otp/send", "POST", { phone: ph, country: countryIso() }); PEND = { nm, ph, pw, iso: countryIso() }; DC = j.dev_code || ""; V.scr = "otp"; render(); }
     catch (e) { const x = $("err"); if (x) x.textContent = e.message; }
     return;
   }
@@ -1084,7 +1102,7 @@ async function otpGo() {
   const c = $("otp").value.replace(/\D/g, "");
   if (c.length != 6) { $("err").textContent = "Enter the 6-digit code."; return; }
   try {
-    const j = await api("/signup", "POST", { name: PEND.nm, phone: PEND.ph, password: PEND.pw, otp: c, device: DEV });
+    const j = await api("/signup", "POST", { name: PEND.nm, phone: PEND.ph, password: PEND.pw, otp: c, device: DEV, country: PEND.iso || "" });
     T = j.token; U = j.user; try { localStorage.setItem("bv.t", T); } catch (e) {}
     PEND = null; DC = "";
     V.scr = "setup"; render();
@@ -1146,13 +1164,25 @@ function statusPeople() {
 function statusTab() {
   const { mine, others } = statusPeople();
   const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - new Date(t)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
-  const myRow = '<button data-a="stopen" data-id="me" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:none;color:var(--ink);text-align:left">' +
-    '<span class="' + (mine.length ? "ring has" : "ring") + '" style="flex:none">' + av(U.name, 54, false, U.id) + '</span><span style="flex:1;min-width:0"><b style="display:block">My status</b><small class="mut">' + (mine.length ? mine.length + (mine.length == 1 ? " update" : " updates") + " · tap to view" : "Tap to add a status") + '</small></span>' +
-    '<span data-a="sc" style="width:40px;height:40px;border-radius:20px;background:var(--ac);color:var(--on);display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1">+</span></button>';
-  const rows = others.map((p) => '<button data-a="stopen" data-id="' + p.id + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:none;color:var(--ink);text-align:left">' +
-    '<span class="' + (p.unseen ? "ring has" : "ring") + '" style="flex:none">' + av(p.name, 54, false, p.id) + '</span><span style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.name) + '</b><small class="mut">' + ago(p.items[p.items.length - 1].created_at) + " · " + p.items.length + (p.items.length == 1 ? " update" : " updates") + "</small></span></button>").join("");
+  const inside = (x) => x && x.has_image
+    ? '<div data-tile="' + x.id + '" style="position:absolute;inset:0">' + (x._img ? '<img src="' + esc(x._img) + '" style="width:100%;height:100%;object-fit:cover">' : "") + "</div>"
+    : '<div style="position:absolute;inset:0;padding:14px;color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere">' + esc((x && x.body) || "") + "</div>";
+  const box = (action, id, name, last, unseen) => '<button data-a="' + action + '" data-id="' + id + '" style="border:0;padding:0;background:none;text-align:left;width:100%"><div style="position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:' + (last ? last.color || "#5A3FD6" : "var(--sf)") + ';box-shadow:' + (unseen ? "0 0 0 3px var(--ac)" : "0 0 0 1px var(--ln)") + '">' +
+    (last ? inside(last) : '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mu);gap:6px"><span style="font-size:34px;line-height:1">+</span><span>Add status</span></div>') +
+    '<div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(name) + '</b><small>' + (last ? ago(last.created_at) : "Tap to add") + "</small></div></div></button>";
+  const myLast = mine[mine.length - 1];
+  const myBox = myLast ? box("stopen", "me", "My status", myLast, false) : box("sc", U.id, "My status", null, false);
+  const others_ = others.map((p) => box("stopen", p.id, p.name, p.items[p.items.length - 1], p.unseen)).join("");
   return '<div style="display:flex;justify-content:flex-end;padding:8px 14px 0"><button class="ib" data-a="stset" aria-label="Status settings" style="color:var(--mu)">⚙</button></div>' +
-    myRow + '<div class="sec">RECENT UPDATES</div>' + (rows || '<p class="mut" style="padding:0 16px">No updates from your contacts yet.</p>');
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px 14px 14px">' + myBox + others_ + "</div>" +
+    (others.length ? "" : '<p class="mut" style="padding:0 16px">No updates from your contacts yet.</p>');
+}
+function loadTileImages() {
+  ST.forEach((x) => {
+    if (!x.has_image || x._img !== undefined) return;
+    x._img = "";
+    api("/status/" + x.id + "/photo").then((j) => { x._img = j.image; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<img src="' + esc(j.image) + '" style="width:100%;height:100%;object-fit:cover">'; }); }).catch(() => {});
+  });
 }
 const STV_LEN = 15000; // photos and text: 15 seconds (videos will use their own length)
 function openStories(who) {
@@ -1183,11 +1213,13 @@ function stvView() {
   const p = STV.people[STV.pi], it = p.items[STV.si]; if (!it) return "";
   const bars = p.items.map((x, i) => '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden"><div style="height:100%;background:#fff;width:' + (i < STV.si ? 100 : 0) + '%;' + (i == STV.si ? "animation:stfill " + STV_LEN + "ms linear forwards" : "") + '"></div></div>').join("");
   const bg = it.has_image ? "#000" : (it.color || "#5A3FD6");
-  const content = it.has_image ? (it._img ? '<img alt="" src="' + esc(it._img) + '" style="max-width:100%;max-height:100%;object-fit:contain">' : '<span style="color:#fff">Loading…</span>') : '<div style="font-size:26px;font-weight:700;color:#fff;text-align:center;padding:32px;white-space:pre-wrap;overflow-wrap:anywhere">' + esc(it.body) + "</div>";
+  const content = it.has_image
+    ? '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;padding:0 10px;box-sizing:border-box">' + (it._img ? '<img alt="" src="' + esc(it._img) + '" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:12px">' : '<span style="color:#fff">Loading…</span>') + (it.body ? '<div style="color:#fff;font-size:17px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 8px">' + esc(it.body) + "</div>" : "") + "</div>"
+    : '<div style="font-size:26px;font-weight:700;color:#fff;text-align:center;padding:32px;white-space:pre-wrap;overflow-wrap:anywhere">' + esc(it.body) + "</div>";
   const footer = p.mine ? '<div style="position:relative;z-index:3;display:flex;gap:10px;justify-content:center;padding:14px"><button class="btn o" style="color:#fff;border-color:#fff" data-a="stviews" data-id="' + it.id + '">👁 Viewed by ' + (it.views || 0) + '</button><button class="btn" style="background:#E5484D;color:#fff" data-a="stdel" data-id="' + it.id + '">Delete</button></div>' : "";
   return '<div id="stv" style="position:absolute;inset:0;z-index:60;background:' + bg + ';display:flex;flex-direction:column;overflow:hidden"><style>@keyframes stfill{from{width:0}to{width:100%}}</style>' +
     '<div style="position:relative;z-index:3;display:flex;gap:4px;padding:12px 12px 0">' + bars + "</div>" +
-    '<div style="position:relative;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 14px;color:#fff">' + av(p.name, 40, false, p.id) + '<span style="flex:1;min-width:0"><b style="display:block">' + esc(p.mine ? "You" : p.name) + '</b><small style="opacity:.8">' + tm(it.created_at) + '</small></span><button class="ib" data-a="stclose" aria-label="Close" style="color:#fff">' + IC_BACK.replace('stroke="currentColor"', 'stroke="#fff"') + "</button></div>" +
+    '<div style="position:relative;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 14px;color:#fff">' + av(p.name, 40, false, p.id) + '<button data-a="' + (p.mine ? "stnoop" : "stprof") + '" data-id="' + p.id + '" style="flex:1;min-width:0;border:0;background:none;color:#fff;text-align:left;padding:0"><b style="display:block">' + esc(p.mine ? "You" : p.name) + '</b><small style="opacity:.8">' + tm(it.created_at) + '</small></button><button class="ib" data-a="stclose" aria-label="Close" style="color:#fff">' + IC_BACK.replace('stroke="currentColor"', 'stroke="#fff"') + "</button></div>" +
     '<div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;min-height:0">' + content + "</div>" +
     '<div data-a="stprev" style="position:absolute;left:0;top:90px;bottom:90px;width:35%;z-index:2"></div><div data-a="stnext" style="position:absolute;right:0;top:90px;bottom:90px;width:65%;z-index:2"></div>' +
     footer + "</div>";
@@ -1505,6 +1537,7 @@ function render() {
   if (UPD) drawUpd();
   pushNav();
   if (U && V.tab == "feed" && !V.scr && !V.ov) { setupSeen(); setupEndless(); }
+  if (U && V.tab == "status" && !V.scr && !V.ov) loadTileImages();
   if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat" || V.scr == "ai")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
@@ -1525,6 +1558,8 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "stopen") return openStories(id);
     if (a == "stclose") return closeStories();
+    if (a == "stnoop") return;
+    if (a == "stprof") { if (STV) { clearTimeout(STV.timer); STV = null; } return openProfile(id); }
     if (a == "stprev") { prevStory(); return; }
     if (a == "stnext") { nextStory(); return; }
     if (a == "stviews") { try { VW = (await api("/status/" + id + "/views")).views; V.ov = "vws"; clearTimeout(STV && STV.timer); return render(); } catch (e) { return toast(e.message); } }
@@ -1699,6 +1734,7 @@ app.addEventListener("click", async (e) => {
     if (a == "sgrep") { const p = SGD[0]; if (!p) return; V.cid = p.user_id; V.rpS = true; V.ov = "rep"; return render(); }
     if (a == "sgopen" || a == "sgsay") { const pid = a == "sgsay" ? SGMP.user_id : id; V.cid = pid; V.scr = "schat"; V.ov = null; V.menu = false; SGCM = []; sgKey = ""; SGPEER = SGM.find((x) => x.user_id == pid) || null; render(); return loadSChat(true); }
     if (a == "sgsend") return sendS();
+    if (a == "sgtip") return toast("Like this person. If they like you back, you can open their profile and chat.");
     if (a == "unmatch") { if (!confirm("Unmatch? The chat will be deleted for both of you.")) return; await api("/singles/match/" + V.cid, "DELETE"); SGM = SGM.filter((x) => x.user_id != V.cid); V.scr = null; V.menu = false; render(); return toast("Unmatched"); }
     if (a == "cvsel") { EDT.cover = +b.dataset.i; document.querySelectorAll('[data-a="cvsel"]').forEach((x) => x.classList.toggle("on", x.dataset.i == EDT.cover)); const pv = $("cvp"); if (pv) pv.style.background = coverBg(EDT.cover); return; }
     if (a == "mdsel") { EDT.mood = b.dataset.v; document.querySelectorAll('[data-a="mdsel"]').forEach((x) => x.classList.toggle("on", x.dataset.v == EDT.mood)); return; }
