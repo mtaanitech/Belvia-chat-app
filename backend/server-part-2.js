@@ -1,5 +1,6 @@
 // ---- Auth ----
 app.post("/api/signup", authLimit, wrap(async (req, res) => {
+  if (await countryOff(req.body.country)) return bad(res, "Orivoclass is not available in this country right now. This country card is not available right now.", 403);
   const name = String(req.body.name || "").trim().slice(0, 60);
   const phone = phoneOf(req.body.phone);
   const password = String(req.body.password || "");
@@ -28,8 +29,8 @@ app.post("/api/signup", authLimit, wrap(async (req, res) => {
     } else {
       if (rs) { await db.query("DELETE FROM users WHERE id=$1", [rs.user_id]); await db.query("DELETE FROM account_resets WHERE id=$1", [rs.id]); } // start fresh
       r = await db.query(
-        "INSERT INTO users(phone,name,pass_hash,recovery_hash) VALUES($1,$2,$3,$4) RETURNING *",
-        [phone, name, hash, hashCode(code)]
+        "INSERT INTO users(phone,name,pass_hash,recovery_hash,country) VALUES($1,$2,$3,$4,$5) RETURNING *",
+        [phone, name, hash, hashCode(code), String(req.body.country || "").toUpperCase().slice(0, 2) || null]
       );
     }
     await db.query("DELETE FROM otps WHERE phone=$1", [phone]);
