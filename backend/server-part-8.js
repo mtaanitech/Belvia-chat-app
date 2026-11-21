@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS account_resets(id bigserial PRIMARY KEY, user_id uuid
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS repost_of bigint REFERENCES posts(id) ON DELETE SET NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS status_mode text NOT NULL DEFAULT 'contacts';
 CREATE TABLE IF NOT EXISTS status_list(owner uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, person uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, PRIMARY KEY(owner,person,kind));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS country text;
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
