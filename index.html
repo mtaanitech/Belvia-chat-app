@@ -105,7 +105,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -729,6 +729,8 @@ app.addEventListener("pointerdown", (e) => {
   PRESS.t = setTimeout(() => { PRESS.fired = true; openReactPicker(b.dataset.id); }, 450);
 });
 ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => app.addEventListener(ev, () => { if (!PRESS.fired) clearTimeout(PRESS.t); }));
+app.addEventListener("pointerdown", (e) => { if (STV && e.target.closest && e.target.closest("#stv")) STY = e.clientY; else STY = null; });
+app.addEventListener("pointerup", (e) => { if (STV && STY !== null && STY - e.clientY > 70) { STY = null; nextPerson(); } else STY = null; });
 app.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest('[data-a="like"], [data-copy]')) e.preventDefault(); });
 // Hold a post's text for 2 seconds to copy it.
 app.addEventListener("pointerdown", (e) => {
@@ -883,7 +885,7 @@ function accHtml() {
 }
 function removeLR() { const e = $("lrbox"); if (e) e.remove(); }
 function drawLR() {
-removeLR(); if (!LR) return;
+  removeLR(); if (!LR) return;
   const d = document.createElement("div"); d.id = "lrbox"; d.className = "ov"; d.style.zIndex = 30;
   d.innerHTML = '<div class="wrap pad center"><div class="logo">Is this you?</div><p class="mut">Someone is trying to log in to your account on <b>' + esc(LR.device || "a new device") + "</b> at " + esc(tm(LR.created_at)) + '. Only approve if it is you.</p>' + (LR.code ? '<p class="mut">This is a computer. Tap Yes only if the computer shows this same code:</p><div style="font-size:30px;font-weight:800;letter-spacing:4px">' + esc(LR.code.slice(0, 4) + " " + LR.code.slice(4)) + '</div>' : '') + '<button class="btn" style="width:100%" data-a="lryes">Yes, it’s me</button><button class="btn d" style="width:100%" data-a="lrno">No, block it</button></div>';
   app.appendChild(d);
@@ -899,7 +901,7 @@ async function runAct(p) {
 }
 const loadCT = async () => { CT = (await api("/contacts")).contacts; };
 const loadCH = async () => { CH = (await api("/chats")).chats; };
-const loadST = async () => { ST = (await api("/status")).status; };
+const loadST = async () => { ST = (await api("/status/feed")).status; };
 const loadBL = async () => { BL = (await api("/blocks")).blocks; };
 async function loadPhotos(ids, force) {
   ids = [...new Set(ids.filter(Boolean))].filter((i) => force || !(i in PH)).slice(0, 60);
@@ -1134,16 +1136,61 @@ function strip() {
     CT.map((c) => '<button class="it" data-a="open" data-id="' + c.id + '"><span class="ring ' + (ST.some((s) => s.user_id == c.id) ? "has" : "") + '">' + av(c.name, 54, false, c.id) + "</span>" + esc(c.name.split(" ")[0]) + "</button>").join("") + "</div>";
 }
 const soon = (t, x) => '<div class="empty"><b>' + t + "</b>" + x + "</div>";
+function statusPeople() {
+  const mine = ST.filter((x) => x.user_id == U.id).sort((x, y) => new Date(x.created_at) - new Date(y.created_at));
+  const map = new Map();
+  ST.filter((x) => x.user_id != U.id).forEach((x) => { if (!map.has(x.user_id)) map.set(x.user_id, { id: x.user_id, name: x.name, items: [] }); map.get(x.user_id).items.push(x); });
+  const others = [...map.values()].map((p) => { p.items.sort((x, y) => new Date(x.created_at) - new Date(y.created_at)); p.unseen = p.items.some((x) => !x.seen); return p; });
+  return { mine, others };
+}
 function statusTab() {
-  const mine = ST.filter((s) => s.user_id == U.id), oth = ST.filter((s) => s.user_id != U.id);
-  const r = (x, own) => '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--ln)">' +
-    '<button data-a="vs" data-id="' + x.id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left;color:var(--ink)">' +
-    '<span style="width:58px;height:58px;border-radius:14px;background:' + x.color + ';color:#fff;display:flex;align-items:center;justify-content:center;padding:5px;flex:none;overflow:hidden;font-size:' + (x.has_image ? 22 : 11) + 'px;font-weight:700;text-align:center;line-height:1.15;word-break:break-word">' + (x.has_image ? "📷" : esc((x.body || "").slice(0, 80))) + "</span>" +
-    '<span style="flex:1;min-width:0"><b style="display:block">' + esc(own ? "My status" : x.name) + '</b><span style="display:block;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;color:var(--ink)">' + esc(x.body || (x.has_image ? "Photo" : "")) + '</span><small class="mut">' + tm(x.created_at) + (own ? " · " + (x.views || 0) + ((x.views || 0) == 1 ? " view" : " views") : "") + "</small></span></button>" +
-    (own ? '<button class="ib" style="color:var(--cr);font-size:13px" data-a="ds" data-id="' + x.id + '">Delete</button>' : "") + "</div>";
-  return '<div class="cd"><b>My status</b><span class="mut">Share a text update. It disappears after 24 hours.</span><button class="btn" data-a="sc">Add status</button></div>' + mine.map((x) => r(x, 1)).join("") +
-    '<div class="sec">Updates from contacts</div>' + (oth.length ? oth.map((x) => r(x, 0)).join("") : '<p class="mut" style="padding:0 16px">No updates yet.</p>') +
-    '<div class="sec">Status privacy</div><div class="cd"><span class="mut">Ghost view, “My contacts except…” and “Only share with…” arrive in the next update.</span></div>';
+  const { mine, others } = statusPeople();
+  const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - new Date(t)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
+  const myRow = '<button data-a="stopen" data-id="me" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:none;color:var(--ink);text-align:left">' +
+    '<span class="' + (mine.length ? "ring has" : "ring") + '" style="flex:none">' + av(U.name, 54, false, U.id) + '</span><span style="flex:1;min-width:0"><b style="display:block">My status</b><small class="mut">' + (mine.length ? mine.length + (mine.length == 1 ? " update" : " updates") + " · tap to view" : "Tap to add a status") + '</small></span>' +
+    '<span data-a="sc" style="width:40px;height:40px;border-radius:20px;background:var(--ac);color:var(--on);display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1">+</span></button>';
+  const rows = others.map((p) => '<button data-a="stopen" data-id="' + p.id + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:none;color:var(--ink);text-align:left">' +
+    '<span class="' + (p.unseen ? "ring has" : "ring") + '" style="flex:none">' + av(p.name, 54, false, p.id) + '</span><span style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.name) + '</b><small class="mut">' + ago(p.items[p.items.length - 1].created_at) + " · " + p.items.length + (p.items.length == 1 ? " update" : " updates") + "</small></span></button>").join("");
+  return '<div style="display:flex;justify-content:flex-end;padding:8px 14px 0"><button class="ib" data-a="stset" aria-label="Status settings" style="color:var(--mu)">⚙</button></div>' +
+    myRow + '<div class="sec">RECENT UPDATES</div>' + (rows || '<p class="mut" style="padding:0 16px">No updates from your contacts yet.</p>');
+}
+const STV_LEN = 15000; // photos and text: 15 seconds (videos will use their own length)
+function openStories(who) {
+  const { mine, others } = statusPeople();
+  let people;
+  if (who == "me") { if (!mine.length) { V.ov = null; V.scr = null; return render(); } people = [{ id: U.id, name: "You", items: mine, mine: true }].concat(others); }
+  else { people = others; }
+  let pi = people.findIndex((p) => p.id == who); if (pi < 0) pi = 0;
+  let si = 0; const first = people[pi].items.findIndex((x) => !x.seen); if (!people[pi].mine && first > 0) si = first;
+  STV = { people, pi, si, timer: null }; V.ov = "stv"; showStory();
+}
+function showStory() {
+  if (!STV) return;
+  clearTimeout(STV.timer);
+  const p = STV.people[STV.pi], it = p.items[STV.si];
+  if (!it) return closeStories();
+  if (!p.mine && !it.seen) { it.seen = true; api("/status/" + it.id + "/view", "POST").catch(() => {}); }
+  if (it.has_image && it._img === undefined) { it._img = ""; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) render(); }).catch(() => {}); }
+  render();
+  STV.timer = setTimeout(nextStory, STV_LEN);
+}
+function nextStory() { if (!STV) return; const p = STV.people[STV.pi]; if (STV.si < p.items.length - 1) { STV.si++; showStory(); } else if (STV.pi < STV.people.length - 1) { STV.pi++; STV.si = 0; showStory(); } else closeStories(); }
+function prevStory() { if (!STV) return; if (STV.si > 0) { STV.si--; showStory(); } else if (STV.pi > 0) { STV.pi--; STV.si = STV.people[STV.pi].items.length - 1; showStory(); } else showStory(); }
+function nextPerson() { if (!STV) return; if (STV.pi < STV.people.length - 1) { STV.pi++; STV.si = 0; showStory(); } else closeStories(); }
+function closeStories() { if (STV) clearTimeout(STV.timer); STV = null; V.ov = null; render(); }
+function stvView() {
+  if (!STV) return "";
+  const p = STV.people[STV.pi], it = p.items[STV.si]; if (!it) return "";
+  const bars = p.items.map((x, i) => '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden"><div style="height:100%;background:#fff;width:' + (i < STV.si ? 100 : 0) + '%;' + (i == STV.si ? "animation:stfill " + STV_LEN + "ms linear forwards" : "") + '"></div></div>').join("");
+  const bg = it.has_image ? "#000" : (it.color || "#5A3FD6");
+  const content = it.has_image ? (it._img ? '<img alt="" src="' + esc(it._img) + '" style="max-width:100%;max-height:100%;object-fit:contain">' : '<span style="color:#fff">Loading…</span>') : '<div style="font-size:26px;font-weight:700;color:#fff;text-align:center;padding:32px;white-space:pre-wrap;overflow-wrap:anywhere">' + esc(it.body) + "</div>";
+  const footer = p.mine ? '<div style="position:relative;z-index:3;display:flex;gap:10px;justify-content:center;padding:14px"><button class="btn o" style="color:#fff;border-color:#fff" data-a="stviews" data-id="' + it.id + '">👁 Viewed by ' + (it.views || 0) + '</button><button class="btn" style="background:#E5484D;color:#fff" data-a="stdel" data-id="' + it.id + '">Delete</button></div>' : "";
+  return '<div id="stv" style="position:absolute;inset:0;z-index:60;background:' + bg + ';display:flex;flex-direction:column;overflow:hidden"><style>@keyframes stfill{from{width:0}to{width:100%}}</style>' +
+    '<div style="position:relative;z-index:3;display:flex;gap:4px;padding:12px 12px 0">' + bars + "</div>" +
+    '<div style="position:relative;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 14px;color:#fff">' + av(p.name, 40, false, p.id) + '<span style="flex:1;min-width:0"><b style="display:block">' + esc(p.mine ? "You" : p.name) + '</b><small style="opacity:.8">' + tm(it.created_at) + '</small></span><button class="ib" data-a="stclose" aria-label="Close" style="color:#fff">' + IC_BACK.replace('stroke="currentColor"', 'stroke="#fff"') + "</button></div>" +
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;min-height:0">' + content + "</div>" +
+    '<div data-a="stprev" style="position:absolute;left:0;top:90px;bottom:90px;width:35%;z-index:2"></div><div data-a="stnext" style="position:absolute;right:0;top:90px;bottom:90px;width:65%;z-index:2"></div>' +
+    footer + "</div>";
 }
 const rowGo = (p, t, sb) => '<button class="row" data-a="pg" data-p="' + p + '"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span style="color:var(--mu);font-size:22px">›</span></button>';
 const rowSoon = (t, sb) => '<div class="row" style="opacity:.75;cursor:default"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span class="note" style="font-weight:700">Soon</span></div>';
@@ -1367,6 +1414,13 @@ function pageOv() {
     b = lockOn()
       ? '<div class="cd"><b>Chat lock is on</b><span class="mut">You need your PIN to open Orivoclass after you leave it.</span><label>Lock after you leave the app' + opt("lpb") + '</label><button class="btn o" data-a="locknow">Lock now</button></div><div class="cd"><b>Turn off</b><label>Your PIN<input id="lpo" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label><button class="btn d" data-a="lkoff">Turn off chat lock</button></div>'
       : '<div class="cd"><b>Protect Orivoclass with a PIN</b><span class="mut">The app asks for your PIN when you come back to it. Your login on this phone is stored encrypted with the PIN. It does not change how messages are stored on our servers.</span><label>New PIN (6 digits)<input id="lp1" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label><label>Repeat PIN<input id="lp2" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label><label>Lock after you leave the app' + opt("lpa") + '</label><button class="btn" data-a="lkon">Turn on chat lock</button><span class="note">There is no PIN reset. If you forget it, log out and log in again. Fingerprint needs the Android app; web browsers cannot do it reliably.</span></div>';
+  } else if (p == "statusset") {
+    t = "Status privacy";
+    const S = STSET || { mode: "contacts", list: [] }, ms = [["contacts", "Everyone who saved me"], ["except", "My contacts except…"], ["only", "Only share with…"]];
+    const mine = ST.filter((x) => x.user_id == U.id);
+    b = '<div class="cd"><b>Who can see my status</b>' + ms.map((m) => '<button class="' + (S.mode == m[0] ? "btn" : "btn o") + '" data-a="stmode" data-t="' + m[0] + '">' + m[1] + "</button>").join("") + '<span class="note">Only people who saved your number see your status, unless you choose “Only share with…”.</span></div>' +
+      (S.mode == "contacts" ? "" : '<div class="cd"><b>' + (S.mode == "except" ? "Hide my status from" : "Share my status only with") + '</b>' + CT.map((c) => '<label class="chk"><input type="checkbox" class="stpick" value="' + c.id + '"' + (S.list.includes(c.id) ? " checked" : "") + "> " + esc(c.name) + "</label>").join("") + (CT.length ? "" : '<span class="mut">Save some contacts first.</span>') + '<button class="btn" data-a="stsave">Save</button></div>') +
+      '<div class="sec">MY STATUSES (24 HOURS)</div>' + (mine.length ? mine.map((x) => '<div class="row" style="cursor:default"><span class="t"><b style="font-weight:500">' + esc((x.body || "[photo]").slice(0, 60)) + "</b><small>" + tm(x.created_at) + " · " + "</small></span><button class=\"btn d\" style=\"min-height:34px;padding:0 12px\" data-a=\"stdelone\" data-id=\"" + x.id + "\">Delete</button></div>").join("") : '<p class="mut" style="padding:8px 16px">You have no status right now.</p>');
   } else if (p == "dm") {
     t = "Disappearing messages";
     b = '<div class="cd"><b>How to turn it on</b><span class="mut">Open a chat, tap ⋮, then Disappearing. Choose 24 hours or 7 days.</span></div><div class="cd"><b>Good to know</b><span class="mut">It applies to new messages in that chat, for both people. Messages sent before you turned it on stay. Someone can still save a copy or take a screenshot, so it is not a guarantee.</span></div>';
@@ -1396,6 +1450,7 @@ function overlays() {
   if (o == "prof") return profView();
   if (o == "pmenu") return pmenuView();
   if (o == "linkin") return linkinView();
+  if (o == "stv") return stvView();
   if (o == "reqs") return reqsView();
   if (o == "bpick") return boostPickView();
   if (o == "dmo") return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Close">' + IC_BACK + '</button><h1>Disappearing messages</h1></div><div class="body"><div class="cd"><span class="mut">New messages in this chat will be deleted after the time you choose. This applies to both people. Messages sent before stay.</span>' + [[0, "Off"], [86400, "24 hours"], [604800, "7 days"]].map((x) => '<button class="btn ' + (TT == x[0] ? "" : "o") + '" data-a="dmset" data-s="' + x[0] + '">' + x[1] + "</button>").join("") + "</div></div></div>";
@@ -1468,6 +1523,26 @@ app.addEventListener("click", async (e) => {
       try { await navigator.clipboard.writeText(text); return toast("Link copied. Send it to your friends."); }
       catch (e) { return toast(url); }
     }
+    if (a == "stopen") return openStories(id);
+    if (a == "stclose") return closeStories();
+    if (a == "stprev") { prevStory(); return; }
+    if (a == "stnext") { nextStory(); return; }
+    if (a == "stviews") { try { VW = (await api("/status/" + id + "/views")).views; V.ov = "vws"; clearTimeout(STV && STV.timer); return render(); } catch (e) { return toast(e.message); } }
+    if (a == "stdel" || a == "stdelone") {
+      if (!confirm("Delete this status?")) return;
+      try { await api("/status/" + id, "DELETE"); } catch (e) { return toast(e.message); }
+      ST = ST.filter((x) => x.id != id);
+      if (STV) { STV.people.forEach((p) => { p.items = p.items.filter((x) => x.id != id); }); STV.people = STV.people.filter((p) => p.items.length); if (!STV.people.length) return closeStories(); if (STV.pi >= STV.people.length) STV.pi = STV.people.length - 1; STV.si = Math.min(STV.si, STV.people[STV.pi].items.length - 1); showStory(); }
+      else { render(); }
+      return toast("Status deleted");
+    }
+    if (a == "stset") { V.pg = "statusset"; V.ov = "pg"; try { STSET = await api("/me/status-privacy"); } catch (e) { STSET = { mode: "contacts", list: [] }; } return render(); }
+    if (a == "stmode") { if (!STSET) STSET = { mode: "contacts", list: [] }; STSET.mode = b.dataset.t; return render(); }
+    if (a == "stsave") {
+      const list = [...document.querySelectorAll(".stpick:checked")].map((x) => x.value);
+      try { await api("/me/status-privacy", "PUT", { mode: STSET.mode, list }); STSET.list = list; toast("Saved"); } catch (e) { toast(e.message); }
+      return;
+    }
     if (a == "linkstart") return linkStartNew();
     if (a == "linknew") return linkStartNew();
     if (a == "linkcancel") { clearInterval(LNKT); LNK = null; V.scr = null; V.mode = "login"; return render(); }
@@ -1521,7 +1596,7 @@ app.addEventListener("click", async (e) => {
     if (a == "pmenu") { V.pmid = id; V.ov = "pmenu"; return render(); }
     if (a == "pmclose") { if (e.target !== b) return; V.ov = null; return render(); }
     if (a == "pmact") {
-    const k = b.dataset.k, p = findPost(id); V.ov = null; render(); if (!p) return;
+      const k = b.dataset.k, p = findPost(id); V.ov = null; render(); if (!p) return;
       if (k == "boost") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (x) { toast(x.message); } } return render(); }
       if (k == "share") return sharePost(id);
       if (k == "repost") return doRepost(id);
@@ -1830,4 +1905,3 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
-  
