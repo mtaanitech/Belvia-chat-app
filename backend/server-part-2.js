@@ -18,11 +18,20 @@ app.post("/api/signup", authLimit, wrap(async (req, res) => {
   }
   const hash = await bcrypt.hash(password, 10);
   const code = makeCode();
+  const rs = (await db.query("SELECT id, user_id FROM account_resets WHERE phone=$1 AND expires_at > now()", [phone])).rows[0];
+  if (rs && req.body.restore === undefined) return res.json({ restore_available: true }); // ask the person first
   try {
-    const r = await db.query(
-      "INSERT INTO users(phone,name,pass_hash,recovery_hash) VALUES($1,$2,$3,$4) RETURNING *",
-      [phone, name, hash, hashCode(code)]
-    );
+    let r;
+    if (rs && req.body.restore === true) { // keep the old chats, contacts and posts; only the login details are new
+      r = await db.query("UPDATE users SET phone=$2, name=$3, pass_hash=$4, recovery_hash=$5 WHERE id=$1 RETURNING *", [rs.user_id, phone, name, hash, hashCode(code)]);
+      await db.query("DELETE FROM account_resets WHERE id=$1", [rs.id]);
+    } else {
+      if (rs) { await db.query("DELETE FROM users WHERE id=$1", [rs.user_id]); await db.query("DELETE FROM account_resets WHERE id=$1", [rs.id]); } // start fresh
+      r = await db.query(
+        "INSERT INTO users(phone,name,pass_hash,recovery_hash) VALUES($1,$2,$3,$4) RETURNING *",
+        [phone, name, hash, hashCode(code)]
+      );
+    }
     await db.query("DELETE FROM otps WHERE phone=$1", [phone]);
     await trustDevice(r.rows[0].id, cleanDev(req.body.device), deviceName(req));
     res.json({ ...(await newSession(r.rows[0], req)), recovery_code: code });
