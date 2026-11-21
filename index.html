@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1, interactive-widget=resizes-content">
 <title>Orivoclass</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#FFFFFF">
@@ -492,14 +492,22 @@ function postCard(p) {
   const me = p.user_id == U.id, clk = p.created_at ? tm(p.created_at) : "", r = p.my_reaction;
   const who = p.audience == "followers" ? ' · <span class="mut">Followers only</span>' : "";
   const top = (p.top_reactions || []).slice(0, 3).join("");
-  const photo = p._img ? '<img alt="" decoding="async" src="' + esc(p._img) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
+  const o = p.original;
+  const photoKey = o ? "o" + o.id : "p" + p.id, hasPhoto = o ? o.has_image : p.has_image;
+  const cached = o ? o._img : p._img;
+  const photo = cached ? '<img alt="" decoding="async" src="' + esc(cached) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
+  const reposted = p.repost_of ? '<div class="mut" style="font-size:13px;display:flex;align-items:center;gap:6px">↻ Reposted</div>' : "";
+  const body = (p.body ? '<div data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "");
+  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-img="' + photoKey + '" style="border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
+    reposted +
     '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b><small class="mut">' + clk + who + "</small></span></button>" +
     (!me && !p.following ? '<button class="btn o" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + p.user_id + '">Follow</button>' : "") +
     '<button class="ib" data-a="pmenu" data-id="' + p.id + '" aria-label="More" style="color:var(--mu)">' + IC_DOTS + "</button></div>" +
     (p.sponsored ? '<span class="pill" style="align-self:flex-start">Sponsored</span>' : "") +
-    (p.body ? '<div data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "") +
-    (p.has_image ? '<div data-img="' + p.id + '" style="border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
+    body +
+    (!o && hasPhoto ? '<div data-img="' + photoKey + '" style="border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
+    orig +
     '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px">' +
       '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
       '<button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px">' + IC_CMT + "<span>" + p.comments + "</span></button>" +
@@ -509,7 +517,7 @@ function pmenuView() {
   const id = V.pmid, p = findPost(id); if (!p) return "";
   const me = p.user_id == U.id;
   const item = (k, label, color) => '<button data-a="pmact" data-k="' + k + '" data-id="' + id + '" style="border:0;background:none;text-align:left;padding:14px 20px;font:inherit;font-size:16px;color:' + (color || "var(--ink)") + ';width:100%">' + label + "</button>";
-  const items = me ? item("boost", "Boost post") + item("share", "Share") + item("copy", "Copy link") + item("delete", "Delete post", "var(--cr)") : item("share", "Share") + item("copy", "Copy link") + item("report", "Report post", "var(--cr)");
+  const items = me ? item("boost", "Boost post") + item("share", "Share") + item("copy", "Copy link") + item("delete", "Delete post", "var(--cr)") : item("share", "Share") + item("repost", "Repost to my profile") + item("copy", "Copy link") + item("report", "Report post", "var(--cr)");
   return '<div data-a="pmclose" style="position:absolute;inset:0;background:rgba(16,24,40,.35);z-index:45;display:flex;align-items:flex-end"><div style="width:100%;background:var(--bg);border-radius:18px 18px 0 0;padding:8px 0 calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(16,24,40,.2)"><div style="width:44px;height:5px;border-radius:3px;background:var(--ln);margin:6px auto 8px"></div>' + items + "</div></div>";
 }
 function feedTab() {
@@ -569,13 +577,18 @@ function markSeen(id, el) {
 }
 
 async function loadPostImages() {
-  const todo = FEED.filter((p) => p.has_image && !p._img && document.querySelector('[data-img="' + p.id + '"]'));
-  await Promise.all(todo.map(async (p) => {
-    if (p._loading) return; p._loading = true;
-    try { const j = await api("/posts/" + p.id + "/image"); p._img = j.image; const el = document.querySelector('[data-img="' + p.id + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(p._img) + '" style="width:100%;display:block;border-radius:12px">'; }
-    catch (e) { const el = document.querySelector('[data-img="' + p.id + '"]'); if (el) el.innerHTML = '<span class="note">Photo not available</span>'; }
-    finally { p._loading = false; }
+  const jobs = [];
+  FEED.forEach((p) => { if (p.original && p.original.has_image) jobs.push({ key: "o" + p.original.id, id: p.original.id, obj: p.original }); else if (p.has_image) jobs.push({ key: "p" + p.id, id: p.id, obj: p }); });
+  await Promise.all(jobs.filter((j) => !j.obj._img && document.querySelector('[data-img="' + j.key + '"]')).map(async (j) => {
+    if (j.obj._loading) return; j.obj._loading = true;
+    try { const r = await api("/posts/" + j.id + "/image"); j.obj._img = r.image; const el = document.querySelector('[data-img="' + j.key + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(r.image) + '" style="width:100%;display:block;border-radius:12px">'; }
+    catch (e) { const el = document.querySelector('[data-img="' + j.key + '"]'); if (el) el.innerHTML = '<span class="note">Photo not available</span>'; }
+    finally { j.obj._loading = false; }
   }));
+}
+async function doRepost(id) {
+  try { const j = await api("/posts/" + id + "/repost", "POST", {}); toast(j.already ? "Already reposted" : "Reposted to your profile"); }
+  catch (e) { toast(e.message); }
 }
 function composeView() {
   const C = CMP, ok = (C.body || "").trim() || C.image, aud = C.aud || "public";
@@ -835,7 +848,7 @@ function startWait(j) {
 async function pollWait() {
   if (!WAIT) return;
   try {
-  const j = await api("/login/status", "POST", { id: WAIT.id, secret: WAIT.secret });
+    const j = await api("/login/status", "POST", { id: WAIT.id, secret: WAIT.secret });
     if (j.status == "approved") {
       clearInterval(WT); WAIT = null; T = j.token; U = j.user; try { localStorage.setItem("bv.t", T); } catch (e) {}
       await loadAll(); V.scr = null; V.tab = "feed"; render(); start();
@@ -870,7 +883,7 @@ function accHtml() {
 }
 function removeLR() { const e = $("lrbox"); if (e) e.remove(); }
 function drawLR() {
-  removeLR(); if (!LR) return;
+removeLR(); if (!LR) return;
   const d = document.createElement("div"); d.id = "lrbox"; d.className = "ov"; d.style.zIndex = 30;
   d.innerHTML = '<div class="wrap pad center"><div class="logo">Is this you?</div><p class="mut">Someone is trying to log in to your account on <b>' + esc(LR.device || "a new device") + "</b> at " + esc(tm(LR.created_at)) + '. Only approve if it is you.</p>' + (LR.code ? '<p class="mut">This is a computer. Tap Yes only if the computer shows this same code:</p><div style="font-size:30px;font-weight:800;letter-spacing:4px">' + esc(LR.code.slice(0, 4) + " " + LR.code.slice(4)) + '</div>' : '') + '<button class="btn" style="width:100%" data-a="lryes">Yes, it’s me</button><button class="btn d" style="width:100%" data-a="lrno">No, block it</button></div>';
   app.appendChild(d);
@@ -1508,15 +1521,16 @@ app.addEventListener("click", async (e) => {
     if (a == "pmenu") { V.pmid = id; V.ov = "pmenu"; return render(); }
     if (a == "pmclose") { if (e.target !== b) return; V.ov = null; return render(); }
     if (a == "pmact") {
-      const k = b.dataset.k, p = findPost(id); V.ov = null; render(); if (!p) return;
+    const k = b.dataset.k, p = findPost(id); V.ov = null; render(); if (!p) return;
       if (k == "boost") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (x) { toast(x.message); } } return render(); }
       if (k == "share") return sharePost(id);
+      if (k == "repost") return doRepost(id);
       if (k == "copy") { const link = location.origin + location.pathname + "#post=" + id; if (navigator.clipboard) return navigator.clipboard.writeText(link).then(() => toast("Link copied"), () => toast("Copy is not available")); return toast("Copy is not available"); }
       if (k == "delete") return doDelPost(id);
       if (k == "report") return doReport(id);
       return;
-  }
-   if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
+    }
+    if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
     if (a == "bpx") { V.ov = null; return render(); }
     if (a == "bpay") { try { const j = await api("/boosts/checkout", "POST", { post_id: id, days: +b.dataset.d }); try { localStorage.setItem("bv.pay", j.reference); } catch (e) {} location.href = j.authorization_url; } catch (e) { toast(e.message); } return; }
     if (a == "cmpaud") { if ($("cpb")) CMP.body = $("cpb").value; CMP.aud = b.dataset.t; return render(); }
@@ -1816,4 +1830,4 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
- 
+  
