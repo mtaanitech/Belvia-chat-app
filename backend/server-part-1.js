@@ -48,7 +48,18 @@ try {
 } catch (e) { console.warn("helmet settings problem, using a simpler setup:", e.message); helmetMw = helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }); }
 app.use(helmetMw);
 app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false, maxAge: 86400 })); // browsers remember the "may I talk to this server?" check, so each request is one trip instead of two
-app.use(express.json({ limit: "256kb" })); // status photos are up to ~160 KB; each route checks its own size
+app.use(express.json({ limit: "256kb" }));
+// Whole-app switch (set by the admin). While it is off, nothing works except the admin and the health check.
+let APPFLAG = { on: true, at: 0 };
+app.use(async (req, res, next) => {
+  if (req.path === "/health" || req.path.startsWith("/api/admin") || req.path === "/api/version") return next();
+  if (Date.now() - APPFLAG.at > 10000) {
+    try { const r = await db.query("SELECT value FROM app_settings WHERE key='app'"); APPFLAG = { on: !r.rows[0] || r.rows[0].value.on !== false, at: Date.now() }; } catch (e) { APPFLAG.at = Date.now(); }
+  }
+  if (APPFLAG.on) return next();
+  if (req.path.startsWith("/api/")) return res.status(503).json({ error: "Orivoclass is not available right now." });
+  res.status(503).type("html").send("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><body style='font-family:system-ui;text-align:center;padding:40px'><h2>Orivoclass is not available right now.</h2><p>Please try again later.</p></body>");
+}); // status photos are up to ~160 KB; each route checks its own size
 app.use("/api/", rateLimit({ windowMs: 60000, max: 1500, keyGenerator: (req) => (req.headers.authorization ? "t" + String(req.headers.authorization).slice(-32) : req.ip) })); // per person, not per IP: many tabs and phones behind one network are fine
 const authLimit = rateLimit({ windowMs: 15 * 60000, max: 20 });
 
@@ -166,6 +177,7 @@ async function sendSms(to, text) {
   if (!r.ok || !rec || ![100, 101, 102].includes(rec.statusCode)) throw new Error("SMS failed: " + (rec ? rec.status : r.status));
 }
 app.post("/api/otp/send", authLimit, wrap(async (req, res) => {
+  if (await countryOff(req.body.country)) return bad(res, "Orivoclass is not available in this country right now.", 403);
   const phone = phoneOf(req.body.phone);
   if (phone.length < 10 || phone.length > 16) return bad(res, "Enter a valid phone number.");
   if (phone.startsWith("+254") && !/^\+254[17]\d{8}$/.test(phone)) return bad(res, "Enter a valid Kenyan number.");
