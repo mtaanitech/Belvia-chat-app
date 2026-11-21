@@ -169,7 +169,7 @@ async function setupPush() {
   } catch (e) { console.error("Push setup failed:", e.message); }
 }
 (async function waitForDatabase(tries) { // the database tables are created at start-up, so wait until they exist
-  try { await db.query("SELECT 1 FROM app_settings LIMIT 1"); await setupPush(); }
+  try { await db.query("SELECT 1 FROM app_settings LIMIT 1"); await db.query("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_id text"); await setupPush(); }
   catch (e) { if (tries < 40) setTimeout(() => waitForDatabase(tries + 1), 2000); }
 })(0);
 // Like a comment (only on posts you are allowed to see).
@@ -264,7 +264,8 @@ app.post("/api/login-requests/approve-code", need, wrap(async (req, res) => {
 const LINK_ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const makeLinkCode = () => { const b = crypto.randomBytes(8); let s = ""; for (let i = 0; i < 8; i++) s += LINK_ALPHA[b[i] % LINK_ALPHA.length]; return s; };
 const normLink = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-const linkStart = rateLimit({ windowMs: 15 * 60000, max: 30, keyGenerator: (req) => req.ip || "x" });
+const linkStart = rateLimit({ windowMs: 15 * 60000, max: 200, keyGenerator: (req) => req.ip || "x" });
+const linkPoll = rateLimit({ windowMs: 15 * 60000, max: 3000, keyGenerator: (req) => String(req.body && req.body.id || req.ip) });
 const linkApprove = rateLimit({ windowMs: 10 * 60000, max: 30, keyGenerator: (req) => String(req.uid) });
 app.post("/api/link/start", linkStart, wrap(async (req, res) => {
   const code = makeLinkCode(), secret = crypto.randomBytes(24).toString("hex");
@@ -272,7 +273,7 @@ app.post("/api/link/start", linkStart, wrap(async (req, res) => {
     [sha(code), sha(secret), deviceName(req)]);
   res.json({ id: r.rows[0].id, secret, code: code.slice(0, 4) + "-" + code.slice(4) });
 }));
-app.post("/api/link/status", linkStart, wrap(async (req, res) => {
+app.post("/api/link/status", linkPoll, wrap(async (req, res) => {
   if (!isId(req.body.id)) return bad(res, "Code not found.", 404);
   const r = (await db.query("SELECT * FROM link_codes WHERE id=$1", [req.body.id])).rows[0];
   if (!r || r.secret_hash !== sha(req.body.secret)) return bad(res, "Code not found.", 404);
@@ -298,4 +299,17 @@ app.post("/api/link/approve", need, linkApprove, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 setInterval(() => db.query("DELETE FROM link_codes WHERE created_at < now() - interval '1 day'").catch(() => {}), 3600000);
+// Admin: reset an account (number and password are removed, everything else stays). The person can restore it when they register again.
+app.post("/api/admin/users/reset", adminLimit, adminOnly, wrap(async (req, res) => {
+  const phone = phoneOf(req.body.phone);
+  const u = (await db.query("SELECT id FROM users WHERE phone=$1", [phone])).rows[0];
+  if (!u) return bad(res, "No account with this number.", 404);
+  await db.query("DELETE FROM sessions WHERE user_id=$1", [u.id]);
+  await db.query("DELETE FROM login_requests WHERE user_id=$1", [u.id]);
+  await db.query("DELETE FROM account_resets WHERE user_id=$1", [u.id]);
+  await db.query("INSERT INTO account_resets(user_id,phone,expires_at) VALUES($1,$2, now() + interval '30 days')", [u.id, phone]);
+  const junk = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
+  await db.query("UPDATE users SET phone=$2, pass_hash=$3, recovery_hash=NULL WHERE id=$1", [u.id, "reset:" + u.id, junk]);
+  res.json({ ok: true });
+}));
 // END OF PART 10
