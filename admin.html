@@ -89,7 +89,7 @@ let KEY = "";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fd = (x) => (x ? new Date(x).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
-const TABS = [["reports", "Reports"], ["appeals", "Appeals"], ["accounts", "Accounts"], ["posts", "Posts"], ["photos", "Singles photos"], ["plans", "Boost plans"], ["ai", "AI check"]];
+const TABS = [["countries", "Countries"], ["reports", "Reports"], ["appeals", "Appeals"], ["accounts", "Accounts"], ["posts", "Posts"], ["photos", "Singles photos"], ["plans", "Boost plans"], ["ai", "AI check"]];
 let TAB = "reports", DATA = {};
 
 async function call(path, method, body) {
@@ -107,18 +107,33 @@ function setTabs() {
 async function loadAll() {
   const [r, a, p, po, bp] = await Promise.all([call("/reports"), call("/appeals"), call("/singles/photos"), call("/posts"), call("/boost-plans")]);
   DATA = { reports: r.reports, appeals: a.appeals, photos: p.photos, posts: po.posts, plans: bp.plans };
+  await loadCountries().catch(() => {});
   render();
 }
 function render() {
   setTabs();
   const v = $("view");
-  const map = { reports: viewReports, appeals: viewAppeals, accounts: viewAccounts, posts: viewPosts, photos: viewPhotos, plans: viewPlans, ai: viewAI };
+  const map = { countries: viewCountries, reports: viewReports, appeals: viewAppeals, accounts: viewAccounts, posts: viewPosts, photos: viewPhotos, plans: viewPlans, ai: viewAI };
   v.innerHTML = map[TAB]();
   bind();
 }
 const head = (title, sub) => '<div class="head"><div><h1>' + title + "</h1>" + (sub ? "<p>" + sub + "</p>" : "") + "</div></div>";
 const emptyBox = (t) => '<div class="empty">' + t + "</div>";
 
+// ---------- Countries and the whole app ----------
+const COUNTRY_LIST = "AF|Afghanistan|93;AL|Albania|355;DZ|Algeria|213;AD|Andorra|376;AO|Angola|244;AG|Antigua and Barbuda|1268;AR|Argentina|54;AM|Armenia|374;AU|Australia|61;AT|Austria|43;AZ|Azerbaijan|994;BS|Bahamas|1242;BH|Bahrain|973;BD|Bangladesh|880;BB|Barbados|1246;BY|Belarus|375;BE|Belgium|32;BZ|Belize|501;BJ|Benin|229;BT|Bhutan|975;BO|Bolivia|591;BA|Bosnia and Herzegovina|387;BW|Botswana|267;BR|Brazil|55;BN|Brunei|673;BG|Bulgaria|359;BF|Burkina Faso|226;BI|Burundi|257;KH|Cambodia|855;CM|Cameroon|237;CA|Canada|1;CV|Cape Verde|238;CF|Central African Republic|236;TD|Chad|235;CL|Chile|56;CN|China|86;CO|Colombia|57;KM|Comoros|269;CG|Congo|242;CD|Congo DR|243;CR|Costa Rica|506;CI|Ivory Coast|225;HR|Croatia|385;CU|Cuba|53;CY|Cyprus|357;CZ|Czechia|420;DK|Denmark|45;DJ|Djibouti|253;DM|Dominica|1767;DO|Dominican Republic|1809;EC|Ecuador|593;EG|Egypt|20;SV|El Salvador|503;GQ|Equatorial Guinea|240;ER|Eritrea|291;EE|Estonia|372;SZ|Eswatini|268;ET|Ethiopia|251;FJ|Fiji|679;FI|Finland|358;FR|France|33;GA|Gabon|241;GM|Gambia|220;GE|Georgia|995;DE|Germany|49;GH|Ghana|233;GR|Greece|30;GD|Grenada|1473;GT|Guatemala|502;GN|Guinea|224;GW|Guinea-Bissau|245;GY|Guyana|592;HT|Haiti|509;HN|Honduras|504;HK|Hong Kong|852;HU|Hungary|36;IS|Iceland|354;IN|India|91;ID|Indonesia|62;IR|Iran|98;IQ|Iraq|964;IE|Ireland|353;IL|Israel|972;IT|Italy|39;JM|Jamaica|1876;JP|Japan|81;JO|Jordan|962;KZ|Kazakhstan|7;KE|Kenya|254;KI|Kiribati|686;KP|North Korea|850;KR|South Korea|82;KW|Kuwait|965;KG|Kyrgyzstan|996;LA|Laos|856;LV|Latvia|371;LB|Lebanon|961;LS|Lesotho|266;LR|Liberia|231;LY|Libya|218;LI|Liechtenstein|423;LT|Lithuania|370;LU|Luxembourg|352;MO|Macau|853;MG|Madagascar|261;MW|Malawi|265;MY|Malaysia|60;MV|Maldives|960;ML|Mali|223;MT|Malta|356;MH|Marshall Islands|692;MR|Mauritania|222;MU|Mauritius|230;MX|Mexico|52;FM|Micronesia|691;MD|Moldova|373;MC|Monaco|377;MN|Mongolia|976;ME|Montenegro|382;MA|Morocco|212;MZ|Mozambique|258;MM|Myanmar|95;NA|Namibia|264;NR|Nauru|674;NP|Nepal|977;NL|Netherlands|31;NZ|New Zealand|64;NI|Nicaragua|505;NE|Niger|227;NG|Nigeria|234;MK|North Macedonia|389;NO|Norway|47;OM|Oman|968;PK|Pakistan|92;PW|Palau|680;PS|Palestine|970;PA|Panama|507;PG|Papua New Guinea|675;PY|Paraguay|595;PE|Peru|51;PH|Philippines|63;PL|Poland|48;PT|Portugal|351;PR|Puerto Rico|1787;QA|Qatar|974;RO|Romania|40;RU|Russia|7;RW|Rwanda|250;KN|Saint Kitts and Nevis|1869;LC|Saint Lucia|1758;VC|Saint Vincent|1784;WS|Samoa|685;SM|San Marino|378;ST|Sao Tome and Principe|239;SA|Saudi Arabia|966;SN|Senegal|221;RS|Serbia|381;SC|Seychelles|248;SL|Sierra Leone|232;SG|Singapore|65;SK|Slovakia|421;SI|Slovenia|386;SB|Solomon Islands|677;SO|Somalia|252;ZA|South Africa|27;SS|South Sudan|211;ES|Spain|34;LK|Sri Lanka|94;SD|Sudan|249;SR|Suriname|597;SE|Sweden|46;CH|Switzerland|41;SY|Syria|963;TW|Taiwan|886;TJ|Tajikistan|992;TZ|Tanzania|255;TH|Thailand|66;TL|Timor-Leste|670;TG|Togo|228;TO|Tonga|676;TT|Trinidad and Tobago|1868;TN|Tunisia|216;TR|Turkey|90;TM|Turkmenistan|993;TV|Tuvalu|688;UG|Uganda|256;UA|Ukraine|380;AE|United Arab Emirates|971;GB|United Kingdom|44;US|United States|1;UY|Uruguay|598;UZ|Uzbekistan|998;VU|Vanuatu|678;VA|Vatican|39;VE|Venezuela|58;VN|Vietnam|84;YE|Yemen|967;ZM|Zambia|260;ZW|Zimbabwe|263;GU|Guam|1671;AS|American Samoa|1684;BM|Bermuda|1441;KY|Cayman Islands|1345;VG|British Virgin Islands|1284;VI|US Virgin Islands|1340;AW|Aruba|297;CW|Curacao|599;SX|Sint Maarten|1721;GL|Greenland|299;FO|Faroe Islands|298;GI|Gibraltar|350;IM|Isle of Man|44;JE|Jersey|44;GG|Guernsey|44;RE|Reunion|262;YT|Mayotte|262;NC|New Caledonia|687;PF|French Polynesia|689;GP|Guadeloupe|590;MQ|Martinique|596;GF|French Guiana|594;MS|Montserrat|1664;TC|Turks and Caicos|1649;AI|Anguilla|1264;NU|Niue|683;CK|Cook Islands|682;TK|Tokelau|690;AQ|Antarctica|672;EH|Western Sahara|212;SH|Saint Helena|290;FK|Falkland Islands|500;MP|Northern Mariana Islands|1670;XK|Kosovo|383".split(";").map((x) => { const [iso, name, dial] = x.split("|"); return { iso, name, dial }; });
+let CTRY = { app_on: true, off: [], counts: [] }, CTRY_Q = "";
+async function loadCountries() { CTRY = await call("/countries"); }
+function viewCountries() {
+  const off = new Set(CTRY.off || []), cnt = {}; (CTRY.counts || []).forEach((x) => (cnt[x.country] = x.n));
+  const q = CTRY_Q.trim().toLowerCase();
+  const list = COUNTRY_LIST.filter((c) => !q || c.name.toLowerCase().includes(q) || c.iso.toLowerCase().includes(q) || c.dial.includes(q));
+  const total = Object.values(cnt).reduce((a, b) => a + b, 0);
+  return head("Countries", "Turn a country off to stop sign-ups from it. People there see “not available right now”. Use the whole-app switch to stop everything.") +
+    '<div class="box" style="max-width:820px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3 style="margin:0">Whole app</h3><span class="muted">' + (CTRY.app_on ? "The app is ON. Everyone can use it." : "The app is OFF. Nobody can use it right now.") + '</span></div><button class="b ' + (CTRY.app_on ? "danger" : "ok") + '" id="appswitch">' + (CTRY.app_on ? "Turn the whole app off" : "Turn the app back on") + "</button></div></div>" +
+    '<div class="box" style="max-width:820px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input id="cq" placeholder="Search country" value="' + esc(CTRY_Q) + '" style="flex:1;min-width:200px"><span class="muted">' + total + " accounts in total</span></div>" +
+    '<div style="max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:6px;margin-top:8px">' + list.map((c) => '<div style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--ln)"><span style="flex:1;min-width:0"><b>' + esc(c.name) + '</b> <span class="muted">+' + c.dial + " · " + c.iso + " · " + (cnt[c.iso] || 0) + ' accounts</span></span><button class="b ' + (off.has(c.iso) ? "ok" : "danger") + '" data-cty="' + c.iso + '" data-on="' + (off.has(c.iso) ? "1" : "0") + '" style="min-width:110px">' + (off.has(c.iso) ? "Turn on" : "Turn off") + "</button></div>").join("") + "</div></div>";
+}
 // ---------- Accounts (forgot password or recovery code) ----------
 let ACC = null;
 function viewAccounts() {
@@ -284,6 +299,15 @@ function bind() {
     try { await call("/accounts/password", "POST", { phone: ACC.account.phone, password: pw }); ACC.code = ""; ACC.done = "Password changed. Give it to the person privately, and ask them to change it after logging in. All devices were signed out."; render(); }
     catch (e) { showErr(e); }
   };
+  const cq = $("cq");
+  if (cq) cq.oninput = () => { CTRY_Q = cq.value; render(); const n = $("cq"); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
+  const sw = $("appswitch");
+  if (sw) sw.onclick = async () => { if (CTRY.app_on && !confirm("Turn the WHOLE app off? Nobody can use it until you turn it back on.")) return; try { await call("/app", "PUT", { on: !CTRY.app_on }); await loadCountries(); render(); } catch (e) { showErr(e); } };
+  document.querySelectorAll("[data-cty]").forEach((b) => (b.onclick = async () => {
+    const off = b.dataset.on === "0";
+    if (off && !confirm("Turn this country OFF? People there will not be able to sign up.")) return;
+    try { await call("/countries", "PUT", { code: b.dataset.cty, enabled: !off }); await loadCountries(); render(); } catch (e) { showErr(e); }
+  }));
   const rg = $("resetgo");
   if (rg) rg.onclick = async () => {
     const ph = ($("resetphone").value || "").trim();
