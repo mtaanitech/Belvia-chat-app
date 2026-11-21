@@ -835,7 +835,7 @@ function startWait(j) {
 async function pollWait() {
   if (!WAIT) return;
   try {
-    const j = await api("/login/status", "POST", { id: WAIT.id, secret: WAIT.secret });
+  const j = await api("/login/status", "POST", { id: WAIT.id, secret: WAIT.secret });
     if (j.status == "approved") {
       clearInterval(WT); WAIT = null; T = j.token; U = j.user; try { localStorage.setItem("bv.t", T); } catch (e) {}
       await loadAll(); V.scr = null; V.tab = "feed"; render(); start();
@@ -904,7 +904,7 @@ function fitImg(file) {
         const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
         for (let q = 0.78; q >= 0.4; q -= 0.12) { const d = c.toDataURL("image/jpeg", q); if (d.length <= 150000) return res(d); }
       }
-  rej(new Error("That picture is too large."));
+      rej(new Error("That picture is too large."));
     };
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("That file is not a picture.")); };
     img.src = url;
@@ -1139,6 +1139,7 @@ function meTab() {
   const row = (p, label, sub, ic, badge) => '<button class="row" data-a="pg" data-p="' + p + '" style="min-height:58px"><span class="av" style="width:36px;height:36px;background:var(--acs);color:var(--ac);font-size:15px">' + ic + '</span><span class="t"><b>' + label + '</b><small>' + sub + '</small></span>' + (badge ? '<span class="pill" style="color:var(--ac)">' + badge + "</span>" : "") + '<span style="color:var(--mu);font-size:22px">›</span></button>';
   const sec = (t) => '<div class="sec">' + t + "</div>";
   return profileHead() +
+    '<div class="cd" style="margin:0 16px"><b>Invite friends</b><span class="mut">Send the Orivoclass link. They open it and sign up on their own.</span><button class="btn o" data-a="shareapp">Share Orivoclass</button></div>' +
     sec("ACCOUNT") + row("priv", "Privacy", E.locked ? "Private account" : "Public account", "🔒") + row("acct", "Account status", "Trust score " + trust + "%", "🛡") + row("dev", "Linked devices", "Devices logged in to your account", "📱") +
     sec("CREATOR") + row("dash", "Dashboard", "Followers, posts and reach", "📊") + row("reqs", "Follow requests", rq ? rq + " waiting" : "None waiting", "👥", rq ? String(rq) : "") +
     sec("CHATS AND ALERTS") + row("notif", "Notifications", "Messages, status and views", "🔔") + row("lock", "Chat lock", lockOn() ? "On · PIN" : "Off", "🔐") + row("dm", "Disappearing messages", "Set inside each chat", "⏱") + row("backup", "Backup", "Download a copy of your chats", "💾") + row("theme", "Appearance", "Light or dark, and your colour", "🎨") + row("aiset", "Orivoclass AI", "Save your AI chats, or not", "✦") + row("photo", "Profile photo", "Add a photo and choose who sees it", "🖼") + (isStandalone() ? "" : row("install", "Install app", "Add Orivoclass to your home screen", "⬇")) +
@@ -1448,6 +1449,12 @@ app.addEventListener("click", async (e) => {
     if (a == "tologin") { V.mode = "login"; return render(); }
     if (a == "recover") return recover();
     if (a == "otpgo") return otpGo();
+    if (a == "shareapp") {
+      const url = location.origin + location.pathname, text = "Join me on Orivoclass: " + url;
+      if (navigator.share) { try { await navigator.share({ title: "Orivoclass", text, url }); } catch (e) {} return; }
+      try { await navigator.clipboard.writeText(text); return toast("Link copied. Send it to your friends."); }
+      catch (e) { return toast(url); }
+    }
     if (a == "linkstart") return linkStartNew();
     if (a == "linknew") return linkStartNew();
     if (a == "linkcancel") { clearInterval(LNKT); LNK = null; V.scr = null; V.mode = "login"; return render(); }
@@ -1460,7 +1467,7 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "post") { CMP = CMP || { body: "", image: "" }; V.ov = "cmp"; return render(); }
     if (a == "cmpx") { V.ov = null; return render(); }
-        if (a == "cmppick") { const f = $("cpf"); if (f) f.click(); return; }
+    if (a == "cmppick") { const f = $("cpf"); if (f) f.click(); return; }
     if (a == "cmprm") { CMP.image = ""; return render(); }
     if (a == "cmpgo") return shareCmp();
     if (a == "fsc") { FSC = b.dataset.t; FEED = []; FEEDOK = false; render(); return loadFeed(false); }
@@ -1508,8 +1515,8 @@ app.addEventListener("click", async (e) => {
       if (k == "delete") return doDelPost(id);
       if (k == "report") return doReport(id);
       return;
-    }
-    if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
+  }
+   if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
     if (a == "bpx") { V.ov = null; return render(); }
     if (a == "bpay") { try { const j = await api("/boosts/checkout", "POST", { post_id: id, days: +b.dataset.d }); try { localStorage.setItem("bv.pay", j.reference); } catch (e) {} location.href = j.authorization_url; } catch (e) { toast(e.message); } return; }
     if (a == "cmpaud") { if ($("cpb")) CMP.body = $("cpb").value; CMP.aud = b.dataset.t; return render(); }
@@ -1809,3 +1816,4 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
+ 
