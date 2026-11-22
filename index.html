@@ -109,7 +109,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let FEEDNEW = 0, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -900,7 +900,7 @@ async function pollWait() {
 function appealView() {
   return '<div class="wrap pad"><div class="logo">Appeal</div><p class="mut">Tell us why this decision should be changed. You can appeal once. We will review it.</p><label>Your message<textarea id="apt" rows="5" maxlength="500"></textarea></label><button class="btn" data-a="appsend">Send appeal</button><p id="err" class="err"></p><button class="lnk" data-a="appback">Back</button></div>';
 }
-function removeNT() { const e = $("ntbox"); if (e) e.remove(); }
+  function removeNT() { const e = $("ntbox"); if (e) e.remove(); }
 function drawNT() {
   removeNT(); if (!NT) return;
   const w = NT.kind == "warning";
@@ -935,6 +935,145 @@ async function runAct(p) {
   if (p.act == "answer" && p.call) { PENDING_ACT = { act: "answer", id: p.call }; if (CALL && String(CALL.id) == String(p.call)) { PENDING_ACT = null; acceptCall(); } return; }
   if (p.act == "read" && p.peer) { try { await api("/messages/" + p.peer); await loadCH(); render(); toast("Marked as read"); } catch (e) { toast(e.message); } return; }
   if (p.peer) { V.cid = p.peer; V.scr = "chat"; V.ov = null; MS = []; msKey = ""; render(); loadPr().catch(() => {}); loadMsgs(true).catch(() => {}); }
+}
+// ---- End-to-end keys: made on this device, the private key stays here ----
+const E2E = (() => {
+  const db = () => new Promise((res, rej) => { const r = indexedDB.open("orivoclass-keys", 1); r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  return {
+    get: async (k) => { const d = await db(); return new Promise((res) => { const q = d.transaction("k").objectStore("k").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); },
+    put: async (k, v) => { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction("k", "readwrite"); tx.objectStore("k").put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); },
+  };
+})();
+let KEYS_DONE = false;
+// PIN-based sealing: PBKDF2 (200,000 rounds) then AES-GCM. The PIN never leaves this phone.
+const KB = {
+  async seal(pin, plain) {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 200000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)));
+    return JSON.stringify({ s: B64.enc(salt), i: B64.enc(iv), c: B64.enc(ct) });
+  },
+  async open(pin, blob) {
+    const o = JSON.parse(blob);
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: B64.dec(o.s), iterations: 200000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: B64.dec(o.i) }, key, B64.dec(o.c)));
+  },
+};
+// Makes a backup of this phone's message key (a new key for this phone, so it can be exported).
+async function backupKeys() {
+  const pin = prompt("Choose a 6-digit PIN for your key backup. You will need it on a new phone.", "");
+  if (!pin) return;
+  if (!/^\d{6}$/.test(pin)) return toast("Use exactly 6 digits.");
+  if (!confirm("This makes a new message key for this phone. Old messages sent before this will not be readable on this phone. Continue?")) return;
+  const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+  const dev = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
+  localStorage.setItem("bv.kdev", dev); await E2E.put("pair:" + dev, pair);
+  const pub = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  const priv = await crypto.subtle.exportKey("pkcs8", pair.privateKey);
+  const blob = await KB.seal(pin, JSON.stringify({ pkcs8: B64.enc(new Uint8Array(priv)), jwk: { kty: pub.kty, crv: pub.crv, x: pub.x, y: pub.y } }));
+  await api("/keys/device", "PUT", { device_id: dev, pub: { kty: pub.kty, crv: pub.crv, x: pub.x, y: pub.y } });
+  await api("/keys/backup", "PUT", { blob });
+  PEERKEYS.clear(); KEYS_DONE = true; toast("Key backup saved.");
+}
+// ---- Security code: the same code on both phones means the chat is private ----
+async function fingerprintFor(uid) {
+  const list = await devicesOf(uid);
+  const keys = await Promise.all(list.map(async (d) => { const j = await crypto.subtle.exportKey("jwk", d.key); return j.x + "." + j.y; }));
+  return keys.sort().join("|");
+}
+async function safetyCode(peerUid) {
+  const pair = [await fingerprintFor(U.id), await fingerprintFor(peerUid)].sort();
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-512", new TextEncoder().encode(pair[0] + "#" + pair[1])));
+  const groups = [];
+  for (let g = 0; g < 12; g++) { let n = 0; for (let k = 0; k < 5; k++) n = (n * 256 + h[g * 5 + k]) % 100000; groups.push(String(n).padStart(5, "0")); }
+  return groups.join(" ");
+}
+// Compares the person's keys with the last ones we saw. "new" = first time, "changed" = their keys changed.
+async function trustState(peerUid) {
+  const fp = await fingerprintFor(peerUid); if (!fp) return null;
+  const k = "bv.trust:" + peerUid, old = localStorage.getItem(k);
+  if (!old) { localStorage.setItem(k, fp); return null; }
+  return old === fp ? null : "changed";
+}
+async function updateSecBar() {
+  const el = $("secbar"); if (!el || !V.cid) return;
+  const st = await trustState(V.cid).catch(() => null);
+  const cur = $("secbar"); if (!cur) return;
+  cur.innerHTML = st === "changed" ? '<div class="rp" style="justify-content:space-between;gap:8px"><span>Their devices changed. Tap to see the security code.</span><button class="lnk" data-a="seccode" style="min-height:30px">View</button></div>' : "";
+}
+const B64 = { enc: (u8) => btoa(String.fromCharCode(...u8)), dec: (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0)) };
+const PEERKEYS = new Map();
+async function ownPair() { const dev = localStorage.getItem("bv.kdev"); return dev ? E2E.get("pair:" + dev) : undefined; }
+async function importPub(jwk) { return crypto.subtle.importKey("jwk", { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y }, { name: "ECDH", namedCurve: "P-256" }, true, []); }
+// The devices of a person, with their public keys (cached). Empty if that person's app has no keys yet.
+async function devicesOf(uid) {
+  if (PEERKEYS.has(uid)) return PEERKEYS.get(uid);
+  let list = [];
+  try { const j = await api("/keys/" + uid); list = await Promise.all(j.devices.map(async (d) => ({ id: d.device_id, key: await importPub(d.pub) }))); } catch (e) { list = []; }
+  PEERKEYS.set(uid, list); return list;
+}
+async function wrapFor(myPair, targetPub, rawKey) {
+  const shared = await crypto.subtle.deriveKey({ name: "ECDH", public: targetPub }, myPair.privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  return { iv: B64.enc(iv), ct: B64.enc(new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, shared, rawKey))) };
+}
+// Returns "e2e1:…" for the other person's devices and mine, or null if we cannot encrypt yet.
+async function encryptFor(peerUid, text) {
+  const pair = await ownPair(); if (!pair) return null;
+  const peers = await devicesOf(peerUid); if (!peers.length) return null;
+  const myDev = localStorage.getItem("bv.kdev");
+  const mine = await devicesOf(U.id);
+  const msgKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  const raw = new Uint8Array(await crypto.subtle.exportKey("raw", msgKey));
+  const keys = {};
+  for (const d of peers.concat(mine.filter((m) => m.id !== myDev).length ? mine : [])) keys[d.id] = await wrapFor(pair, d.key, raw);
+  const myPub = await importPub((await crypto.subtle.exportKey("jwk", pair.publicKey)));
+  keys[myDev] = await wrapFor(pair, myPub, raw);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, msgKey, new TextEncoder().encode(text)));
+  return "e2e1:" + btoa(JSON.stringify({ v: 1, from: myDev, iv: B64.enc(iv), ct: B64.enc(ct), keys }));
+}
+// Reads an encrypted message on this device. Returns the text, or null if this device is not one of its recipients.
+async function decryptFrom(fromUid, body) {
+  if (!body || !body.startsWith("e2e1:")) return body;
+  try {
+    const env = JSON.parse(atob(body.slice(5)));
+    const pair = await ownPair(); if (!pair) return null;
+    const myDev = localStorage.getItem("bv.kdev");
+    const w = env.keys && env.keys[myDev]; if (!w) return null;
+    const senderDev = (await devicesOf(fromUid)).find((d) => d.id === env.from) || (await devicesOf(U.id)).find((d) => d.id === env.from);
+    if (!senderDev) return null;
+    const shared = await crypto.subtle.deriveKey({ name: "ECDH", public: senderDev.key }, pair.privateKey, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    const raw = await crypto.subtle.decrypt({ name: "AES-GCM", iv: B64.dec(w.iv) }, shared, B64.dec(w.ct));
+    const msgKey = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["decrypt"]);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: B64.dec(env.iv) }, msgKey, B64.dec(env.ct)));
+  } catch (e) { return null; }
+}
+async function ensureDeviceKey() {
+  if (KEYS_DONE || !U || !window.crypto || !crypto.subtle || !window.indexedDB) return;
+  let dev = localStorage.getItem("bv.kdev");
+  if (!dev) { dev = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)); localStorage.setItem("bv.kdev", dev); }
+  let pair = await E2E.get("pair:" + dev);
+  if (!pair) {
+    const r = await api("/keys/backup").catch(() => null);
+    if (r && r.blob) {
+      const pin = prompt("Enter your 6-digit key backup PIN to read your messages on this phone.", "");
+      if (pin) {
+        try {
+          const o = JSON.parse(await KB.open(pin, r.blob));
+          const privateKey = await crypto.subtle.importKey("pkcs8", B64.dec(o.pkcs8), { name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
+          const publicKey = await crypto.subtle.importKey("jwk", { kty: o.jwk.kty, crv: o.jwk.crv, x: o.jwk.x, y: o.jwk.y }, { name: "ECDH", namedCurve: "P-256" }, true, []);
+          pair = { privateKey, publicKey }; await E2E.put("pair:" + dev, pair); toast("Your message keys are restored.");
+        } catch (e) { toast("Wrong PIN. You can restore later from Backup."); }
+      }
+    }
+  }
+  if (!pair) { pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]); await E2E.put("pair:" + dev, pair); }
+  const pub = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  await api("/keys/device", "PUT", { device_id: dev, pub: { kty: pub.kty, crv: pub.crv, x: pub.x, y: pub.y } });
+  KEYS_DONE = true;
 }
 const loadCT = async () => { CT = (await api("/contacts")).contacts; };
 const loadCH = async () => { CH = (await api("/chats")).chats; };
@@ -1009,6 +1148,7 @@ async function bootLoad() {
 const bootView = () => '<div class="wrap center"><div class="logo">Orivoclass</div><div class="spin"></div></div>';
 async function loadMsgs(sc) {
   const id = V.cid; const j = await api("/messages/" + id);
+  for (const m of j.messages) { if (m.body && m.body.startsWith("e2e1:")) { const t = await decryptFrom(m.from_id, m.body); m._plain = t === null ? "🔒 Encrypted message" : t; } }
   if (V.scr != "chat" || V.cid != id) return;
   TT = j.ttl || 0; const dm = $("dmb"); if (dm) dm.textContent = dmbText();
   MSC[id] = j.messages; const wasL = MSL; MSL = false;
@@ -1037,7 +1177,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { setTimeout(checkJoin, 300); if (V.tab == "feed" && !V.scr && !V.ov) { feedFromCache(); if (!FEEDOK) loadFeed(false); } clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { const stj = await api("/status"); const sk = JSON.stringify(stj.status); if (sk !== STKEY) { STKEY = sk; ST = stj.status; refreshMain(); } } catch (e) {} try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); if (PENDING_ACT && String(j.call.id) == String(PENDING_ACT.id)) { PENDING_ACT = null; acceptCall(); } } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
+function start() { setTimeout(checkJoin, 300); ensureDeviceKey().catch(() => {}); if (V.tab == "feed" && !V.scr && !V.ov) { feedFromCache(); if (!FEEDOK) loadFeed(false); } clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { const stj = await api("/status"); const sk = JSON.stringify(stj.status); if (sk !== STKEY) { STKEY = sk; ST = stj.status; refreshMain(); } } catch (e) {} try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); if (PENDING_ACT && String(j.call.id) == String(PENDING_ACT.id)) { PENDING_ACT = null; acceptCall(); } } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -1169,7 +1309,7 @@ function menuHtml() {
   if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
   if (V.scr == "gchat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="ginfo">Group info</button><button data-a="pollnew">Poll</button><button data-a="dm">Disappearing</button><button data-a="gleave" style="color:var(--cr)">Leave group</button></div>';
   const c = CH.find((x) => x.peer == V.cid), bl = BL.some((x) => x.id == V.cid);
-  return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end">' + (c ? '<button data-a="pin">' + (c.pinned ? "Unpin" : "Pin") + '</button><button data-a="archive">' + (c.archived ? "Unarchive" : "Archive") + "</button>" : "") + '<button data-a="dm">Disappearing</button><button data-a="unreadmark">Mark as unread</button><button data-a="blk">' + (bl ? "Unblock" : "Block") + '</button><button data-a="rep">Report</button><button data-a="delchat" style="color:var(--cr)">Delete chat</button></div>';
+  return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end">' + (c ? '<button data-a="pin">' + (c.pinned ? "Unpin" : "Pin") + '</button><button data-a="archive">' + (c.archived ? "Unarchive" : "Archive") + "</button>" : "") + '<button data-a="dm">Disappearing</button><button data-a="seccode">Security code</button><button data-a="unreadmark">Mark as unread</button><button data-a="blk">' + (bl ? "Unblock" : "Block") + '</button><button data-a="rep">Report</button><button data-a="delchat" style="color:var(--cr)">Delete chat</button></div>';
 }
 function strip() {
   const mine = ST.some((s) => s.user_id == U.id);
@@ -1295,7 +1435,7 @@ function main() {
   return installBanner() + topbar() + '<div class="body">' + b + "</div>" + f;
 }
 function bodyHtml(x, me) {
-  if (!x.view_once) return (x.forwarded ? '<div class="q">Forwarded</div>' : "") + esc(x.body);
+  if (!x.view_once) return (x.forwarded ? '<div class="q">Forwarded</div>' : "") + esc(x._plain !== undefined ? x._plain : x.body);
   if (me) return "View once · " + (x.opened_at ? "Opened" : "Not opened yet");
   return x.opened_at ? "View once · Opened" : "View once message · tap to open";
 }
@@ -1311,7 +1451,7 @@ function peer() {
 }
 function chatView() {
   const c = peer() || { name: "Chat", phone: "" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + av(c.saved === false && c.pname ? c.pname : c.name, 40, false, c.id) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b>' + (c.saved === false && c.pname ? ' <small class="mut">~' + esc(c.pname) + '</small>' : '') + '<small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">' + IC_PH + '</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">' + IC_VD + '</button><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div>' + (c.saved === false ? '<div class="rp"><span>Not in your contacts</span><button class="lnk" style="min-height:36px" data-a="saveper">Add</button></div>' : "") + '<div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="send" aria-label="Send">' + IC_SEND + '</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + av(c.saved === false && c.pname ? c.pname : c.name, 40, false, c.id) + '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b>' + (c.saved === false && c.pname ? ' <small class="mut">~' + esc(c.pname) + '</small>' : '') + '<small id="pr" class="mut" style="display:block">' + (PR ? prHtml() : esc(c.phone)) + '</small></div><button class="ib" data-a="callv" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Voice call">' + IC_PH + '</button><button class="ib" data-a="callvid" data-id="' + c.id + '" data-n="' + esc(c.name) + '" aria-label="Video call">' + IC_VD + '</button><button class="ib" data-a="menu" aria-label="Chat menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div id="secbar"></div>' + (c.saved === false ? '<div class="rp"><span>Not in your contacts</span><button class="lnk" style="min-height:36px" data-a="saveper">Add</button></div>' : "") + '<div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + msgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><button class="chip ' + (V.once ? "on" : "") + '" id="onc" data-a="once" aria-label="View once">Once</button><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="send" aria-label="Send">' + IC_SEND + '</button></div>';
 }
 async function loadGInfo() { GI = await api("/groups/" + V.gid); const e = $("gsub"); if (e) e.textContent = GI.members.length + " members"; }
 async function loadGMsgs(sc) {
@@ -1343,8 +1483,8 @@ function gmsgsHtml() {
 function gchatView() {
   const g = GL.find((x) => x.id == V.gid) || {}, name = (GI && GI.name) || g.name || "Group";
   return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + av(name, 40) + '<button style="flex:1;min-width:0;border:0;background:none;color:var(--ink);text-align:left;padding:0" data-a="ginfo"><b>' + esc(name) + '</b><small id="gsub" class="mut" style="display:block">' + (GI ? GI.members.length + " members" : g.members ? g.members + " members" : "") + '</small></button><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + gmsgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="gsend" aria-label="Send">' + IC_SEND + '</button></div>';
-}
-async function sendG() {
+    }
+  async function sendG() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
   const rp = V.reply; i.value = ""; V.reply = null; V.sel = null;
   const tmp = { id: "tmp" + Date.now(), kind: "text", from_id: U.id, from_name: "You", body: t, reply: rp, created_at: new Date().toISOString(), tmp: true };
@@ -1385,7 +1525,7 @@ async function send() {
   const tmp = { id: "tmp" + Date.now(), from_id: U.id, to_id: cid, body: t, view_once: !!once, reply: rp, created_at: new Date().toISOString(), tmp: true };
   MS.push(tmp); PENDM.push(tmp); upd(true);
   const drop = () => { PENDM = PENDM.filter((x) => x !== tmp); };
-  try { await api("/messages", "POST", { to: cid, body: t, reply: rp, once }); drop(); await loadMsgs(true); loadCH().catch(() => {}); }
+  try { const enc = await encryptFor(cid, t).catch(() => null); await api("/messages", "POST", { to: cid, body: enc || t, reply: rp, once }); drop(); await loadMsgs(true); loadCH().catch(() => {}); }
   catch (e) { drop(); MS = MS.filter((x) => x !== tmp); upd(false); toast(e.message); i.value = t; }
   i.focus();
 }
@@ -1467,11 +1607,11 @@ function pageOv() {
       : '<div class="cd"><b>This device</b><span class="mut">' + (PUSH == "unsupported" ? "This browser does not support notifications." : PUSH == "on" ? "Notifications are on for this device." : "Notifications are off for this device.") + "</span>" + (PUSH == "unsupported" ? "" : PUSH == "on" ? '<button class="btn o" data-a="pushoff">Turn off on this device</button>' : '<button class="btn" data-a="pushon">Turn on notifications</button>') + '</div><div class="cd"><b>Tell me about</b><label class="chk"><input type="checkbox" id="nfm"' + (N.msg ? " checked" : "") + '> New messages</label><label class="chk"><input type="checkbox" id="nfs"' + (N.status ? " checked" : "") + '> Status updates from my contacts</label><label class="chk"><input type="checkbox" id="nfv"' + (N.views ? " checked" : "") + '> When someone views my status</label><label class="chk"><input type="checkbox" id="nfc"' + (N.calls !== false ? " checked" : "") + '> Incoming calls</label><span class="note">Notifications show who it is from, never the message text. Sound and vibration follow your phone settings.</span></div><div class="cd"><b>Test</b><span class="mut">Close the app, then tap this. You should get a notification within a few seconds.</span><button class="btn o" data-a="pushtest">Send a test notification</button></div>';
   } else if (p == "backup") {
     t = "Backup";
-    b = '<div class="cd"><b>Download a backup</b><span class="mut">Saves your chats and your status updates (with who viewed them) as a file on this phone. View Once messages and disappearing messages that already expired are not included.</span><label>Password for the file (optional, at least 8 characters)<input id="bkp" type="password" autocomplete="new-password"></label><button class="btn" data-a="bkdl">Download backup</button><span class="note">Without a password, anyone who gets the file can read your chats.</span></div>' +
+    b = '<div class="cd"><b>Message keys</b><span class="mut">Back up your message keys with a 6-digit PIN, so you can read your messages on a new phone.</span><button class="btn" data-a="keybackup">Back up my message keys</button></div><div class="cd"><b>Download a backup</b><span class="mut">Saves your chats and your status updates (with who viewed them) as a file on this phone. View Once messages and disappearing messages that already expired are not included.</span><label>Password for the file (optional, at least 8 characters)<input id="bkp" type="password" autocomplete="new-password"></label><button class="btn" data-a="bkdl">Download backup</button><span class="note">Without a password, anyone who gets the file can read your chats.</span></div>' +
       (BKE ? '<div class="cd"><b>This backup is password protected</b><label>Password<input id="bko" type="password" autocomplete="off"></label><button class="btn" data-a="bkopen">Open</button></div>'
            : '<div class="cd"><b>Open a backup</b><span class="mut">Read a backup file you saved earlier. It opens here only. Restoring it into your account is not possible.</span><input id="bkf" type="file" accept=".json,application/json" style="display:none"><button class="btn o" data-a="bkpick">Choose backup file</button></div>');
   } else if (p == "lock") {
-        t = "Chat lock";
+    t = "Chat lock";
     const au = (LK() || {}).a || 0, opt = (id) => '<select id="' + id + '">' + [[0, "Right away"], [60, "After 1 minute"], [900, "After 15 minutes"]].map((x) => '<option value="' + x[0] + '"' + (au == x[0] ? " selected" : "") + ">" + x[1] + "</option>").join("") + "</select>";
     b = lockOn()
       ? '<div class="cd"><b>Chat lock is on</b><span class="mut">You need your PIN to open Orivoclass after you leave it.</span><label>Lock after you leave the app' + opt("lpb") + '</label><button class="btn o" data-a="locknow">Lock now</button></div><div class="cd"><b>Turn off</b><label>Your PIN<input id="lpo" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label><button class="btn d" data-a="lkoff">Turn off chat lock</button></div>'
@@ -1511,6 +1651,7 @@ function overlays() {
   if (o == "dash") return dashView();
   if (o == "prof") return profView();
   if (o == "pmenu") return pmenuView();
+  if (o == "seccode") return '<div class="ov"><div class="hd"><button class="ib" data-a="secx" aria-label="Back">' + IC_BACK + '</button><h1>Security code</h1></div><div class="body"><div class="cd" style="align-items:center;text-align:center"><span class="mut">Compare this code with the other person, in person or on a call. If the codes are the same, only you two can read this chat.</span><b style="font-size:20px;line-height:1.8;font-family:monospace;letter-spacing:1px">' + esc(SEC && SEC.code ? SEC.code : "…") + "</b></div></div></div>";
   if (o == "linkin") return linkinView();
   if (o == "stv") return stvView();
   if (o == "reqs") return reqsView();
@@ -1862,7 +2003,11 @@ app.addEventListener("click", async (e) => {
     if (a == "sq") { if (V.tab != "chats") { V.tab = "feed"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
-    if (a == "open") { V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = MSC[id] || []; msKey = ""; MSL = !MSC[id]; PR = null; TT = 0; render(); loadPr().catch(() => {}); return loadMsgs(true); }
+    if (a == "keybackup") return backupKeys().catch((e) => toast(e.message));
+    if (a == "trustok") { const fp = await fingerprintFor(id).catch(() => ""); if (fp) localStorage.setItem("bv.trust:" + id, fp); updateSecBar(); return; }
+    if (a == "seccode") { V.menu = false; V.ov = "seccode"; SEC = { code: null }; render(); safetyCode(V.cid).then((c) => { SEC.code = c; if (V.ov == "seccode") render(); }).catch(() => { SEC.code = "Not available yet. Both people need the latest app."; if (V.ov == "seccode") render(); }); return; }
+    if (a == "secx") { V.ov = null; return render(); }
+    if (a == "open") { setTimeout(updateSecBar, 400); V.cid = id; V.scr = "chat"; V.ov = null; V.sel = null; V.reply = null; V.menu = false; MS = MSC[id] || []; msKey = ""; MSL = !MSC[id]; PR = null; TT = 0; render(); loadPr().catch(() => {}); return loadMsgs(true); }
     if (a == "back") { V.scr = null; V.sel = null; V.reply = null; render(); if (V.tab == "singles") api("/singles/matches").then((j) => { SGM = j.matches; render(); }).catch(() => {}); Promise.all([loadCH(), loadGL()]).then(refreshList).catch(() => {}); return; }
     if (a == "send") return send();
     if (a == "unreadmark") { V.menu = false; try { await api("/chats/" + V.cid + "/unread", "POST", {}); } catch (e) { toast(e.message); } V.scr = null; render(); await loadCH().catch(() => {}); render(); return toast("Marked as unread"); }
@@ -1870,9 +2015,9 @@ app.addEventListener("click", async (e) => {
     if (a == "sel") { V.sel = V.sel == m ? null : m; return upd(false); }
     if (a == "norep") { V.reply = null; return upd(false); }
     const x = MS.find((z) => z.id == m);
-    if (a == "reply" && x) { V.reply = x.view_once ? "View once message" : x.body.slice(0, 80); V.sel = null; upd(false); const i = $("msg"); if (i) i.focus(); return; }
+    if (a == "reply" && x) { V.reply = x.view_once ? "View once message" : String(x._plain !== undefined ? x._plain : x.body).slice(0, 80); V.sel = null; upd(false); const i = $("msg"); if (i) i.focus(); return; }
     if (a == "react" && x) { V.sel = null; upd(false); await api("/messages/" + m + "/react", "POST", { emoji: x.reaction == b.dataset.e ? null : b.dataset.e }); return loadMsgs(false); }
-    if (a == "copy" && x) { V.sel = null; upd(false); if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(x.body).then(() => toast("Copied"), () => toast("Copy is not available")); } else toast("Copy is not available"); return; }
+    if (a == "copy" && x) { V.sel = null; upd(false); if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(x._plain !== undefined ? x._plain : x.body).then(() => toast("Copied"), () => toast("Copy is not available")); } else toast("Copy is not available"); return; }
     if (a == "menu") { V.menu = !V.menu; const mn = $("mn"); if (mn) mn.innerHTML = menuHtml(); return; }
     if (a == "pin" || a == "archive") {
       const c = CH.find((x) => x.peer == V.cid); if (!c) return;
@@ -1886,9 +2031,9 @@ app.addEventListener("click", async (e) => {
     if (a == "once") { V.once = !V.once; b.classList.toggle("on", V.once); return; }
     if (a == "vo") { const j = await api("/messages/" + m + "/open", "POST"); V.vo = j.body; V.ov = "vo"; render(); return; }
     if (a == "cvo") { V.ov = null; V.vo = ""; render(); return loadMsgs(false); }
-    if (a == "fwd" && x && !x.view_once) { V.fw = x.body; V.ov = "fwd"; V.sel = null; return render(); }
+    if (a == "fwd" && x && !x.view_once) { V.fw = x._plain !== undefined ? x._plain : x.body; V.ov = "fwd"; V.sel = null; return render(); }
     if (a == "cfw") { V.ov = null; return render(); }
-    if (a == "dofwd") { await api("/messages", "POST", { to: id, body: V.fw, fwd: true }); V.ov = null; render(); return toast("Message forwarded"); }
+    if (a == "dofwd") { const enc = await encryptFor(id, V.fw).catch(() => null); await api("/messages", "POST", { to: id, body: enc || V.fw, fwd: true }); V.ov = null; render(); return toast("Message forwarded"); }
     if (a == "blk") {
       const was = BL.some((z) => z.id == V.cid);
       await api("/blocks/" + V.cid, was ? "DELETE" : "POST"); await loadBL(); V.menu = false;
