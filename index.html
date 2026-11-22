@@ -900,14 +900,14 @@ async function pollWait() {
 function appealView() {
   return '<div class="wrap pad"><div class="logo">Appeal</div><p class="mut">Tell us why this decision should be changed. You can appeal once. We will review it.</p><label>Your message<textarea id="apt" rows="5" maxlength="500"></textarea></label><button class="btn" data-a="appsend">Send appeal</button><p id="err" class="err"></p><button class="lnk" data-a="appback">Back</button></div>';
 }
-  function removeNT() { const e = $("ntbox"); if (e) e.remove(); }
+function removeNT() { const e = $("ntbox"); if (e) e.remove(); }
 function drawNT() {
   removeNT(); if (!NT) return;
   const w = NT.kind == "warning";
   const d = document.createElement("div"); d.id = "ntbox"; d.className = "ov"; d.style.zIndex = 31;
   d.innerHTML = '<div class="wrap pad center"><div class="logo">' + (w ? "Warning" : "Account restricted") + '</div><p class="mut">' + esc(NT.reason) + "</p><p class=\"mut\">" + (w ? "Nothing else changes for now. Please follow the Community Rules." : "For 24 hours you cannot send View Once messages. Normal chats keep working.") + '</p><button class="btn" style="width:100%" data-a="ntok">OK</button>' + (w ? "" : '<button class="lnk" data-a="ntappeal">Appeal</button>') + "</div>";
   app.appendChild(d);
-}
+  }
 function accHtml() {
   const tr = ACC ? ACC.trust : 100, cl = tr >= 70 ? "var(--ok)" : tr >= 40 ? "#F5B94A" : "var(--cr)";
   const on = ACC && ACC.restricted_until && new Date(ACC.restricted_until) > new Date();
@@ -1345,9 +1345,10 @@ function statusTab() {
 }
 function loadTileImages() {
   ST.forEach((x) => {
-    if (!x.has_image || x._img !== undefined) return;
-    x._img = "";
-    api("/status/" + x.id + "/photo").then((j) => { x._img = j.image; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<img src="' + esc(j.image) + '" style="width:100%;height:100%;object-fit:cover">'; }); }).catch(() => {});
+    if (!x.has_image || x._img || x._fetching) return;
+    x._fetching = true;
+    api("/status/" + x.id + "/photo").then((j) => { x._img = j.image; x._fetching = false; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<img src="' + esc(j.image) + '" style="width:100%;height:100%;object-fit:cover">'; }); })
+      .catch(() => { x._fetching = false; x._failed = true; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px">Photo not available</div>'; }); });
   });
 }
 const STV_LEN = 15000; // photos and text: 15 seconds (videos will use their own length)
@@ -1367,7 +1368,7 @@ function showStory() {
   const p = STV.people[STV.pi], it = p.items[STV.si];
   if (!it) return closeStories();
   if (!p.mine && !it.seen) { it.seen = true; api("/status/" + it.id + "/view", "POST").catch(() => {}); }
-  if (it.has_image && it._img === undefined) { it._img = ""; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }).catch(() => {}); }
+  if (it.has_image && !it._img && !it._fetching) { it._fetching = true; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; it._fetching = false; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }).catch(() => { it._fetching = false; it._failed = true; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }); }
   paintStory();
   STV.timer = setTimeout(nextStory, STV_LEN);
 }
@@ -1382,7 +1383,7 @@ function stvView() {
   const bars = p.items.map((x, i) => '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden"><div style="height:100%;background:#fff;width:' + (i < STV.si ? 100 : 0) + '%;' + (i == STV.si ? "animation:stfill " + STV_LEN + "ms linear forwards" : "") + '"></div></div>').join("");
   const bg = it.has_image ? "#000" : (it.color || "#5A3FD6");
   const content = it.has_image
-    ? '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;padding:0 10px;box-sizing:border-box">' + (it._img ? '<img alt="" src="' + esc(it._img) + '" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:12px">' : '<span style="color:#fff">Loading…</span>') + (it.body ? '<div style="color:#fff;font-size:17px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 8px">' + esc(it.body) + "</div>" : "") + "</div>"
+    ? '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;padding:0 10px;box-sizing:border-box">' + (it._img ? '<img alt="" src="' + esc(it._img) + '" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:12px">' : (it._failed ? '<span style="color:#fff">Photo not available</span>' : '<span style="color:#fff">Loading…</span>')) + (it.body ? '<div style="color:#fff;font-size:17px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 8px">' + esc(it.body) + "</div>" : "") + "</div>"
     : '<div style="font-size:26px;font-weight:700;color:#fff;text-align:center;padding:32px;white-space:pre-wrap;overflow-wrap:anywhere">' + esc(it.body) + "</div>";
   const footer = p.mine ? '<div style="position:relative;z-index:3;display:flex;gap:10px;justify-content:center;padding:14px"><button class="btn o" style="color:#fff;border-color:#fff" data-a="stviews" data-id="' + it.id + '">👁 Viewed by ' + (it.views || 0) + '</button><button class="btn" style="background:#E5484D;color:#fff" data-a="stdel" data-id="' + it.id + '">Delete</button></div>' : "";
   return '<div id="stv" style="position:absolute;inset:0;z-index:60;background:' + bg + ';display:flex;flex-direction:column;overflow:hidden"><style>@keyframes stfill{from{width:0}to{width:100%}}</style>' +
@@ -1483,8 +1484,8 @@ function gmsgsHtml() {
 function gchatView() {
   const g = GL.find((x) => x.id == V.gid) || {}, name = (GI && GI.name) || g.name || "Group";
   return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + av(name, 40) + '<button style="flex:1;min-width:0;border:0;background:none;color:var(--ink);text-align:left;padding:0" data-a="ginfo"><b>' + esc(name) + '</b><small id="gsub" class="mut" style="display:block">' + (GI ? GI.members.length + " members" : g.members ? g.members + " members" : "") + '</small></button><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="rp" id="dmb">' + esc(dmbText()) + '</div><div class="msgs" id="msgs">' + gmsgsHtml() + '</div><div class="rp" id="rp">' + rpHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="gsend" aria-label="Send">' + IC_SEND + '</button></div>';
-    }
-  async function sendG() {
+}
+async function sendG() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
   const rp = V.reply; i.value = ""; V.reply = null; V.sel = null;
   const tmp = { id: "tmp" + Date.now(), kind: "text", from_id: U.id, from_name: "You", body: t, reply: rp, created_at: new Date().toISOString(), tmp: true };
@@ -1536,10 +1537,10 @@ const LEGAL = {
     ["Acceptable use", "Do not use Orivoclass for spam, scams, harassment, threats, illegal content or anything that harms others. See the Community Rules for details."],
     ["Content", "You own what you send. You allow us to store and deliver it so the service can work."],
     ["Suspension", "We may warn, restrict or suspend accounts that break the rules, following the steps in the Community Rules. You can appeal."],
-    ["Changes and contact", "We may update these terms and will show the new date at the top. Questions: [YOUR SUPPORT EMAIL]."]]],
+    ["Changes and contact", "We may update these terms and will show the new date at the top. Questions: mtaanitech76@gmail.com."]]],
   privacy: ["Privacy Policy", [
     ["What we collect", "Your name, phone number, profile photo (if you add one), the messages you send and receive, contacts you add, status updates (text or photos) and who viewed them, online and last seen time, blocks and reports. If you turn on notifications we also keep a notification address for your browser, which is removed when you log out."],
-    ["Messages are not end-to-end encrypted yet", "Right now messages are stored on our servers so the service can deliver them. End-to-end encryption is planned. We will tell you when it is available."],
+    ["Messages between two people are end-to-end encrypted", "Messages in one-to-one chats are encrypted on your phone before they are sent, and only the people in the chat can read them. We store only the encrypted version. Group chats are not end-to-end encrypted yet. Your message keys can be backed up with a PIN that only you know."],
     ["How long we keep things", "Status updates disappear after 24 hours. View once messages are erased after they are opened. Deleting a chat removes it from your side. Groups: people see a group\u2019s messages only from the time they joined, and if you delete your account you are removed from your groups and the messages you sent there are erased. Disappearing messages are deleted from our servers after the time chosen for that chat."],
     ["Suspended and banned accounts", "If an account is banned or suspended, its phone number stays on a block list so the ban cannot be avoided, even if the account is deleted. Everything else is erased when you delete your account."],
     ["Singles", "If you create a Singles profile we keep your nickname, date of birth, gender, what you are looking for, town, short description, photo, likes, matches and Singles messages. Your phone number and real name are never shown there. New Singles photos are checked by our team. If you delete your Singles profile all of this is erased."],
@@ -1547,7 +1548,7 @@ const LEGAL = {
     ["Orivoclass AI", "The AI button sends what you type to an outside AI service so that it can answer. Do not share passwords or private details with it. By default we do not store your AI conversation and it is cleared when you log out. If you turn on saving in Settings, we keep your AI messages for the time you choose (or until you delete them) so you can read them on any phone, and you can delete them whenever you want. The AI service may handle your messages under its own rules."],
     ["What we do not do", "We do not sell your data. We only share it when the law requires it or to protect people from serious harm."],
     ["Your choices", "You can choose who sees your last seen, block people and report abuse. You can delete your account anytime in Me, and all your data is erased."],
-    ["Who we are", "[COMPANY NAME] runs Orivoclass. Contact: [YOUR SUPPORT EMAIL]."]]],
+    ["Who we are", "Mtaanitech Company Limited runs Orivoclass. Contact: mtaanitech76@gmail.com."]]],
   rules: ["Community Rules", [
     ["Be respectful", "No insults, harassment, threats or hate. Do not send nude or sexual images to people who did not ask for them."],
     ["No spam or scams", "No mass messages, fake offers, scam links or pretending to be someone else."],
@@ -1559,9 +1560,10 @@ const LEGAL = {
     ["Trust score", "Your trust score starts at 100%. It drops when your account is reported and confirmed to have broken the rules. After a day with no new problems it slowly goes back up, 2 points a day."]]],
   about: ["About Us", [
     ["Orivoclass", "A private messaging app built so conversations stay between the people in them."],
+    ["Founder and CEO", "Alex Musau, Mtaanitech Company Limited."],
     ["What we care about", "Privacy first, simple design and fair rules that give people a second chance."],
     ["Version", "Web version 0.4. More features are on the way."],
-    ["Contact", "[YOUR SUPPORT EMAIL]"]]]
+    ["Contact", "mtaanitech76@gmail.com"]]]
 };
 const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
 const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
@@ -1638,7 +1640,7 @@ function pageOv() {
       (DEVS.length > 1 ? '<div class="cd"><button class="btn d" data-a="rmothers">Log out all other devices</button></div>' : "");
   } else if (p == "help") {
     t = "Help and contact";
-    b = '<div class="cd"><b>Contact us</b><span class="mut">[YOUR SUPPORT EMAIL]</span></div><div class="cd"><b>I forgot my password</b><span class="mut">Log out, then tap “Forgot password?” on the log in screen and use your recovery code. You can make a new code in Me > Account status.</span></div><div class="cd"><b>Report someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Report.</span></div><div class="cd"><b>Block someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Block.</span></div>';
+    b = '<div class="cd"><b>Contact us</b><span class="mut">mtaanitech76@gmail.com</span><a href="https://wa.me/254703182307" target="_blank" rel="noopener" style="color:var(--ac);font-weight:600">WhatsApp: +254 703 182 307</a></div><div class="cd"><b>I forgot my password</b><span class="mut">Log out, then tap “Forgot password?” on the log in screen and use your recovery code. You can make a new code in Me > Account status.</span></div><div class="cd"><b>Report someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Report.</span></div><div class="cd"><b>Block someone</b><span class="mut">Open the chat, tap the ⋮ menu, then Block.</span></div>';
   }
   return '<div class="ov"><div class="hd"><button class="ib" data-a="cov" aria-label="Back">' + IC_BACK + '</button><h1>' + t + '</h1></div><div class="body">' + b + "</div></div>";
 }
