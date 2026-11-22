@@ -426,4 +426,32 @@ app.get("/api/keys/backup", need, wrap(async (req, res) => {
   const r = (await db.query("SELECT blob FROM key_backups WHERE user_id=$1", [req.uid])).rows[0];
   res.json({ blob: r ? r.blob : null });
 }));
+// ---- Singles lists: Nearby (same town, as the profile says), and who liked me / who I liked. No photos here until a match. ----
+const SG_CARD = `s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age`;
+const NOT_MATCHED = (me) => `NOT EXISTS (SELECT 1 FROM singles_matches mt WHERE (mt.a=${me} AND mt.b=s.user_id) OR (mt.a=s.user_id AND mt.b=${me}))`;
+app.get("/api/singles/nearby", need, wrap(async (req, res) => {
+  const me = (await db.query("SELECT town FROM singles WHERE user_id=$1", [req.uid])).rows[0];
+  if (!me || !me.town) return res.json({ profiles: [], note: "Add your town in your Singles profile to see people near you." });
+  const r = await db.query(
+    `SELECT ${SG_CARD} FROM singles s JOIN users u ON u.id=s.user_id
+     WHERE s.user_id<>$1 AND s.active AND NOT u.banned AND lower(s.town)=lower($2)
+       AND NOT EXISTS (SELECT 1 FROM singles_likes l WHERE l.liker=$1 AND l.liked=s.user_id)
+       AND NOT EXISTS (SELECT 1 FROM singles_passes p WHERE p.user_id=$1 AND p.profile=s.user_id)
+       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=s.user_id) OR (b.blocker=s.user_id AND b.blocked=$1))
+       AND ${NOT_MATCHED("$1")}
+     ORDER BY random() LIMIT 30`, [req.uid, me.town]);
+  res.json({ profiles: r.rows });
+}));
+app.get("/api/singles/likes", need, wrap(async (req, res) => {
+  const liked_you = await db.query(
+    `SELECT ${SG_CARD}, l.created_at FROM singles_likes l JOIN singles s ON s.user_id=l.liker JOIN users u ON u.id=s.user_id
+     WHERE l.liked=$1 AND NOT u.banned AND s.active AND ${NOT_MATCHED("$1")}
+       AND NOT EXISTS (SELECT 1 FROM singles_passes p WHERE p.user_id=$1 AND p.profile=s.user_id)
+     ORDER BY l.created_at DESC LIMIT 100`, [req.uid]);
+  const you_liked = await db.query(
+    `SELECT ${SG_CARD}, l.created_at FROM singles_likes l JOIN singles s ON s.user_id=l.liked JOIN users u ON u.id=s.user_id
+     WHERE l.liker=$1 AND NOT u.banned AND ${NOT_MATCHED("$1")}
+     ORDER BY l.created_at DESC LIMIT 100`, [req.uid]);
+  res.json({ liked_you: liked_you.rows, you_liked: you_liked.rows });
+}));
 // END OF PART 10
