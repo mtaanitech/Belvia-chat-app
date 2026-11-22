@@ -160,9 +160,8 @@ app.get("/api/status/:id/image", need, wrap(async (req, res) => {
 app.post("/api/status/:id/view", need, wrap(async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
   const s = (await db.query(
-    `SELECT s.id, s.user_id FROM statuses s WHERE s.id=$2 AND s.user_id<>$1 AND s.created_at > now() - interval '24 hours'
-       AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=$1 AND c.contact=s.user_id)
-       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=s.user_id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=s.user_id))`, [req.uid, req.params.id])).rows[0];
+    `SELECT s.id, s.user_id FROM statuses s JOIN users su ON su.id=s.user_id WHERE s.id=$2 AND s.user_id<>$1 AND s.created_at > now() - interval '24 hours'
+       AND ${STATUS_VIS}`, [req.uid, req.params.id])).rows[0];
   if (s) {
     const ins = await db.query("INSERT INTO status_views(status_id,viewer_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING status_id", [s.id, req.uid]);
     if (ins.rowCount && webpush) {
