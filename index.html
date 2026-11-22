@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1, interactive-widget=resizes-content">
@@ -107,7 +109,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -246,11 +248,46 @@ function sgAvatar(p) {
   return p && p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:96px;height:96px;border-radius:50%;object-fit:cover">' : '<span class="av" style="width:96px;height:96px;font-size:34px;background:' + sgGrad(p ? p.nick : "") + ';color:#fff">' + esc(ini(p ? p.nick : "?")) + "</span>";
 }
 function sgCard(p) {
-  const pic = p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>";
-  return '<div class="cd" style="padding:0;overflow:hidden;border-radius:22px">' +
-    '<div style="height:280px;position:relative">' + pic + '<div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(transparent,rgba(0,0,0,.6))"></div>' +
-    '<div style="position:absolute;left:18px;right:18px;bottom:14px;color:#fff"><div style="font-size:24px;font-weight:800">' + esc(p.nick) + ", " + p.age + "</div>" + (p.town ? '<div style="opacity:.92;font-size:14px;margin-top:2px">📍 ' + esc(p.town) + "</div>" : "") + "</div></div>" +
-    '<div style="padding:14px 18px 18px">' + (p.bio ? '<div style="line-height:1.5;color:var(--ink)">' + esc(p.bio) + "</div>" : '<div class="mut">No bio yet. Add one so people know you.</div>') + "</div></div>";
+  const pic = p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>";
+  const row = (label, val) => '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--ln)"><span class="mut" style="width:86px;flex:none">' + label + '</span><span style="flex:1;min-width:0;overflow-wrap:anywhere">' + val + "</span></div>";
+  return '<div class="cd" style="padding:0;overflow:hidden;border-radius:20px">' +
+    '<div style="aspect-ratio:4/5;background:var(--sf)">' + pic + "</div>" +
+    '<div style="padding:16px 18px 6px"><div style="font-size:22px;font-weight:800">' + esc(p.nick) + ", " + p.age + "</div>" +
+    (p.gender ? '<div class="mut" style="margin-top:2px;text-transform:capitalize">' + esc(p.gender) + "</div>" : "") + "</div>" +
+    '<div style="padding:0 18px 14px">' + (p.town ? row("Location", esc(p.town)) : "") + row("About", p.bio ? esc(p.bio) : '<span class="mut">No bio yet</span>') + "</div></div>";
+}
+function sgAll() { return [...SGD, ...SGN, ...SGLK.liked_you, ...SGLK.you_liked]; }
+function sgCardHtml(p, like) {
+  return '<div data-a="sgprof" data-id="' + p.user_id + '" style="position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:' + sgGrad(p.nick) + ';color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(16,24,40,.12)">' +
+    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>" +
+    (like ? '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:17px;border:0;background:var(--ac);color:#fff;font-size:15px;z-index:2">♥</button>' : "") +
+    '<div style="position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.6))"><b style="display:block;font-size:15px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<small style="opacity:.9">📍 ' + esc(p.town) + "</small>" : "") + "</div></div>";
+}
+function sgGridHtml(list, like) { return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px">' + list.map((p) => sgCardHtml(p, like)).join("") + "</div>"; }
+async function cardLike(id) {
+  const p = sgAll().find((x) => x.user_id == id); if (!p) return;
+  SGLK = { liked_you: SGLK.liked_you.filter((x) => x.user_id != id), you_liked: SGLK.you_liked };
+  const j = await api("/singles/like/" + id, "POST", { like: true });
+  SGD = SGD.filter((x) => x.user_id != id); SGN = SGN.filter((x) => x.user_id != id); if (!SGD.length) await loadDeck();
+  if (j.match) { SGMP = p; SGM = (await api("/singles/matches")).matches; V.ov = "sgmatch"; }
+  else SGL = Object.assign({}, SGL, { likes_left: Math.max(0, (SGL.likes_left || 1) - 1) });
+  return render();
+}
+function sgProfHtml() {
+  const p = SGPV; if (!p) return "";
+  const mp = SGM.find((x) => x.user_id == p.user_id), matched = !!mp;
+  const pic = mp && mp.photo ? '<img src="' + esc(mp.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : '<div style="width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>";
+  const act = (icon, label, matchedAct, extra) => matched
+    ? '<button data-a="' + matchedAct + '" data-id="' + p.user_id + '" data-n="' + esc(p.nick) + '" style="flex:1;border:0;border-radius:22px;min-height:70px;background:var(--ac);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:600">' + icon + label + "</button>"
+    : '<button data-a="sglocked" style="flex:1;border:0;border-radius:22px;min-height:70px;background:var(--sf);color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:600">' + icon + label + "</button>";
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="sgprofx" aria-label="Back">' + IC_BACK + '</button><h1>Single profile</h1></div><div class="body">' +
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 16px 12px"><div style="width:150px;height:150px;border-radius:50%;padding:4px;background:var(--ac)"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg)">' + pic + "</div></div>" +
+    '<b style="font-size:24px;margin-top:6px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<span class="mut">📍 ' + esc(p.town) + "</span>" : "") +
+    (matched ? '<span style="color:var(--ok);font-weight:600">You matched</span>' : '<span class="mut">Like each other to unlock messages and calls</span>') + "</div>" +
+    '<div style="display:flex;gap:8px;padding:0 14px 12px">' + act("💬", "Message", "sgopen") + act("📞", "Call", "callv") + act("🎥", "Video", "callvid") + '<button data-a="sglikeprof" data-id="' + p.user_id + '" style="flex:1;border:0;border-radius:22px;min-height:70px;background:var(--sf);color:var(--ac);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:600"><span style="font-size:20px">♥</span>Like</button></div>' +
+    '<div class="cd"><b>About</b><span>' + (p.bio ? esc(p.bio) : '<span class="mut">No bio yet</span>') + "</span></div>" +
+    '<div class="cd" style="flex-direction:row;justify-content:space-between"><button class="lnk" style="color:var(--cr)" data-a="blk">Block</button><button class="lnk" style="color:var(--cr)" data-a="sgrepid" data-id="' + p.user_id + '">Report</button></div>' +
+    "</div></div>";
 }
 function singlesTab() {
   if (!SGP) return '<div style="padding:24px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">' +
@@ -258,21 +295,24 @@ function singlesTab() {
     '<b style="font-size:22px">Singles</b><span class="mut">Meet other adults on Orivoclass. Only people 18 and older. Photos are shown only after two people like each other.</span>' +
     '<button class="btn" style="min-width:220px" data-a="sgnew">Create my Singles profile</button><span class="note">Your phone number and real name are never shown here.</span></div>';
   const L = SGL || {};
-  const seg = '<div style="display:flex;gap:8px;padding:12px 14px 4px">' + [["discover", "Discover"], ["matches", "Matches" + (SGM.length ? " (" + SGM.length + ")" : "")], ["me", "My profile"]].map((x) => '<button data-a="sgt" data-t="' + x[0] + '" style="flex:1;min-height:40px;border-radius:20px;border:0;font-weight:600;background:' + (SGt == x[0] ? "var(--ac)" : "var(--sf)") + ';color:' + (SGt == x[0] ? "var(--on)" : "var(--ink)") + '">' + x[1] + "</button>").join("") + "</div>";
+  const seg = '<div style="display:flex;gap:6px;padding:12px 14px 4px">' + [["discover", "Discover"], ["nearby", "Nearby"], ["liked", "Liked"], ["matches", "Matches" + (SGM.length ? " (" + SGM.length + ")" : "")], ["me", "Me"]].map((x) => '<button data-a="sgt" data-t="' + x[0] + '" style="flex:1;min-height:40px;border-radius:20px;border:0;font-weight:600;background:' + (SGt == x[0] ? "var(--ac)" : "var(--sf)") + ';color:' + (SGt == x[0] ? "var(--on)" : "var(--ink)") + '">' + x[1] + "</button>").join("") + "</div>";
   let b = "";
   if (SGt == "discover") {
     if (!SGP.active) b = '<div class="empty"><b>Your profile is hidden</b>Show it again to meet people.<button class="btn" data-a="sgtoggle">Show my profile</button></div>';
     else if (SGD.length) {
-      const p = SGD[0], g = sgGrad(p.nick);
-      b = '<div style="padding:12px 14px 0"><div data-a="sgtip" style="border-radius:26px;overflow:hidden;background:' + g + ';color:#fff;height:430px;position:relative;box-shadow:0 12px 30px rgba(16,24,40,.18)">' +
-        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:150px;font-weight:800;opacity:.2">' + esc(ini(p.nick)) + "</div>" +
-        '<div style="position:absolute;left:0;right:0;bottom:0;padding:70px 22px 22px;background:linear-gradient(transparent,rgba(0,0,0,.6))"><div style="font-size:28px;font-weight:800">' + esc(p.nick) + ", " + p.age + "</div>" +
-        (p.town ? '<div style="opacity:.92;margin-top:2px">📍 ' + esc(p.town) + "</div>" : "") + (p.bio ? '<div style="margin-top:8px;opacity:.95;line-height:1.35">' + esc(p.bio) + "</div>" : "") +
-        '<div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);padding:6px 10px;border-radius:14px;font-size:13px">🔒 Photo opens when you both like each other</div></div></div>' +
-        '<div style="display:flex;justify-content:center;gap:34px;padding:18px 0 8px"><button data-a="sgpass" aria-label="Pass" style="width:64px;height:64px;border-radius:32px;border:1px solid var(--ln);background:var(--bg);font-size:24px;color:var(--cr);box-shadow:0 4px 12px rgba(16,24,40,.08)">✕</button><button data-a="sglike" aria-label="Like" style="width:78px;height:78px;border-radius:39px;border:0;background:var(--ac);color:#fff;font-size:32px;box-shadow:0 8px 20px rgba(98,71,245,.35)">♥</button></div>' +
-        '<p class="note" style="text-align:center;margin:0">Today: ' + (L.views_left || 0) + " new profiles · " + (L.likes_left || 0) + " likes left</p></div>";
+      const cards = SGD.map((p) => '<div data-a="sgprof" data-id="' + p.user_id + '" style="position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:' + sgGrad(p.nick) + ';color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(16,24,40,.12)">' +
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>" +
+        '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:17px;border:0;background:var(--ac);color:#fff;font-size:15px;z-index:2">♥</button>' +
+        '<div style="position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.6))"><b style="display:block;font-size:15px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<small style="opacity:.9">📍 ' + esc(p.town) + "</small>" : "") + "</div></div>").join("");
+      b = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px">' + cards + "</div>" +
+        '<p class="note" style="text-align:center;margin:0 0 12px">Today: ' + (L.views_left || 0) + " new profiles · " + (L.likes_left || 0) + " likes left</p>";
     } else if (!L.views_left) b = '<div class="empty"><b>That is all for today</b>Come back tomorrow. The daily limit keeps Singles calm for everyone.</div>';
     else b = '<div class="empty"><b>No one new right now</b>Check again later.<button class="btn o" data-a="sgref">Refresh</button></div>';
+  } else if (SGt == "nearby") {
+    b = SGN.length ? sgGridHtml(SGN, true) : '<div class="empty"><b>No one nearby yet</b>People from your town appear here. Make sure your town is in your Singles profile.</div>';
+  } else if (SGt == "liked") {
+    b = '<div class="sec">LIKED YOU</div>' + (SGLK.liked_you.length ? sgGridHtml(SGLK.liked_you, true) : '<p class="mut" style="padding:0 16px">Nobody has liked you yet.</p>') +
+      '<div class="sec">YOU LIKED</div>' + (SGLK.you_liked.length ? sgGridHtml(SGLK.you_liked, false) : '<p class="mut" style="padding:0 16px">You have not liked anyone yet.</p>');
   } else if (SGt == "matches") {
     b = SGM.length ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px">' + SGM.map((x) => '<button data-a="sgopen" data-id="' + x.user_id + '" style="border:0;padding:0;background:none;text-align:left"><div style="position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:' + sgGrad(x.nick) + '">' +
       (x.photo ? '<img src="' + esc(x.photo) + '" style="width:100%;height:100%;object-fit:cover;display:block">' : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:56px;font-weight:800">' + esc(ini(x.nick)) + "</div>") +
@@ -516,7 +556,7 @@ function postCard(p) {
   const cached = o ? o._img : p._img;
   const photo = cached ? '<img alt="" decoding="async" src="' + esc(cached) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
   const reposted = p.repost_of ? '<div class="mut" style="font-size:13px;display:flex;align-items:center;gap:6px">↻ Reposted</div>' : "";
-  const body = (p.body ? '<div data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "");
+  const body = (p.body ? '<div data-a="txtv" data-id="' + p.id + '" data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;cursor:pointer">' + esc(p.body) + "</div>" : "");
   const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="imgv" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
     reposted +
@@ -533,7 +573,18 @@ function postCard(p) {
       (me ? "" : '<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
     "</div></article>";
 }
-let IMGV = null;
+let IMGV = null, TXTV = null, CPFIRED = false;
+function openText(pid) {
+  const p = findPost(pid); if (!p) return;
+  TXTV = { pid, body: p.body || "", name: p.name }; V.ov = "txtv"; render();
+}
+function txtViewHtml() {
+  const v = TXTV || {};
+  return '<div style="position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;background:linear-gradient(135deg,var(--ac),#ff8fb1)">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;color:#fff"><button class="ib" data-a="txtx" aria-label="Close" style="color:#fff">' + IC_BACK.replace('stroke="currentColor"', 'stroke="#fff"') + '</button><span style="font-weight:600">' + esc(v.name || "") + '</span><span style="width:40px"></span></div>' +
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;min-height:0;overflow:auto"><div style="color:#fff;font-size:24px;font-weight:700;line-height:1.4;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere">' + esc(v.body) + '</div></div>' +
+    '<div style="display:flex;gap:8px;padding:10px 12px;background:rgba(0,0,0,.25)"><input id="txtc" placeholder="Write a comment" maxlength="300" autocomplete="off" style="flex:1;border-radius:22px;border:0;padding:10px 14px;background:rgba(255,255,255,.2);color:#fff"><button class="btn" style="min-height:40px;background:#fff;color:var(--ink)" data-a="txtsend">Send</button></div></div>';
+}
 async function openPicture(key) {
   const pid = key.slice(1); IMGV = { key, pid, src: null, sending: false }; V.ov = "imgv"; render();
   let src = await IMGDB.get("p" + pid);
@@ -789,7 +840,8 @@ app.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.cl
 app.addEventListener("pointerdown", (e) => {
   const c = e.target.closest && e.target.closest("[data-copy]"); if (!c) return;
   clearTimeout(CPT);
-  CPT = setTimeout(() => { const t = c.dataset.copy; if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast("Copied"), () => toast("Copy is not available")); else toast("Copy is not available"); }, 2000);
+  CPFIRED = false;
+  CPT = setTimeout(() => { CPFIRED = true; const t = c.dataset.copy; if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast("Copied"), () => toast("Copy is not available")); else toast("Copy is not available"); }, 2000);
 });
 ["pointerup", "pointercancel", "pointerleave", "pointermove"].forEach((ev) => app.addEventListener(ev, () => clearTimeout(CPT)));
 // The phone's Back button and the app's back arrows: go back one step inside the app, not out of it.
@@ -1092,11 +1144,17 @@ async function ensureDeviceKey() {
   KEYS_DONE = true;
 }
 const loadCT = async () => { CT = (await api("/contacts")).contacts; };
-const loadCH = async () => { CH = (await api("/chats")).chats; };
+const loadCH = async () => {
+  CH = (await api("/chats")).chats;
+  for (const c of CH) { if (c.body && String(c.body).startsWith("e2e1:")) { const t = await decryptFrom(c.from_id, c.body).catch(() => null); c._plain = t === null ? "🔒 Message" : t; } }
+};
+function seenLocal() { try { return new Set(JSON.parse(localStorage.getItem("bv.seenst") || "[]")); } catch (e) { return new Set(); } }
+function markSeenLocal(id) { const set = seenLocal(); set.add(String(id)); localStorage.setItem("bv.seenst", JSON.stringify([...set].slice(-500))); }
 const loadST = async () => {
   const fresh = (await api("/status/feed")).status;
   const old = new Map(ST.map((x) => [x.id, x]));
-  ST = fresh.map((x) => { const o = old.get(x.id); return o ? { ...x, _img: o._img, seen: x.seen || o.seen } : x; });
+  const local = seenLocal();
+  ST = fresh.map((x) => { const o = old.get(x.id); return { ...x, _img: o ? o._img : undefined, seen: !!(x.seen || (o && o.seen) || local.has(String(x.id))) }; });
 };
 const loadBL = async () => { BL = (await api("/blocks")).blocks; };
 async function loadPhotos(ids, force) {
@@ -1300,7 +1358,7 @@ function listHtml() {
   if (q) { L = L.filter((x) => (x.display + " " + (x.pname || "")).toLowerCase().indexOf(q) > -1); G = G.filter((g) => g.name.toLowerCase().indexOf(q) > -1); }
   if (V.f == "unread") { L = []; G = []; }
   if (V.f == "groups") L = [];
-  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b' + (x.unread ? ' style="font-weight:800"' : '') + '>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? ' <span class="pin">' + IC_PIN + "</span>" : "") + (x.unread ? ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--ac);color:var(--on);font-size:12px;font-weight:700">' + x.unread + '</span>' : "") + "</small></button>";
+  const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b' + (x.unread ? ' style="font-weight:800"' : '') + '>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x._plain !== undefined ? x._plain : String(x.body || "").startsWith("e2e1:") ? "🔒 Message" : x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? ' <span class="pin">' + IC_PIN + "</span>" : "") + (x.unread ? ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--ac);color:var(--on);font-size:12px;font-weight:700">' + x.unread + '</span>' : "") + "</small></button>";
   const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind == "poll" ? "📊 " + esc(g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
   if (!V.arch && V.f == "all" && AIM.length && (!q || "orivoclass ai".indexOf(q) > -1)) {
@@ -1383,7 +1441,7 @@ function showStory() {
   clearTimeout(STV.timer);
   const p = STV.people[STV.pi], it = p.items[STV.si];
   if (!it) return closeStories();
-  if (!p.mine && !it.seen) { it.seen = true; api("/status/" + it.id + "/view", "POST").catch(() => {}); }
+  if (!p.mine && !it.seen) { it.seen = true; markSeenLocal(it.id); api("/status/" + it.id + "/view", "POST").catch(() => {}); }
   if (it.has_image && !it._img && !it._fetching) { it._fetching = true; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; it._fetching = false; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }).catch(() => { it._fetching = false; it._failed = true; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }); }
   paintStory();
   STV.timer = setTimeout(nextStory, STV_LEN);
@@ -1671,7 +1729,9 @@ function overlays() {
   if (o == "pmenu") return pmenuView();
   if (o == "seccode") return '<div class="ov"><div class="hd"><button class="ib" data-a="secx" aria-label="Back">' + IC_BACK + '</button><h1>Security code</h1></div><div class="body"><div class="cd" style="align-items:center;text-align:center"><span class="mut">Compare this code with the other person, in person or on a call. If the codes are the same, only you two can read this chat.</span><b style="font-size:20px;line-height:1.8;font-family:monospace;letter-spacing:1px">' + esc(SEC && SEC.code ? SEC.code : "…") + "</b></div></div></div>";
   if (o == "linkin") return linkinView();
+  if (o == "sgprof") return sgProfHtml();
   if (o == "imgv") return imgViewHtml();
+  if (o == "txtv") return txtViewHtml();
   if (o == "stv") return stvView();
   if (o == "reqs") return reqsView();
   if (o == "bpick") return boostPickView();
@@ -1904,8 +1964,22 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "saveper") { const c = peer(); if (!c) return; await api("/contacts", "POST", { phone: c.phone, alias: c.pname || "" }); await loadCT(); await loadCH(); render(); loadPr().catch(() => {}); loadMsgs(true).catch(() => {}); return toast("Added to contacts"); }
     if (a == "sgnew" || a == "sgedit") { V.ov = "sgp"; return render(); }
-    if (a == "sgt") { SGt = b.dataset.t; if (SGt == "matches") { try { SGM = (await api("/singles/matches")).matches; } catch (e) {} } return render(); }
+    if (a == "sgt") {
+      SGt = b.dataset.t;
+      try {
+        if (SGt == "matches") SGM = (await api("/singles/matches")).matches;
+        if (SGt == "nearby") SGN = (await api("/singles/nearby")).profiles;
+        if (SGt == "liked") SGLK = await api("/singles/likes");
+      } catch (e) {}
+      return render();
+    }
     if (a == "sgref") { await loadDeck(); return render(); }
+    if (a == "sgcardlike") return cardLike(id);
+    if (a == "sglikeprof") { V.ov = null; return cardLike(id); }
+    if (a == "sgprof") { const p = sgAll().find((x) => x.user_id == id) || SGM.find((x) => x.user_id == id); if (!p) return; SGPV = p; V.cid = id; V.ov = "sgprof"; return render(); }
+    if (a == "sgprofx") { V.ov = null; return render(); }
+    if (a == "sglocked") return toast("Your friend must like you back to use this.");
+    if (a == "sgrepid") { V.cid = id; V.rpS = true; V.ov = "rep"; return render(); }
     if (a == "sgsave") {
       const body = { nick: $("sgn").value, gender: $("sgg").value, show_me: $("sgs").value, age_min: +$("sga").value, age_max: +$("sgz").value, town: $("sgtw").value, bio: $("sgbio").value };
       if (!SGP) { body.birth_date = $("sgb").value; body.accept = $("sgok").checked; }
@@ -2025,6 +2099,13 @@ app.addEventListener("click", async (e) => {
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
     if (a == "txt") { try { localStorage.setItem("bv.text", b.dataset.v); } catch (e) {} return render(); }
     if (a == "imgv") return openPicture(b.dataset.img);
+    if (a == "txtv") { if (CPFIRED) { CPFIRED = false; return; } return openText(id); }
+    if (a == "txtx") { TXTV = null; V.ov = null; return render(); }
+    if (a == "txtsend") {
+      const t = ($("txtc") && $("txtc").value.trim()) || ""; if (!t || !TXTV) return;
+      try { await api("/posts/" + TXTV.pid + "/comments", "POST", { body: t }); $("txtc").value = ""; toast("Comment sent"); } catch (e) { toast(e.message); }
+      return;
+    }
     if (a == "imgx") { IMGV = null; V.ov = null; return render(); }
     if (a == "imgdl") {
       if (!IMGV || !IMGV.src) return toast("Picture is still loading");
