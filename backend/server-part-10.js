@@ -427,7 +427,7 @@ app.get("/api/keys/backup", need, wrap(async (req, res) => {
   res.json({ blob: r ? r.blob : null });
 }));
 // ---- Singles lists: Nearby (same town, as the profile says), and who liked me / who I liked. No photos here until a match. ----
-const SG_CARD = `s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age`;
+const SG_CARD = `s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age, to_char(u.created_at, 'Mon YYYY') AS joined`;
 const NOT_MATCHED = (me) => `NOT EXISTS (SELECT 1 FROM singles_matches mt WHERE (mt.a=${me} AND mt.b=s.user_id) OR (mt.a=s.user_id AND mt.b=${me}))`;
 app.get("/api/singles/nearby", need, wrap(async (req, res) => {
   const me = (await db.query("SELECT town FROM singles WHERE user_id=$1", [req.uid])).rows[0];
