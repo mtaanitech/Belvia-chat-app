@@ -415,4 +415,15 @@ app.get("/api/keys/:uid", need, wrap(async (req, res) => {
   const r = await db.query("SELECT device_id, pub FROM device_keys WHERE user_id=$1", [who]);
   res.json({ devices: r.rows });
 }));
+// Message-key backup: a blob that only the person's PIN can open. The server never sees the PIN or the key.
+app.put("/api/keys/backup", need, wrap(async (req, res) => {
+  const b = String(req.body.blob || "");
+  if (!b || b.length > 20000) return bad(res, "Backup is empty or too large.");
+  await db.query("INSERT INTO key_backups(user_id,blob) VALUES($1,$2) ON CONFLICT (user_id) DO UPDATE SET blob=EXCLUDED.blob, updated_at=now()", [req.uid, b]);
+  res.json({ ok: true });
+}));
+app.get("/api/keys/backup", need, wrap(async (req, res) => {
+  const r = (await db.query("SELECT blob FROM key_backups WHERE user_id=$1", [req.uid])).rows[0];
+  res.json({ blob: r ? r.blob : null });
+}));
 // END OF PART 10
