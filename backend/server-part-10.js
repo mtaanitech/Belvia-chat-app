@@ -337,7 +337,8 @@ app.get("/api/status/feed", need, wrap(async (req, res) => {
   const r = await db.query(
     `SELECT s.id, s.user_id, s.body, s.color, s.created_at, (s.image IS NOT NULL) AS has_image,
        COALESCE(NULLIF(k.alias,''), su.name) AS name,
-       EXISTS (SELECT 1 FROM status_views v WHERE v.status_id=s.id AND v.viewer_id=$1) AS seen
+       EXISTS (SELECT 1 FROM status_views v WHERE v.status_id=s.id AND v.viewer_id=$1) AS seen,
+       (SELECT count(*)::int FROM status_views v WHERE v.status_id=s.id) AS views
      FROM statuses s JOIN users su ON su.id=s.user_id LEFT JOIN contacts k ON k.owner=$1 AND k.contact=s.user_id
      WHERE s.created_at > now() - interval '24 hours' AND ${STATUS_VIS}
      ORDER BY s.created_at ASC`, [req.uid]);
