@@ -822,7 +822,9 @@ async function doFollow(uid) {
     render(); toast(nowOn ? "Following" : reqNow ? "Request cancelled" : "Unfollowed");
   } catch (e) { toast(e.message); }
 }
-  // ---- Link a computer with a code ----
+
+
+// ---- Link a computer with a code ----
 function linkView() {
   const c = LNK ? LNK.code : "";
   return '<div class="wrap pad"><div class="logo">Orivoclass</div><p class="mut">On your phone, open Orivoclass, go to <b>Me → Linked devices → Enter the code</b>, and type this code.</p>' +
@@ -896,7 +898,7 @@ function accHtml() {
     const live = x.kind != "warning" && (!x.until || new Date(x.until) > new Date());
     const ap = x.appeal_status == "pending" ? "Appeal sent. We will review it." : x.appeal_status == "accepted" ? "Appeal accepted." : x.appeal_status == "rejected" ? "Appeal rejected." : "";
     return '<div class="cd"><b>' + KL[x.kind] + '</b><span class="mut">' + esc(x.reason) + '</span><span class="note">' + fd(x.created_at) + (x.until ? " · until " + fd(x.until) : "") + "</span>" + (ap ? '<span class="note">' + ap + "</span>" : live && !x.appeal_status ? '<button class="btn o" data-a="apl" data-id="' + x.id + '">Appeal</button>' : "") + "</div>";
-  }).join("") : "";
+    }).join("") : "";
   return '<div class="cd" style="align-items:center;text-align:center"><span class="mut">Trust score</span><span style="font-size:44px;font-weight:700;color:' + cl + '">' + tr + '%</span><span class="mut">' + (on ? "Restricted until " + fd(ACC.restricted_until) + ". You cannot send View Once messages." : "Your account is in good standing. No restrictions.") + "</span>" + (tr < 100 ? '<span class="note">Your score goes up by 2 for every full day without a new problem.</span>' : "") + "</div>" + h + '<div class="cd"><button class="btn o" data-a="pg" data-p="rules">Community Rules</button></div>';
 }
 function removeLR() { const e = $("lrbox"); if (e) e.remove(); }
@@ -917,7 +919,11 @@ async function runAct(p) {
 }
 const loadCT = async () => { CT = (await api("/contacts")).contacts; };
 const loadCH = async () => { CH = (await api("/chats")).chats; };
-const loadST = async () => { ST = (await api("/status/feed")).status; };
+const loadST = async () => {
+  const fresh = (await api("/status/feed")).status;
+  const old = new Map(ST.map((x) => [x.id, x]));
+  ST = fresh.map((x) => { const o = old.get(x.id); return o ? { ...x, _img: o._img, seen: x.seen || o.seen } : x; });
+};
 const loadBL = async () => { BL = (await api("/blocks")).blocks; };
 async function loadPhotos(ids, force) {
   ids = [...new Set(ids.filter(Boolean))].filter((i) => force || !(i in PH)).slice(0, 60);
@@ -1660,7 +1666,7 @@ app.addEventListener("click", async (e) => {
     if (a == "reload") { location.reload(); return; }
     if (a == "instx") { try { localStorage.setItem("bv.nobanner", "1"); } catch (e) {} return render(); }
     if (a == "inst") {
-    if (DIP) { DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
+      if (DIP) { DIP.prompt(); try { await DIP.userChoice; } catch (e) {} DIP = null; return render(); }
       const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
       return toast(ios ? "Tap the Share button, then Add to Home Screen." : "Open the browser menu (⋮) and tap Install app.");
     }
