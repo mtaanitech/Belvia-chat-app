@@ -33,7 +33,8 @@ app.get("/api/messages/:peer", need, wrap(async (req, res) => {
 }));
 
 app.post("/api/messages", need, wrap(async (req, res) => {
-  const body = String(req.body.body || "").trim().slice(0, 4000);
+  const raw = String(req.body.body || "").trim();
+  const body = raw.startsWith("e2e1:") ? raw.slice(0, 40000) : raw.slice(0, 4000); // encrypted messages are longer
   const reply = req.body.reply ? String(req.body.reply).slice(0, 120) : null;
   if (!body) return bad(res, "Message is empty.");
   if (!isId(req.body.to) || req.body.to === req.uid) return bad(res, "Invalid recipient.");
