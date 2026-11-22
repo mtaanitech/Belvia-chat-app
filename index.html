@@ -109,7 +109,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let FEEDNEW = 0, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -146,7 +146,7 @@ async function api(p, m, b) {
   if (!r.ok) { const er = new Error(j.error || "Something went wrong."); er.data = j; throw er; }
   return j;
 }
-function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; MSC = {}; GMC = {}; PENDM = []; GPEND = []; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; AIM = []; SIMG = ""; JP = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); localStorage.removeItem("bv.cache"); } catch (e) {} V = Object.assign(V, { tab: "feed", scr: null, ov: null, lo: false, mode: "login" }); render(); }
+function logout() { try { if (CALL) endCallUi(); } catch (e) {} T = ""; U = null; RC = ""; PEND = null; DC = ""; WAIT = null; clearInterval(WT); LR = null; NT = null; AP = null; PH = {}; MSC = {}; GMC = {}; PENDM = []; GPEND = []; BK = null; BKE = null; VW = []; GL = []; MG = []; GI = null; SGP = null; SGD = []; SGM = []; SGCM = []; AIM = []; SIMG = ""; JP = null; CT = []; CH = []; MS = []; ST = []; BL = []; clearInterval(timer); try { localStorage.removeItem("bv.t"); localStorage.removeItem("bv.te"); localStorage.removeItem("bv.lk"); localStorage.removeItem("bv.la"); localStorage.removeItem("bv.cache"); localStorage.removeItem("bv.feed"); localStorage.removeItem("bv.ftop"); IMGDB.clear(); } catch (e) {} V = Object.assign(V, { tab: "feed", scr: null, ov: null, lo: false, mode: "login" }); render(); }
 // ---- Chat lock: a 6-digit PIN protects the app on this phone. The login token is stored encrypted with the PIN. ----
 let HID = 0;
 const LK = () => { try { return JSON.parse(localStorage.getItem("bv.lk") || "null"); } catch (e) { return null; } };
@@ -516,7 +516,7 @@ function postCard(p) {
   const photo = cached ? '<img alt="" decoding="async" src="' + esc(cached) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
   const reposted = p.repost_of ? '<div class="mut" style="font-size:13px;display:flex;align-items:center;gap:6px">↻ Reposted</div>' : "";
   const body = (p.body ? '<div data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "");
-  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-img="' + photoKey + '" style="border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
+  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
     reposted +
     '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b><small class="mut">' + clk + who + "</small></span></button>" +
@@ -524,11 +524,12 @@ function postCard(p) {
     '<button class="ib" data-a="pmenu" data-id="' + p.id + '" aria-label="More" style="color:var(--mu)">' + IC_DOTS + "</button></div>" +
     (p.sponsored ? '<span class="pill" style="align-self:flex-start">Sponsored</span>' : "") +
     body +
-    (!o && hasPhoto ? '<div data-img="' + photoKey + '" style="border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
+    (!o && hasPhoto ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
     orig +
     '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px">' +
       '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
       '<button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px">' + IC_CMT + "<span>" + p.comments + "</span></button>" +
+      (me ? "" : '<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
     "</div></article>";
 }
 function pmenuView() {
@@ -547,6 +548,7 @@ function personRow(x) {
   return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ln)"><button data-a="profopen" data-id="' + x.id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:var(--ink)">' + av(x.name, 44, false, x.id) + '<span style="text-align:left;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.name) + '</b><small class="mut">' + x.followers + (x.followers == 1 ? " follower" : " followers") + (x.locked ? " · Private" : "") + "</small></span></button>" +
     (x.id == U.id ? "" : '<button class="btn' + (x.am_following ? " o" : "") + '" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + x.id + '">' + (x.am_following ? "Following" : "Follow") + "</button>") + "</div>";
 }
+function feedFromCache() { if (FEED.length) return; try { const c = JSON.parse(localStorage.getItem("bv.feed") || "null"); if (Array.isArray(c) && c.length) { FEED = c; FEEDOK = true; } } catch (e) {} }
 function feedListHtml() {
   if (FQ) return SRES.length ? SRES.map(personRow).join("") : '<p class="mut" style="padding:16px">' + (FQ.length < 2 ? "Type at least 2 letters." : "No accounts found.") + "</p>";
   if (FEED.length) return FEED.map((p, i) => postCard(p) + (i == 2 ? suggHtml() : "")).join("") + (FEED.length < 3 ? suggHtml() : "");
@@ -557,11 +559,19 @@ async function loadFeed(more) {
   if (FEEDBUSY) return; FEEDBUSY = true;
   try {
     const j = await api("/feed?scope=" + FSC + "&offset=" + (more ? FEED.length : 0));
+    if (!more && FSC == "all") { // how many posts came since the last visit to Home
+      const top = Number(localStorage.getItem("bv.ftop") || 0);
+      if (V.tab != "feed") FEEDNEW = top ? j.posts.filter((p) => p.id > top).length : 0;
+      const maxId = Math.max(0, ...j.posts.map((p) => Number(p.id)));
+      if (maxId > top) localStorage.setItem("bv.ftop", String(maxId));
+      if (V.tab == "feed") FEEDNEW = 0;
+    }
     const known = new Map(FEED.filter((x) => x._img).map((x) => [x.id, x._img]));
     j.posts.forEach((p) => { if (known.has(p.id)) p._img = known.get(p.id); }); // photos already loaded are kept, not fetched again
     const fresh = j.posts.filter((p) => !FEED.some((x) => x.id == p.id));
     if (more && !fresh.length) FEEDIDLE = Date.now() + 4000; // nothing new came back: pause before asking again
     FEED = more ? FEED.concat(fresh) : j.posts; FEEDOK = true;
+    if (!more && FSC == "all") { try { localStorage.setItem("bv.feed", JSON.stringify(FEED.slice(0, 25).map((p) => { const { _img, _loading, ...rest } = p; return rest; }))); } catch (e) {} }
     if (!more) loadSugg().then(() => { if (V.tab == "feed" && !V.scr && !V.ov) render(); });
     if (V.tab == "feed" && !V.scr && !V.ov) render();
     loadPostImages();
@@ -594,12 +604,21 @@ function markSeen(id, el) {
   api("/posts/views", "POST", { ids: [id] }).catch(() => {});
 }
 
+const IMGDB = (() => {
+  let db = null;
+  const open = () => new Promise((res, rej) => { if (db) return res(db); if (!("indexedDB" in window)) return rej(new Error("no db")); const r = indexedDB.open("orivoclass", 1); r.onupgradeneeded = () => r.result.createObjectStore("img"); r.onsuccess = () => { db = r.result; res(db); }; r.onerror = () => rej(r.error); });
+  return {
+    get: async (k) => { try { const d = await open(); return await new Promise((res) => { const q = d.transaction("img").objectStore("img").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch (e) { return undefined; } },
+    set: async (k, v) => { try { const d = await open(); d.transaction("img", "readwrite").objectStore("img").put(v, k); } catch (e) {} },
+    clear: async () => { try { const d = await open(); d.transaction("img", "readwrite").objectStore("img").clear(); } catch (e) {} },
+  };
+})();
 async function loadPostImages() {
   const jobs = [];
   FEED.forEach((p) => { if (p.original && p.original.has_image) jobs.push({ key: "o" + p.original.id, id: p.original.id, obj: p.original }); else if (p.has_image) jobs.push({ key: "p" + p.id, id: p.id, obj: p }); });
   await Promise.all(jobs.filter((j) => !j.obj._img && document.querySelector('[data-img="' + j.key + '"]')).map(async (j) => {
     if (j.obj._loading) return; j.obj._loading = true;
-    try { const r = await api("/posts/" + j.id + "/image"); j.obj._img = r.image; const el = document.querySelector('[data-img="' + j.key + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(r.image) + '" style="width:100%;display:block;border-radius:12px">'; }
+    try { let img = await IMGDB.get("p" + j.id); if (!img) { img = (await api("/posts/" + j.id + "/image")).image; IMGDB.set("p" + j.id, img); } const r = { image: img }; j.obj._img = r.image; const el = document.querySelector('[data-img="' + j.key + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(r.image) + '" style="width:100%;display:block;border-radius:12px">'; }
     catch (e) { const el = document.querySelector('[data-img="' + j.key + '"]'); if (el) el.innerHTML = '<span class="note">Photo not available</span>'; }
     finally { j.obj._loading = false; }
   }));
@@ -898,7 +917,7 @@ function accHtml() {
     const live = x.kind != "warning" && (!x.until || new Date(x.until) > new Date());
     const ap = x.appeal_status == "pending" ? "Appeal sent. We will review it." : x.appeal_status == "accepted" ? "Appeal accepted." : x.appeal_status == "rejected" ? "Appeal rejected." : "";
     return '<div class="cd"><b>' + KL[x.kind] + '</b><span class="mut">' + esc(x.reason) + '</span><span class="note">' + fd(x.created_at) + (x.until ? " · until " + fd(x.until) : "") + "</span>" + (ap ? '<span class="note">' + ap + "</span>" : live && !x.appeal_status ? '<button class="btn o" data-a="apl" data-id="' + x.id + '">Appeal</button>' : "") + "</div>";
-    }).join("") : "";
+  }).join("") : "";
   return '<div class="cd" style="align-items:center;text-align:center"><span class="mut">Trust score</span><span style="font-size:44px;font-weight:700;color:' + cl + '">' + tr + '%</span><span class="mut">' + (on ? "Restricted until " + fd(ACC.restricted_until) + ". You cannot send View Once messages." : "Your account is in good standing. No restrictions.") + "</span>" + (tr < 100 ? '<span class="note">Your score goes up by 2 for every full day without a new problem.</span>' : "") + "</div>" + h + '<div class="cd"><button class="btn o" data-a="pg" data-p="rules">Community Rules</button></div>';
 }
 function removeLR() { const e = $("lrbox"); if (e) e.remove(); }
@@ -1018,7 +1037,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { setTimeout(checkJoin, 300); if (V.tab == "feed" && !V.scr && !V.ov && !FEEDOK) loadFeed(false); clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { const stj = await api("/status"); const sk = JSON.stringify(stj.status); if (sk !== STKEY) { STKEY = sk; ST = stj.status; refreshMain(); } } catch (e) {} try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); if (PENDING_ACT && String(j.call.id) == String(PENDING_ACT.id)) { PENDING_ACT = null; acceptCall(); } } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
+function start() { setTimeout(checkJoin, 300); if (V.tab == "feed" && !V.scr && !V.ov) { feedFromCache(); if (!FEEDOK) loadFeed(false); } clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { const stj = await api("/status"); const sk = JSON.stringify(stj.status); if (sk !== STKEY) { STKEY = sk; ST = stj.status; refreshMain(); } } catch (e) {} try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); if (PENDING_ACT && String(j.call.id) == String(PENDING_ACT.id)) { PENDING_ACT = null; acceptCall(); } } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -1255,9 +1274,11 @@ function installBanner() {
   return '<div style="margin:10px 14px 0;padding:12px 14px;border-radius:14px;background:var(--acs);display:flex;align-items:center;gap:12px"><span style="flex:1;min-width:0"><b style="display:block">Install Orivoclass</b><small class="mut">' + (ios ? "Tap Share, then Add to Home Screen" : "Use it like an app, full screen") + '</small></span>' + (DIP || ios ? '<button class="btn" style="min-height:36px;padding:0 14px" data-a="inst">' + (DIP ? "Install" : "How?") + '</button>' : '<button class="btn o" style="min-height:36px;padding:0 14px" data-a="inst">How?</button>') + '<button class="ib" data-a="instx" aria-label="Hide">✕</button></div>';
 }
 function topbar() {
-  const T4 = [["feed", "Feed"], ["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
+  const T4 = [["feed", "Home"], ["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
+  const bd = { feed: FEEDNEW, chats: CH.reduce((n, c) => n + (c.unread || 0), 0), status: statusPeople().others.filter((p) => p.unseen).length };
+  const badge = (k) => bd[k] > 0 ? '<span style="display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--ac);color:var(--on);font-size:11px;vertical-align:middle">' + (bd[k] > 99 ? "99+" : bd[k]) + "</span>" : "";
   return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="Menu" style="padding:0;color:var(--ink)">' + IC_MENU + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
-    T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div>";
+    T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + badge(x[0]) + "</button>").join("") + "</div>";
 }
 function main() {
   const t = V.tab; let b = "", f = "";
@@ -1450,7 +1471,7 @@ function pageOv() {
       (BKE ? '<div class="cd"><b>This backup is password protected</b><label>Password<input id="bko" type="password" autocomplete="off"></label><button class="btn" data-a="bkopen">Open</button></div>'
            : '<div class="cd"><b>Open a backup</b><span class="mut">Read a backup file you saved earlier. It opens here only. Restoring it into your account is not possible.</span><input id="bkf" type="file" accept=".json,application/json" style="display:none"><button class="btn o" data-a="bkpick">Choose backup file</button></div>');
   } else if (p == "lock") {
-    t = "Chat lock";
+        t = "Chat lock";
     const au = (LK() || {}).a || 0, opt = (id) => '<select id="' + id + '">' + [[0, "Right away"], [60, "After 1 minute"], [900, "After 15 minutes"]].map((x) => '<option value="' + x[0] + '"' + (au == x[0] ? " selected" : "") + ">" + x[1] + "</option>").join("") + "</select>";
     b = lockOn()
       ? '<div class="cd"><b>Chat lock is on</b><span class="mut">You need your PIN to open Orivoclass after you leave it.</span><label>Lock after you leave the app' + opt("lpb") + '</label><button class="btn o" data-a="locknow">Lock now</button></div><div class="cd"><b>Turn off</b><label>Your PIN<input id="lpo" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label><button class="btn d" data-a="lkoff">Turn off chat lock</button></div>'
@@ -1604,6 +1625,7 @@ app.addEventListener("click", async (e) => {
     if (a == "cmpgo") return shareCmp();
     if (a == "fsc") { FSC = b.dataset.t; FEED = []; FEEDOK = false; render(); return loadFeed(false); }
     if (a == "feedmore") return loadFeed(true);
+    if (a == "repost") return doRepost(id);
     if (a == "like") return toggleLike(id, b);
     if (a == "cmts") return openComments(id);
     if (a == "cmtx") { CMTS = null; V.ov = null; return render(); }
@@ -1829,7 +1851,7 @@ app.addEventListener("click", async (e) => {
     if (a == "auth") return auth();
     if (a == "tab") {
       const tb = b.dataset.t; V.tab = tb; V.scr = null; V.lo = false; render();
-      if (tb == "feed") loadFeed(false);
+      if (tb == "feed") { feedFromCache(); FEEDNEW = 0; loadFeed(false); }
       if (tb == "me") loadExtra().then(() => { if (V.tab == "me" && !V.scr && !V.ov) render(); });
       const still = () => V.tab == tb && !V.scr && !V.ov; // only redraw if the person is still on this tab (never wipe what they are typing elsewhere)
       if (tb == "status") { await loadST(); if (still()) render(); }
