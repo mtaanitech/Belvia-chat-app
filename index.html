@@ -1,5 +1,3 @@
-<!doctype html>
-<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1, interactive-widget=resizes-content">
@@ -248,8 +246,11 @@ function sgAvatar(p) {
   return p && p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:96px;height:96px;border-radius:50%;object-fit:cover">' : '<span class="av" style="width:96px;height:96px;font-size:34px;background:' + sgGrad(p ? p.nick : "") + ';color:#fff">' + esc(ini(p ? p.nick : "?")) + "</span>";
 }
 function sgCard(p) {
-  return '<div class="cd" style="padding:0;overflow:hidden">' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">' : '<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>") +
-    '<div style="padding:14px;display:flex;flex-direction:column;gap:6px"><b style="font-size:22px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<span class="mut">📍 ' + esc(p.town) + "</span>" : "") + (p.bio ? "<span>" + esc(p.bio) + "</span>" : "") + "</div></div>";
+  const pic = p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>";
+  return '<div class="cd" style="padding:0;overflow:hidden;border-radius:22px">' +
+    '<div style="height:280px;position:relative">' + pic + '<div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(transparent,rgba(0,0,0,.6))"></div>' +
+    '<div style="position:absolute;left:18px;right:18px;bottom:14px;color:#fff"><div style="font-size:24px;font-weight:800">' + esc(p.nick) + ", " + p.age + "</div>" + (p.town ? '<div style="opacity:.92;font-size:14px;margin-top:2px">📍 ' + esc(p.town) + "</div>" : "") + "</div></div>" +
+    '<div style="padding:14px 18px 18px">' + (p.bio ? '<div style="line-height:1.5;color:var(--ink)">' + esc(p.bio) + "</div>" : '<div class="mut">No bio yet. Add one so people know you.</div>') + "</div></div>";
 }
 function singlesTab() {
   if (!SGP) return '<div style="padding:24px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">' +
@@ -516,7 +517,7 @@ function postCard(p) {
   const photo = cached ? '<img alt="" decoding="async" src="' + esc(cached) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
   const reposted = p.repost_of ? '<div class="mut" style="font-size:13px;display:flex;align-items:center;gap:6px">↻ Reposted</div>' : "";
   const body = (p.body ? '<div data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px">' + esc(p.body) + "</div>" : "");
-  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
+  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="imgv" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
     reposted +
     '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b><small class="mut">' + clk + who + "</small></span></button>" +
@@ -524,13 +525,28 @@ function postCard(p) {
     '<button class="ib" data-a="pmenu" data-id="' + p.id + '" aria-label="More" style="color:var(--mu)">' + IC_DOTS + "</button></div>" +
     (p.sponsored ? '<span class="pill" style="align-self:flex-start">Sponsored</span>' : "") +
     body +
-    (!o && hasPhoto ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
+    (!o && hasPhoto ? '<div data-a="imgv" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
     orig +
     '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px">' +
       '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
       '<button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px">' + IC_CMT + "<span>" + p.comments + "</span></button>" +
       (me ? "" : '<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
     "</div></article>";
+}
+let IMGV = null;
+async function openPicture(key) {
+  const pid = key.slice(1); IMGV = { key, pid, src: null, sending: false }; V.ov = "imgv"; render();
+  let src = await IMGDB.get("p" + pid);
+  if (!src) { try { src = (await api("/posts/" + pid + "/image")).image; IMGDB.set("p" + pid, src); } catch (e) { src = ""; } }
+  if (IMGV && IMGV.key === key) { IMGV.src = src; render(); }
+}
+function imgViewHtml() {
+  const v = IMGV || {};
+  return '<div style="position:absolute;inset:0;background:#000;z-index:70;display:flex;flex-direction:column">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;color:#fff"><button class="ib" data-a="imgx" aria-label="Close" style="color:#fff">' + IC_BACK.replace('stroke="currentColor"', 'stroke="#fff"') + '</button>' +
+    '<button class="btn o" style="color:#fff;border-color:#fff;min-height:36px" data-a="imgdl">Download</button></div>' +
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:0 8px">' + (v.src ? '<img alt="" src="' + esc(v.src) + '" style="max-width:100%;max-height:100%;object-fit:contain">' : '<span style="color:#fff">Loading…</span>') + '</div>' +
+    '<div style="display:flex;gap:8px;padding:10px 12px;background:#111"><input id="imgc" placeholder="Write a comment" maxlength="300" autocomplete="off" style="flex:1;border-radius:22px;border:0;padding:10px 14px;background:#222;color:#fff"><button class="btn" style="min-height:40px" data-a="imgsend">Send</button></div></div>';
 }
 function pmenuView() {
   const id = V.pmid, p = findPost(id); if (!p) return "";
@@ -907,7 +923,7 @@ function drawNT() {
   const d = document.createElement("div"); d.id = "ntbox"; d.className = "ov"; d.style.zIndex = 31;
   d.innerHTML = '<div class="wrap pad center"><div class="logo">' + (w ? "Warning" : "Account restricted") + '</div><p class="mut">' + esc(NT.reason) + "</p><p class=\"mut\">" + (w ? "Nothing else changes for now. Please follow the Community Rules." : "For 24 hours you cannot send View Once messages. Normal chats keep working.") + '</p><button class="btn" style="width:100%" data-a="ntok">OK</button>' + (w ? "" : '<button class="lnk" data-a="ntappeal">Appeal</button>') + "</div>";
   app.appendChild(d);
-  }
+}
 function accHtml() {
   const tr = ACC ? ACC.trust : 100, cl = tr >= 70 ? "var(--ok)" : tr >= 40 ? "#F5B94A" : "var(--cr)";
   const on = ACC && ACC.restricted_until && new Date(ACC.restricted_until) > new Date();
@@ -1341,7 +1357,7 @@ function statusTab() {
   const sorted = others.slice().sort((x, y) => new Date(y.items[y.items.length - 1].created_at) - new Date(x.items[x.items.length - 1].created_at));
   const rows = sorted.map((p) => { const l = p.items[p.items.length - 1]; return row("stopen", p.id, p.name, l, p.unseen, false, ago(l.created_at) + " · " + p.items.length + (p.items.length == 1 ? " update" : " updates")); }).join("");
   return '<div style="display:flex;justify-content:flex-end;padding:8px 14px 0"><button class="ib" data-a="stset" aria-label="Status settings" style="color:var(--mu)">⚙</button></div>' +
-    myRow + rows + (others.length ? "" : '<p class="mut" style="padding:12px 16px">No updates from your contacts yet.</p>');
+    myRow + (others.length ? '<div style="padding:14px 16px 6px;font-size:14px;font-weight:700;color:var(--mu)">Friends\' status</div>' : "") + rows + (others.length ? "" : '<p class="mut" style="padding:12px 16px">No updates from your contacts yet.</p>');
 }
 function loadTileImages() {
   ST.forEach((x) => {
@@ -1597,7 +1613,7 @@ function pageOv() {
   } else if (p == "theme") {
     t = "Appearance";
     const th = TH();
-    b = '<div class="cd"><b>Mode</b><div class="row2"><button class="btn ' + (th.m == "light" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="light">White</button><button class="btn ' + (th.m == "dark" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="dark">Dark</button></div></div><div class="cd"><b>Colour</b><div class="sw" style="flex-wrap:wrap">' + PAL.map((c, i) => '<button data-a="thc" data-i="' + i + '" class="' + (th.a == i ? "on" : "") + '" style="background:' + c[th.m == "dark" ? 1 : 0] + '" aria-label="Colour ' + (i + 1) + '"></button>').join("") + '</div><span class="note">This is saved on this phone only.</span></div>';
+    b = '<div class="cd"><b>Text size</b><div class="row2">' + [["small", "Small"], ["medium", "Medium"], ["large", "Large"]].map((x) => '<button class="btn ' + ((localStorage.getItem("bv.text") || "small") == x[0] ? "" : "o") + '" style="flex:1" data-a="txt" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + '</div></div><div class="cd"><b>Mode</b><div class="row2"><button class="btn ' + (th.m == "light" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="light">White</button><button class="btn ' + (th.m == "dark" ? "" : "o") + '" style="flex:1" data-a="thm" data-v="dark">Dark</button></div></div><div class="cd"><b>Colour</b><div class="sw" style="flex-wrap:wrap">' + PAL.map((c, i) => '<button data-a="thc" data-i="' + i + '" class="' + (th.a == i ? "on" : "") + '" style="background:' + c[th.m == "dark" ? 1 : 0] + '" aria-label="Colour ' + (i + 1) + '"></button>').join("") + '</div><span class="note">This is saved on this phone only.</span></div>';
   } else if (p == "aiset") {
     t = "Orivoclass AI";
     b = '<div class="cd"><b>Save my AI chats</b><span class="mut">Choose how long Orivoclass keeps what you and the AI write, so you can read it again on any phone.</span><label>Keep my AI chats<select id="aik">' + [[0, "Don’t save"], [86400, "24 hours"], [604800, "7 days"], [2592000, "30 days"], [-1, "Until I delete them"]].map((o) => '<option value="' + o[0] + '"' + (AIKEEP == o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + '</select></label><span class="note">With “Don’t save”, the chat only lasts while the app is open. The AI service may handle your messages under its own rules, so never share passwords or private details.</span></div><div class="cd"><button class="btn d" data-a="aidel">Delete my AI chat history</button></div>';
@@ -1655,6 +1671,7 @@ function overlays() {
   if (o == "pmenu") return pmenuView();
   if (o == "seccode") return '<div class="ov"><div class="hd"><button class="ib" data-a="secx" aria-label="Back">' + IC_BACK + '</button><h1>Security code</h1></div><div class="body"><div class="cd" style="align-items:center;text-align:center"><span class="mut">Compare this code with the other person, in person or on a call. If the codes are the same, only you two can read this chat.</span><b style="font-size:20px;line-height:1.8;font-family:monospace;letter-spacing:1px">' + esc(SEC && SEC.code ? SEC.code : "…") + "</b></div></div></div>";
   if (o == "linkin") return linkinView();
+  if (o == "imgv") return imgViewHtml();
   if (o == "stv") return stvView();
   if (o == "reqs") return reqsView();
   if (o == "bpick") return boostPickView();
@@ -1711,6 +1728,7 @@ function render() {
   pushNav();
   if (U && V.tab == "feed" && !V.scr && !V.ov) { setupSeen(); setupEndless(); }
   if (U && V.tab == "status" && !V.scr && !V.ov) loadTileImages();
+  const ap = document.getElementById("app"); if (ap) ap.style.zoom = ({ small: "0.92", medium: "1", large: "1.1" })[localStorage.getItem("bv.text") || "small"];
   if (U && (V.scr == "chat" || V.scr == "gchat" || V.scr == "schat" || V.scr == "ai")) { const el = $("msgs"); if (el) el.scrollTop = el.scrollHeight; }
 }
 app.addEventListener("click", async (e) => {
@@ -2005,6 +2023,18 @@ app.addEventListener("click", async (e) => {
     if (a == "sq") { if (V.tab != "chats") { V.tab = "feed"; V.sq = true; } else V.sq = !V.sq; if (!V.sq) V.q = ""; render(); const qi = $("q"); if (qi) qi.focus(); return; }
     if (a == "flt") { V.f = b.dataset.t; return render(); }
     if (a == "cov") { V.ov = V.ov ? null : "contacts"; return render(); }
+    if (a == "txt") { try { localStorage.setItem("bv.text", b.dataset.v); } catch (e) {} return render(); }
+    if (a == "imgv") return openPicture(b.dataset.img);
+    if (a == "imgx") { IMGV = null; V.ov = null; return render(); }
+    if (a == "imgdl") {
+      if (!IMGV || !IMGV.src) return toast("Picture is still loading");
+      const link = document.createElement("a"); link.href = IMGV.src; link.download = "orivoclass-" + IMGV.pid + ".jpg"; document.body.appendChild(link); link.click(); link.remove(); return;
+    }
+    if (a == "imgsend") {
+      const t = ($("imgc") && $("imgc").value.trim()) || ""; if (!t || !IMGV) return;
+      try { await api("/posts/" + IMGV.pid + "/comments", "POST", { body: t }); $("imgc").value = ""; toast("Comment sent"); } catch (e) { toast(e.message); }
+      return;
+    }
     if (a == "keybackup") return backupKeys().catch((e) => toast(e.message));
     if (a == "trustok") { const fp = await fingerprintFor(id).catch(() => ""); if (fp) localStorage.setItem("bv.trust:" + id, fp); updateSecBar(); return; }
     if (a == "seccode") { V.menu = false; V.ov = "seccode"; SEC = { code: null }; render(); safetyCode(V.cid).then((c) => { SEC.code = c; if (V.ov == "seccode") render(); }).catch(() => { SEC.code = "Not available yet. Both people need the latest app."; if (V.ov == "seccode") render(); }); return; }
