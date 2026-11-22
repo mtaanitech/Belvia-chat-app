@@ -399,4 +399,20 @@ app.put("/api/admin/app", adminLimit, adminOnly, wrap(async (req, res) => {
   APPFLAG.at = 0;
   res.json({ ok: true, on });
 }));
+// ---- End-to-end encryption, step 1: each device publishes ONLY its public key. The private key never leaves the device. ----
+app.put("/api/keys/device", need, wrap(async (req, res) => {
+  const dev = String(req.body.device_id || "").slice(0, 64);
+  const pub = req.body.pub || {};
+  if (!dev || pub.kty !== "EC" || pub.crv !== "P-256" || typeof pub.x !== "string" || typeof pub.y !== "string" || pub.x.length > 100 || pub.y.length > 100) return bad(res, "Invalid key.");
+  await db.query("INSERT INTO device_keys(user_id,device_id,pub) VALUES($1,$2,$3) ON CONFLICT (user_id,device_id) DO UPDATE SET pub=EXCLUDED.pub",
+    [req.uid, dev, JSON.stringify({ kty: pub.kty, crv: pub.crv, x: pub.x, y: pub.y })]);
+  res.json({ ok: true });
+}));
+app.get("/api/keys/:uid", need, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  const who = req.params.uid.toLowerCase();
+  if (await sgBlocked(req.uid, who)) return bad(res, "Not available.", 403);
+  const r = await db.query("SELECT device_id, pub FROM device_keys WHERE user_id=$1", [who]);
+  res.json({ devices: r.rows });
+}));
 // END OF PART 10
