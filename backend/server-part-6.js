@@ -75,7 +75,7 @@ app.get("/api/singles/deck", need, wrap(async (req, res) => {
   const lim = await sgLimits(req.uid);
   if (!me.active) return res.json({ profiles: [], limits: lim });
   const q = await db.query(
-    `SELECT s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age, u.last_seen,
+    `SELECT s.user_id, s.nick, s.gender, s.town, s.bio, s.photo, date_part('year', age(s.birth_date))::int AS age, u.last_seen,
             EXISTS (SELECT 1 FROM singles_views v WHERE v.viewer=$1 AND v.profile=s.user_id AND v.day=${DAY}) AS seen_today
      FROM singles s JOIN users u ON u.id=s.user_id
      WHERE s.user_id<>$1 AND s.active AND NOT u.banned AND (u.rest_until IS NULL OR u.rest_until < now())
