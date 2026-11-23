@@ -427,7 +427,7 @@ app.get("/api/keys/backup", need, wrap(async (req, res) => {
   res.json({ blob: r ? r.blob : null });
 }));
 // ---- Singles lists: Nearby (same town, as the profile says), and who liked me / who I liked. No photos here until a match. ----
-const SG_CARD = `s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age, to_char(u.created_at, 'Mon YYYY') AS joined, u.last_seen`;
+const SG_CARD = `s.user_id, s.nick, s.gender, s.town, s.bio, s.photo, date_part('year', age(s.birth_date))::int AS age, to_char(u.created_at, 'Mon YYYY') AS joined, u.last_seen`;
 const NOT_MATCHED = (me) => `NOT EXISTS (SELECT 1 FROM singles_matches mt WHERE (mt.a=${me} AND mt.b=s.user_id) OR (mt.a=s.user_id AND mt.b=${me}))`;
 app.get("/api/singles/nearby", need, wrap(async (req, res) => {
   const me = (await db.query("SELECT town FROM singles WHERE user_id=$1", [req.uid])).rows[0];
@@ -509,7 +509,7 @@ app.post("/api/verify/confirm", need, wrap(async (req, res) => {
 app.put("/api/admin/verify", adminLimit, adminOnly, wrap(async (req, res) => {
   const phone = phoneOf(req.body.phone);
   const days = Math.round(Number(req.body.days));
-  if (!(days >= 0 && days <= 3650)) return bad(res, "Days must be 0 to 3650. Use 0 to remove the badge.");
+  if (days !== 0) return bad(res, "A badge is given only when a person pays. Admin can only remove a badge (0 days).");
   const u = (await db.query("SELECT id FROM users WHERE phone=$1", [phone])).rows[0];
   if (!u) return bad(res, "No account with this number.", 404);
   await db.query("UPDATE users SET verified_until = CASE WHEN $2::int = 0 THEN NULL ELSE GREATEST(COALESCE(verified_until, now()), now()) + make_interval(days => $2::int) END WHERE id=$1", [u.id, days]);
@@ -520,5 +520,14 @@ app.put("/api/admin/verify-plan", adminLimit, adminOnly, wrap(async (req, res) =
   if (!(price >= 10 && price <= 100000) || !(days >= 1 && days <= 365)) return bad(res, "Check the price (10 to 100000) and the days (1 to 365).");
   await db.query("INSERT INTO app_settings(key,value,updated_at) VALUES('verify_plan',$1,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()", [JSON.stringify({ price, days })]);
   res.json({ ok: true });
+}));
+// Counts for a Singles profile: likes the person received, and matches.
+app.get("/api/singles/stats/:uid", need, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  const who = req.params.uid.toLowerCase();
+  if (await sgBlocked(req.uid, who)) return bad(res, "Not available.", 403);
+  const likes = (await db.query("SELECT count(*)::int AS n FROM singles_likes WHERE liked=$1", [who])).rows[0].n;
+  const matches = (await db.query("SELECT count(*)::int AS n FROM singles_matches WHERE a=$1 OR b=$1", [who])).rows[0].n;
+  res.json({ likes_received: likes, matches });
 }));
 // END OF PART 10
