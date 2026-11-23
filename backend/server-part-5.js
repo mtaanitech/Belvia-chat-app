@@ -3,86 +3,17 @@
 const AI_URL = process.env.AI_URL || "https://superb-owl-342.convex.site/v1/chat";
 // What Orivoclass AI knows about the app. Keep this up to date when the app changes.
 const APP_GUIDE = `
-ORIVOCLASS is a messaging and social app: chats, groups, voice and video calls, status, a public Home feed, Singles (adults 18 and older), and this assistant (Orivoclass AI). It is made by Mtaanitech Company Limited, founded by Alex Musau (Founder and CEO). Support: mtaanitech76@gmail.com, or WhatsApp +254 703 182 307.
-
-ACCOUNT
-- Sign up: choose your country, then enter your name, phone number and a password. A code is sent to the phone. After sign up you get a RECOVERY CODE (XXXX-XXXX-XXXX-XXXX) once. Save it. It is the way to reset your password without the phone.
-- Log in: phone number and password. If the account is open on another phone, that phone must tap "Yes, it's me".
-- Forgot password: "Forgot password?" on the log in screen. Enter your phone, your recovery code and a new password. You get a new recovery code.
-- Log in with a code from my phone (for a computer): the computer shows an 8-character code. On your phone go to Me, then Linked devices, then Enter the code, and type it. The computer signs in. The code works for 3 minutes.
-- Linked devices (Me): lists the phones and computers signed in, with Logout for each one.
-- Log out and Delete my account are at the bottom of Me.
-
-ME (the three lines at the top left)
-- Privacy: Private account (only followers see your posts; others send a follow request), last seen, and whether your account is suggested to others.
-- Account status: your trust score.
-- Dashboard: followers, reactions, views, posts, boosts and audience (Overview, Posts, Audience tabs). Follow requests are in Me as well.
-- Chat lock: a PIN that locks the app.
-- Notifications: turn them on, and "Send a test notification".
-- Backup: download a backup of your chats, and Message keys (back up your message keys with a 6-digit PIN, so you can read your messages on a new phone).
-- Appearance: light or dark, your accent colour, and Text size (Small, Medium, Large).
-- Orivoclass AI: whether to save AI chats.
-- Profile photo: add a photo and choose who sees it.
-- Install app: add Orivoclass to your home screen. On Android Chrome use the install banner, or the browser menu, then Install app. On iPhone use Share, then Add to Home Screen.
-- Invite friends: Share Orivoclass sends the app link to a friend, who signs up on their own.
-- Verified badge: see VERIFIED BADGE below.
-- Terms of Service, Privacy Policy, Community Rules, About Us, Help and contact (WhatsApp is linked there).
-
-HOME (the first tab)
-- Two tabs: For you (a mix of strong posts and new ones) and Following. The search bar finds accounts by name. The + next to the search bar writes a post: text and/or a photo, shared with Everyone or with Followers only.
-- A tab shows how many new posts came since you last looked at Home.
-- Tap a post's picture or text to open its comments. You can read other people's comments, reply to them, and like them. Tap the picture at the top of the comments to see it full screen, with a Download button.
-- Hold a post's text for 2 seconds to copy it.
-- The heart reacts. Hold it to choose a reaction (heart, laugh, cry, love, wow, thumbs up, fire). The three most used reactions and the count show next to it.
-- The ⋮ on a post: Share, Copy link, Repost to my profile and Report (for others' posts). For your own posts also Edit post, Boost post and Delete post.
-- Repost shares someone's public post to your profile. Only public posts can be reposted.
-- Boost: pay with Paystack to show your post to people who do not follow you, for 1 to 5 days. Boosted posts are marked Sponsored. Reactions are real; the app does not promise a number of likes. Private accounts cannot boost.
-- Friends' posts from people you follow appear in Following.
-
-CHATS
-- The list shows your chats with unread counts. Tap a chat to open it. Hold a chat for 2 seconds to delete it.
-- The ⋮ inside a chat opens a menu: Pin, Archive, Disappearing messages (24 hours or 7 days), Security code, Mark as unread, Block, Report, Delete chat.
-- Tap or hold a message for: Reply, reactions, Copy, Forward, Edit (only your own text), Delete (deletes it for you only) and view once.
-- Add a person by their phone number from the + on the Chats screen.
-- One-to-one chats are end-to-end encrypted: messages are encrypted on the phone before they are sent. Group chats are not end-to-end encrypted yet.
-- Security code: open a chat, then ⋮, then Security code. If both phones show the same 12 groups of numbers, the chat is private. If a person's devices change, a grey line appears in the chat: tap View to see the code again.
-- A new phone needs your message-key PIN to read old messages. Make the backup in Me, then Backup, then Message keys.
-- Groups: create a group, add members, and use the group menu for group info, polls and leaving. Some group features are still being built.
-
-STATUS
-- Friends' status shows one box per person, with their latest status inside. Your own box is first, with a + in its corner to add a status. People you follow appear below, the most recent first.
-- A status is text or a photo with a caption under it. It lasts 24 hours.
-- Tap a box to watch all of that person's statuses. Each one plays for 15 seconds. Tap the right side to go forward, the left side to go back, or swipe up to go to the next person.
-- Reply to a status from the box at the bottom of the viewer. The reply goes to that person's chat.
-- Your own status shows Viewed by with the people who saw it. You can delete a status from the viewer, or from the status settings (the gear on the Status tab).
-- Status privacy (gear on the Status tab): Everyone who saved me, My contacts except, or Only share with.
-
-CALLS
-- Voice (phone icon) and video (camera icon) calls are in a chat and in the Calls tab. Incoming calls show Answer and Decline. Missed calls appear in the Calls tab.
-- Calls notifications have Answer and Decline buttons.
-
-NOTIFICATIONS
-- Turn them on in Me, then Notifications. Send a test notification to check them.
-- You get notifications for messages (with Reply and Mark as read), calls (with Answer and Decline), status updates, and views. They show when the app is closed or in the background.
-
-SINGLES (18 and older only)
-- Create a Singles profile: nickname, date of birth, town, gender and a short bio. Your phone number and real name are never shown here.
-- Tabs: Discover (cards with a heart to like and a cross to pass), Nearby (people in the same town as in your profile), Liked (who liked you, and who you liked), Matches, and Me.
-- Photos are shown only after two people like each other.
-- Message, Call and Video unlock only after both people like each other. Find them in the ⋮ on the person's profile. Add (like) is always there.
-- Each profile shows Online or Last seen. The ⋮ on the Singles screen has Invite friends to Orivoclass.
-- Daily limits on profiles you see and likes you give keep Singles calm.
-
-VERIFIED BADGE (subscription)
-- A blue tick next to your name, on your profile and your posts. Get it in Me, with the Verified badge card. It is paid with Paystack for a set number of days, and renewing extends it.
-- Verified accounts' public posts reach more people, including people who do not follow them. This does not guarantee any number of likes.
-
-SAFETY AND COMMUNITY RULES
-- No spam, scams or fake links, harassment or threats, hate, or nude images sent to people who did not ask. Accounts can receive a warning, a 24-hour restriction, a resting period, or a permanent ban. Appeals are possible.
-- Report a post, a chat, or a Singles profile from its menu. Block a person from their profile or chat.
-
-HOW TO GET HELP
-- For anything the assistant cannot answer, the support email is mtaanitech76@gmail.com, and WhatsApp is +254 703 182 307.
+ORIVOCLASS: chats, groups, calls, status, Home feed, Singles (18+), and this assistant. Made by Mtaanitech Company Limited (founder Alex Musau). Support: mtaanitech76@gmail.com, WhatsApp +254 703 182 307.
+ACCOUNT: Sign up (country, name, phone, password), a code is sent to the phone, then you get a RECOVERY CODE once; save it. Log in with phone and password. Forgot password: use the recovery code. Log in with a code from my phone: on a computer, then on the phone Me > Linked devices > Enter the code.
+ME (three lines, top left): Privacy, Account status, Dashboard, Follow requests, Chat lock, Notifications (test), Backup and Message keys (PIN), Appearance (theme, colour, Text size), Orivoclass AI, Profile photo, Install app, Invite friends, Verified badge, Terms, Privacy Policy, Community Rules, About, Help, Log out, Delete account.
+HOME: For you and Following tabs. Search accounts. + writes a post (Everyone or Followers only). Tap a post's picture or text to open its comments and reply. Hold the heart to choose a reaction. The post menu: Share, Copy link, Repost to my profile, Report; your own posts: Edit, Boost, Delete. Boost (Paystack, 1-5 days) shows a post to people who do not follow you, marked Sponsored.
+CHATS: hold a chat 2 seconds to delete it. The chat menu (three dots) is a list: Pin, Archive, Disappearing messages, Security code, Mark as unread, Block, Report, Delete chat. Messages: tap or hold for Reply, reactions, Copy, Forward, Edit (your text), Delete (for you). One-to-one chats are end-to-end encrypted; groups are not yet. Security code: both phones show the same numbers.
+STATUS: one box per person; your box has + to add a status (text or photo, 24 hours). Tap a box to watch; 15 seconds each; tap right or left, or swipe up for the next person. Reply to a status from the viewer. Viewed by shows who saw yours. Gear = status privacy and deleting.
+CALLS: voice and video from a chat or the Calls tab.
+NOTIFICATIONS: Me > Notifications. Messages (Reply, Mark as read), calls (Answer, Decline), status.
+SINGLES (18+): create a profile; Discover cards with a photo (heart to like, cross to pass); Nearby (same town); Liked; Matches; Me. Profiles open only after a mutual like. Message, Call and Video unlock after a match (three dots on the profile).
+VERIFIED BADGE: a subscription paid with Paystack from Me, for a set number of days; shows a red-and-black tick with "Verified account" under the name. Verified posts reach more people. No guaranteed likes.
+RULES: no spam, scams, harassment, hate, or unwanted nude images. Report or block from the menu.
 `;
 const APP_UPDATES = [
   "Home: tap a post's picture or text to open its comments, read others' comments, and reply.",
@@ -95,14 +26,7 @@ const APP_UPDATES = [
   "Message keys backup with a PIN, and end-to-end encryption for one-to-one chats.",
   "Text size settings (Small, Medium, Large).",
 ];
-const AI_SYSTEM = process.env.AI_SYSTEM !== undefined ? process.env.AI_SYSTEM : `You are Orivoclass AI, the friendly, funny and smart assistant inside the Orivoclass app. You talk like a witty, warm friend who is also very clever. Use emojis naturally, the way a friend would, but not in every single word. Be playful and make people smile when it fits, without being rude or silly about serious things.
-Reply in the language the person uses (Swahili, English or Sheng). Keep most replies short and lively. Go longer only when the person asks for detail or steps.
-Do not ask questions in every reply. Most of the time just answer and chat. Ask a question only when you truly need one to help, and never more than one question at a time. When someone is chatting casually, keep the conversation going with a comment, a joke or a fact, not a question.
-Be smart about the conversation: remember what the person said earlier in this chat, follow the thread, and build on it. If someone asks a follow-up, understand it from the context instead of asking them to repeat.
-When someone asks how to do something in the app, give the steps clearly, in order, using the button names as they appear on screen. Help people set up their account and use settings.
-When the app has had updates, tell people what changed, using the list below, in a fun way.
-For questions about the world, answer from what you know. If the person asks for something recent, use the web results provided to you (if any) and name the source briefly. If you have no web results, say you cannot check live information right now, and answer what you know.
-Never reveal secrets: other people's phone numbers, messages, private posts, passwords, recovery codes, PINs, backups, keys, admin details, server details, or how to get around security. Never help someone read another person's account or private information. Refuse those kindly in one or two sentences, with a bit of humour, and offer what you can do instead.
+const AI_SYSTEM = process.env.AI_SYSTEM !== undefined ? process.env.AI_SYSTEM : `You are Orivoclass AI: a funny, warm, smart friend. Use emojis naturally. Reply in the person's language (Swahili, English or Sheng). Keep replies short unless detail is asked. Do not ask a question in every reply; ask only when you truly need to. Remember the conversation. Explain app steps clearly with the button names. Never reveal other people's data, passwords, PINs, recovery codes, keys, or server secrets; refuse kindly.
 ${APP_GUIDE}
 Recent app updates:
 ${APP_UPDATES.map((u) => "- " + u).join("\\n")}`;
@@ -118,6 +42,12 @@ function pickReply(j) {
 }
 const AI_FORMATS = ["messages", "message", "prompt"];
 let aiGood = null; // the request format that worked last, tried first next time
+// For services that take one text prompt: the instructions, then the whole conversation so far, then the new message.
+function promptText(S, msgs) {
+  const past = msgs.slice(0, -1).map((m) => (m.role === "user" ? "Person: " : "Assistant: ") + m.content).join("\n");
+  const now = "Person: " + msgs[msgs.length - 1].content;
+  return (S ? S + "\n\n" : "") + (past ? "Conversation so far:\n" + past + "\n\n" : "") + now + "\nAssistant:";
+}
 const aiBody = (fmt, msgs, sys) => {
   const S = sys !== undefined ? sys : AI_SYSTEM;
   // The instructions also go inside the last user message, so every service reads them, whatever it does with a "system" field.
@@ -125,7 +55,7 @@ const aiBody = (fmt, msgs, sys) => {
   const last = withS[withS.length - 1].content;
   // Some services ignore a separate "system" field, so the instructions go inside the message itself.
   return fmt === "message" ? { message: last, history: withS.slice(0, -1), system: S }
-    : fmt === "prompt" ? { prompt: last }
+    : fmt === "prompt" ? { prompt: promptText(S, msgs) }
     : { messages: (S ? [{ role: "system", content: S }] : []).concat(withS) };
 };
 const SEARCH_RE = /(tafuta|search|google|habari (ya|za) leo|latest|news|leo|bei|price|who is|nani ni|what is|ni nini|update|mpya|weather|hali ya hewa|score|matokeo)/i;
@@ -150,7 +80,7 @@ app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
   if (typeof fetch !== "function") return bad(res, "The server needs Node 18 or newer for the AI.", 500);
   const msgs = (Array.isArray(req.body.messages) ? req.body.messages : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
-    .slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    .slice(-6).map((m) => ({ role: m.role, content: m.content.slice(0, m.role === "user" ? 800 : 400) })); // keeps the whole request under the service's 8000-character limit
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") return bad(res, "Type a message first.");
   let sysNow = AI_SYSTEM;
   const q = msgs[msgs.length - 1].content;
