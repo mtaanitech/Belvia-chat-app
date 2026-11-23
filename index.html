@@ -109,7 +109,8 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let SGMENU = false, SGMORE = false, SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+const VBADGE = '<span style="display:inline-flex;align-items:center;gap:5px;margin-top:2px;padding:2px 8px 2px 4px;border-radius:999px;background:#101828;color:#D92D20;font-size:12px;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#D92D20" d="M12 1.5l2.6 2.1 3.3-.3 1 3.2 2.9 1.7-.9 3.2 1.1 3.1-2.6 2.1-.2 3.3-3.3.6L12 22.5l-2.9-1.4-3.3-.6-.2-3.3-2.6-2.1 1.1-3.1-.9-3.2 2.9-1.7 1-3.2 3.3.3z"/><path fill="#101828" d="M10.3 15.2l-3-3 1.1-1.1 1.9 1.9 4.8-4.8 1.1 1.1z"/></svg>Verified account</span>';
+let VPLAN = null, SGMENU = false, SGMORE = false, SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -277,6 +278,22 @@ function sgCardHtml(p, like) {
     "</div>";
 }
 function sgGridHtml(list, like) { return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px">' + list.map((p) => sgCardHtml(p, like)).join("") + "</div>"; }
+function editPostHtml() {
+  const p = findPost(V.epid) || {};
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="epx" aria-label="Back">' + IC_BACK + '</button><h1>Edit post</h1><span style="flex:1"></span><button class="btn" style="min-height:40px" data-a="epsave">Save</button></div><div class="body"><div class="cd"><textarea id="epb" rows="6" maxlength="500">' + esc(p.body || "") + "</textarea><span class=\"note\">Edited posts show that they were edited.</span></div></div></div>";
+}
+function editMsgHtml() {
+  const x = MS.find((z) => z.id == V.emid) || {};
+  const shown = x._plain !== undefined ? x._plain : x.body || "";
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="emx" aria-label="Back">' + IC_BACK + '</button><h1>Edit message</h1><span style="flex:1"></span><button class="btn" style="min-height:40px" data-a="emsave">Save</button></div><div class="body"><div class="cd"><textarea id="emb" rows="4" maxlength="2000">' + esc(shown) + "</textarea></div></div></div>";
+}
+function cmtPostPreview() {
+  const p = CMTS && findPost(CMTS.id); if (!p) return "";
+  const text = p.body ? '<div style="padding:12px 14px;white-space:pre-wrap;font-size:16px;overflow-wrap:anywhere">' + esc(p.body) + "</div>" : "";
+  if (!p.has_image) return text ? text + '<div style="height:1px;background:var(--ln)"></div>' : "";
+  if (!p._img) setTimeout(loadPostImages, 0);
+  return text + '<div data-a="imgv" data-img="p' + p.id + '" style="margin:12px 14px;border-radius:14px;overflow:hidden;background:var(--sf);min-height:120px;cursor:pointer">' + (p._img ? '<img alt="" src="' + esc(p._img) + '" style="width:100%;display:block">' : '<span class="note" style="padding:20px;display:block;text-align:center">Loading photo…</span>') + "</div>";
+}
 async function cardLike(id) {
   const p = sgAll().find((x) => x.user_id == id); if (!p) return;
   SGLK = { liked_you: SGLK.liked_you.filter((x) => x.user_id != id), you_liked: SGLK.you_liked };
@@ -602,16 +619,16 @@ function postCard(p) {
   const cached = o ? o._img : p._img;
   const photo = cached ? '<img alt="" decoding="async" src="' + esc(cached) + '" style="width:100%;display:block;border-radius:12px">' : '<span class="note">Loading photo…</span>';
   const reposted = p.repost_of ? '<div class="mut" style="font-size:13px;display:flex;align-items:center;gap:6px">↻ Reposted</div>' : "";
-  const body = (p.body ? '<div data-a="txtv" data-id="' + p.id + '" data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;cursor:pointer">' + esc(p.body) + "</div>" : "");
-  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="imgv" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
+  const body = (p.body ? '<div data-a="cmts" data-id="' + p.id + '" data-copy="' + esc(p.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;cursor:pointer">' + esc(p.body) + "</div>" : "");
+  const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
     reposted +
-    '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b><small class="mut">' + clk + who + "</small></span></button>" +
+    '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b>' + (p.verified ? VBADGE : "") + '<small class="mut">' + clk + who + "</small></span></button>" +
     (!me && !p.following ? '<button class="btn o" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + p.user_id + '">Follow</button>' : "") +
     '<button class="ib" data-a="pmenu" data-id="' + p.id + '" aria-label="More" style="color:var(--mu)">' + IC_DOTS + "</button></div>" +
     (p.sponsored ? '<span class="pill" style="align-self:flex-start">Sponsored</span>' : "") +
     body +
-    (!o && hasPhoto ? '<div data-a="imgv" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
+    (!o && hasPhoto ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
     orig +
     '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px">' +
       '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
@@ -649,7 +666,7 @@ function pmenuView() {
   const id = V.pmid, p = findPost(id); if (!p) return "";
   const me = p.user_id == U.id;
   const item = (k, label, color) => '<button data-a="pmact" data-k="' + k + '" data-id="' + id + '" style="border:0;background:none;text-align:left;padding:14px 20px;font:inherit;font-size:16px;color:' + (color || "var(--ink)") + ';width:100%">' + label + "</button>";
-  const items = me ? item("boost", "Boost post") + item("share", "Share") + item("copy", "Copy link") + item("delete", "Delete post", "var(--cr)") : item("share", "Share") + item("repost", "Repost to my profile") + item("copy", "Copy link") + item("report", "Report post", "var(--cr)");
+  const items = me ? item("edit", "Edit post") + item("boost", "Boost post") + item("share", "Share") + item("copy", "Copy link") + item("delete", "Delete post", "var(--cr)") : item("share", "Share") + item("repost", "Repost to my profile") + item("copy", "Copy link") + item("report", "Report post", "var(--cr)");
   return '<div data-a="pmclose" style="position:absolute;inset:0;background:rgba(16,24,40,.35);z-index:45;display:flex;align-items:flex-end"><div style="width:100%;background:var(--bg);border-radius:18px 18px 0 0;padding:8px 0 calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(16,24,40,.2)"><div style="width:44px;height:5px;border-radius:3px;background:var(--ln);margin:6px auto 8px"></div>' + items + "</div></div>";
 }
 function feedTab() {
@@ -755,7 +772,7 @@ async function shareCmp() {
 }
 function commentsView() {
   const bar = CMTS && CMTS.replyTo ? 'Replying to <b>' + esc(CMTS.replyTo.name) + '</b> <button class="lnk" data-a="cmtrpx" style="min-height:30px">✕</button>' : "";
-  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div>' +
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div id="cmtpv">' + cmtPostPreview() + '</div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div>' +
     '<div id="cmtrp" class="rp">' + bar + '</div><div id="cmtprev">' + cmtPrevHtml() + '</div>' +
     '<div class="comp"><button class="ib" data-a="cmtpick" aria-label="Add a photo" style="font-size:30px;line-height:1;color:var(--ac);min-width:40px">+</button><input id="cmtin" placeholder="Write a comment" maxlength="300" autocomplete="off"><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + '</button></div>' +
     '<input id="cmtfile" type="file" accept="image/*" style="display:none"></div>';
@@ -842,7 +859,7 @@ function profView() {
   const cover = coverBg(P.cover);
   return '<div class="ov"><div class="hd"><button class="ib" data-a="profx" aria-label="Back">' + IC_BACK + '</button><h1 style="font-size:18px">' + esc(P.name) + '</h1></div><div class="body">' +
     '<div style="position:relative;margin-bottom:46px"><div style="height:110px;background:' + cover + '"></div><div style="position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)">' + av(P.name, 80, false, P.id) + "</div></div>" +
-    '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px"><b style="font-size:20px">' + esc(P.name) + (P.mood ? " " + esc(P.mood) : "") + "</b>" + (P.about ? '<span class="mut" style="text-align:center">' + esc(P.about) + "</span>" : "") +
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px"><b style="font-size:20px">' + esc(P.name) + (P.mood ? " " + esc(P.mood) : "") + "</b>" + (P.verified ? VBADGE : "") + (P.about ? '<span class="mut" style="text-align:center">' + esc(P.about) + "</span>" : "") +
     '<div style="display:flex;gap:22px;margin:10px 0"><div style="text-align:center"><b>' + P.posts + '</b><br><small class="mut">Posts</small></div><div style="text-align:center"><b>' + P.followers + '</b><br><small class="mut">Followers</small></div><div style="text-align:center"><b>' + P.following + '</b><br><small class="mut">Following</small></div></div>' +
     (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
     '<div class="sec">POSTS</div><div id="profl">' + (P.locked && !P.am_following && P.id != U.id ? '<div class="empty"><b>This account is private</b>Follow it to see its posts.</div>' : PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
@@ -883,7 +900,7 @@ app.addEventListener("pointerdown", (e) => { if (STV && e.target.closest && e.ta
 app.addEventListener("pointerup", (e) => { if (STV && STY !== null && STY - e.clientY > 70) { STY = null; nextPerson(); } else STY = null; });
 app.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest('[data-a="like"], [data-copy]')) e.preventDefault(); });
 // Hold a post's text for 2 seconds to copy it.
-app.addEventListener("pointerdown", (e) => {
+  app.addEventListener("pointerdown", (e) => {
   const c = e.target.closest && e.target.closest("[data-copy]"); if (!c) return;
   clearTimeout(CPT);
   CPFIRED = false;
@@ -920,7 +937,7 @@ async function doDelPost(id) {
   if (!confirm("Delete this post? It cannot be undone.")) return;
   try { await api("/posts/" + id, "DELETE"); FEED = FEED.filter((p) => p.id != id); PROFP = PROFP.filter((p) => p.id != id); render(); toast("Post deleted"); } catch (e) { toast(e.message); }
 }
-async function loadExtra() { try { EXTRA = await api("/me/extras"); } catch (e) {} }
+async function loadExtra() { try { EXTRA = await api("/me/extras"); } catch (e) {} try { VPLAN = await api("/verify/plan"); } catch (e) {} }
 async function doDash() {
   V.ov = "dash"; DTAB = "over"; render();
   try { const [d, , bst] = await Promise.all([api("/me/dashboard"), loadExtra(), api("/boosts/mine").catch(() => ({ campaigns: [] }))]); DASH = d; BST = bst.campaigns || []; }
@@ -958,6 +975,19 @@ async function doFollow(uid) {
 
 
 // ---- Link a computer with a code ----
+function verifyCard() {
+  const v = VPLAN || {};
+  const active = v.until && new Date(v.until) > new Date();
+  const body = active ? '<span>You are verified until ' + esc(new Date(v.until).toLocaleDateString()) + ".</span>" + '<button class="btn o" data-a="vbuy">Renew</button>'
+    : '<span class="mut">Show a blue tick next to your name on your profile and posts. Verified posts reach more people.</span>' + (v.paid === false ? '<span class="note">Payments are not set up yet.</span>' : '<button class="btn" data-a="vbuy">Get verified · KSh ' + (v.price || 300) + " for " + (v.days || 30) + " days</button>");
+  return '<div class="cd" style="margin:0 16px"><b>' + VBADGE + ' Verified badge</b>' + body + "</div>";
+}
+async function checkVerifyPay() {
+  let ref = ""; try { ref = localStorage.getItem("bv.vpay") || ""; } catch (e) {}
+  if (!ref || !T) return;
+  try { const j = await api("/verify/confirm", "POST", { reference: ref }); if (j.ok) { try { localStorage.removeItem("bv.vpay"); } catch (e) {} VPLAN = null; toast("You are verified"); } else toast("Payment not confirmed yet."); }
+  catch (e) { toast(e.message); }
+}
 function linkView() {
   const c = LNK ? LNK.code : "";
   return '<div class="wrap pad"><div class="logo">Orivoclass</div><p class="mut">On your phone, open Orivoclass, go to <b>Me → Linked devices → Enter the code</b>, and type this code.</p>' +
@@ -1042,6 +1072,18 @@ function drawLR() {
   app.appendChild(d);
 }
 let PENDING_ACT = null, ACTQ = null;
+let HOLD = { t: null, fired: false };
+app.addEventListener("pointerdown", (e) => {
+  const r = e.target.closest && e.target.closest('[data-a="open"][data-id]'); if (!r || V.scr || V.ov) return;
+  HOLD.fired = false; clearTimeout(HOLD.t);
+  HOLD.t = setTimeout(() => { HOLD.fired = true; holdDeleteChat(r.dataset.id); }, 2000);
+});
+["pointerup", "pointercancel", "pointerleave", "pointermove"].forEach((ev) => app.addEventListener(ev, () => { if (!HOLD.fired) clearTimeout(HOLD.t); }));
+async function holdDeleteChat(id) {
+  const c = CH.find((x) => x.peer == id); const nm = c ? c.display : "this chat";
+  if (!confirm("Delete chat with " + nm + "?")) return;
+  try { await api("/chats/" + id, "DELETE"); await loadCH(); render(); toast("Chat deleted"); } catch (e) { toast(e.message); }
+}
 // Runs an action that came from a notification (or from the link that opened the app).
 async function runAct(p) {
   if (!U || !p) return;
@@ -1430,6 +1472,15 @@ function listHtml() {
   }
   return top + items.map((i) => i.h).join("");
 }
+function cmenuView() {
+  const c = CH.find((x) => x.peer == V.cid), bl = BL.some((x) => x.id == V.cid);
+  const it = (label, act, danger) => '<button data-a="' + act + '" data-cmi style="display:block;width:100%;text-align:left;border:0;background:none;padding:15px 20px;font:inherit;font-size:16px;color:' + (danger ? "var(--cr)" : "var(--ink)") + '">' + label + "</button>";
+  const dv = '<div style="height:1px;background:var(--ln)"></div>';
+  return '<div data-a="cmclose" style="position:absolute;inset:0;background:rgba(16,24,40,.35);z-index:45;display:flex;align-items:flex-end"><div style="width:100%;background:var(--bg);border-radius:18px 18px 0 0;padding:8px 0 calc(12px + env(safe-area-inset-bottom,0px))"><div style="width:44px;height:5px;border-radius:3px;background:var(--ln);margin:6px auto 8px"></div>' +
+    (c ? it(c.pinned ? "Unpin" : "Pin", "pin") + dv + it(c.archived ? "Unarchive" : "Archive", "archive") + dv : "") +
+    it("Disappearing messages", "dm") + dv + it("Security code", "seccode") + dv + it("Mark as unread", "unreadmark") + dv +
+    it(bl ? "Unblock" : "Block", "blk", true) + dv + it("Report", "rep", true) + dv + it("Delete chat", "delchat", true) + "</div></div>";
+}
 function menuHtml() {
   if (!V.menu) return "";
   if (V.scr == "schat") return '<div class="act" style="align-self:stretch;border-radius:0;justify-content:flex-end"><button data-a="unmatch" style="color:var(--cr)">Unmatch</button><button data-a="blk">Block</button><button data-a="rep">Report</button></div>';
@@ -1511,7 +1562,7 @@ function stvView() {
   const content = it.has_image
     ? '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;padding:0 10px;box-sizing:border-box">' + (it._img ? '<img alt="" src="' + esc(it._img) + '" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:12px">' : (it._failed ? '<span style="color:#fff">Photo not available</span>' : '<span style="color:#fff">Loading…</span>')) + (it.body ? '<div style="color:#fff;font-size:17px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 8px">' + esc(it.body) + "</div>" : "") + "</div>"
     : '<div style="font-size:26px;font-weight:700;color:#fff;text-align:center;padding:32px;white-space:pre-wrap;overflow-wrap:anywhere">' + esc(it.body) + "</div>";
-  const footer = p.mine ? '<div style="position:relative;z-index:3;display:flex;gap:10px;justify-content:center;padding:14px"><button class="btn o" style="color:#fff;border-color:#fff" data-a="stviews" data-id="' + it.id + '">👁 Viewed by ' + (it.views || 0) + '</button><button class="btn" style="background:#E5484D;color:#fff" data-a="stdel" data-id="' + it.id + '">Delete</button></div>' : "";
+  const footer = !p.mine ? '<div style="position:relative;z-index:3;display:flex;gap:8px;padding:12px"><input id="strin" placeholder="Reply to status" autocomplete="off" style="flex:1;border-radius:22px;border:0;padding:10px 14px;background:rgba(255,255,255,.2);color:#fff"><button class="btn" style="min-height:40px;background:#fff;color:var(--ink)" data-a="strsend">Send</button></div>' : p.mine ? '<div style="position:relative;z-index:3;display:flex;gap:10px;justify-content:center;padding:14px"><button class="btn o" style="color:#fff;border-color:#fff" data-a="stviews" data-id="' + it.id + '">👁 Viewed by ' + (it.views || 0) + '</button><button class="btn" style="background:#E5484D;color:#fff" data-a="stdel" data-id="' + it.id + '">Delete</button></div>' : "";
   return '<div id="stv" style="position:absolute;inset:0;z-index:60;background:' + bg + ';display:flex;flex-direction:column;overflow:hidden"><style>@keyframes stfill{from{width:0}to{width:100%}}</style>' +
     '<div style="position:relative;z-index:3;display:flex;gap:4px;padding:12px 12px 0">' + bars + "</div>" +
     '<div style="position:relative;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 14px;color:#fff">' + av(p.name, 40, false, p.id) + '<button data-a="' + (p.mine ? "stnoop" : "stprof") + '" data-id="' + p.id + '" style="flex:1;min-width:0;border:0;background:none;color:#fff;text-align:left;padding:0"><b style="display:block">' + esc(p.mine ? "You" : p.name) + '</b><small style="opacity:.8">' + tm(it.created_at) + '</small></button><button class="ib" data-a="stclose" aria-label="Close" style="color:#fff">' + IC_BACK.replace('stroke="currentColor"', 'stroke="#fff"') + "</button></div>" +
@@ -1525,7 +1576,7 @@ function meTab() {
   const E = EXTRA || {}, rq = E.requests ? E.requests.length : 0, trust = U.trust == null ? 100 : U.trust;
   const row = (p, label, sub, ic, badge) => '<button class="row" data-a="pg" data-p="' + p + '" style="min-height:58px"><span class="av" style="width:36px;height:36px;background:var(--acs);color:var(--ac);font-size:15px">' + ic + '</span><span class="t"><b>' + label + '</b><small>' + sub + '</small></span>' + (badge ? '<span class="pill" style="color:var(--ac)">' + badge + "</span>" : "") + '<span style="color:var(--mu);font-size:22px">›</span></button>';
   const sec = (t) => '<div class="sec">' + t + "</div>";
-  return profileHead() +
+  return profileHead() + verifyCard() +
     '<div class="cd" style="margin:0 16px"><b>Invite friends</b><span class="mut">Send the Orivoclass link. They open it and sign up on their own.</span><button class="btn o" data-a="shareapp">Share Orivoclass</button></div>' +
     sec("ACCOUNT") + row("priv", "Privacy", E.locked ? "Private account" : "Public account", "🔒") + row("acct", "Account status", "Trust score " + trust + "%", "🛡") + row("dev", "Linked devices", "Devices logged in to your account", "📱") +
     sec("CREATOR") + row("dash", "Dashboard", "Followers, posts and reach", "📊") + row("reqs", "Follow requests", rq ? rq + " waiting" : "None waiting", "👥", rq ? String(rq) : "") +
@@ -1568,7 +1619,7 @@ function bodyHtml(x, me) {
 }
 function msgsHtml() {
   if (!MS.length) return MSL ? '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>' : '<div class="empty"><b>No messages yet</b>Say hello.</div>';
-  return MS.map((x, i) => { const me = x.from_id == U.id; return dsep(x, MS[i - 1]) + '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tmt(x.created_at) + (me ? (x.tmp ? " 🕓" : x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + '<button data-a="mdel" data-m="' + x.id + '">Delete</button></div>' : ""); }).join("");
+  return MS.map((x, i) => { const me = x.from_id == U.id; return dsep(x, MS[i - 1]) + '<button class="b ' + (me ? "me" : "") + '" data-a="' + (x.view_once && !me && !x.opened_at ? "vo" : "sel") + '" data-m="' + x.id + '">' + (x.reply ? '<div class="q">' + esc(x.reply) + "</div>" : "") + bodyHtml(x, me) + '<div class="mt">' + (x.expires_at ? "⏱ " : "") + tmt(x.created_at) + (me ? (x.tmp ? " 🕓" : x.read_at ? ' <span class="rd">✓✓</span>' : " ✓") : "") + "</div></button>" + (x.reaction ? '<div class="re">' + esc(x.reaction) + "</div>" : "") + (V.sel == x.id ? '<div class="act"><button data-a="reply" data-m="' + x.id + '">Reply</button>' + ["👍", "❤️", "😂", "😮"].map((e) => '<button data-a="react" data-m="' + x.id + '" data-e="' + e + '" aria-label="React ' + e + '">' + e + "</button>").join("") + '' + (x.view_once ? "" : '<button data-a="copy" data-m="' + x.id + '">Copy</button><button data-a="fwd" data-m="' + x.id + '">Forward</button>') + (x.from_id == U.id && !x.view_once ? '<button data-a="medit" data-m="' + x.id + '">Edit</button>' : "") + '<button data-a="mdel" data-m="' + x.id + '">Delete</button></div>' : ""); }).join("");
 }
 const rpHtml = () => V.reply ? "<span>Replying to: " + esc(V.reply) + '</span><button class="ib" data-a="norep" aria-label="Cancel reply">✕</button>' : "";
 function peer() {
@@ -1780,6 +1831,9 @@ function overlays() {
   if (o == "prof") return profView();
   if (o == "pmenu") return pmenuView();
   if (o == "seccode") return '<div class="ov"><div class="hd"><button class="ib" data-a="secx" aria-label="Back">' + IC_BACK + '</button><h1>Security code</h1></div><div class="body"><div class="cd" style="align-items:center;text-align:center"><span class="mut">Compare this code with the other person, in person or on a call. If the codes are the same, only you two can read this chat.</span><b style="font-size:20px;line-height:1.8;font-family:monospace;letter-spacing:1px">' + esc(SEC && SEC.code ? SEC.code : "…") + "</b></div></div></div>";
+  if (o == "cmenu") return cmenuView();
+  if (o == "editpost") return editPostHtml();
+  if (o == "editmsg") return editMsgHtml();
   if (o == "linkin") return linkinView();
   if (o == "sgprof") return sgProfHtml();
   if (o == "imgv") return imgViewHtml();
@@ -1849,7 +1903,9 @@ function render() {
 app.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-a]"); if (!b) return;
   const a = b.dataset.a, id = b.dataset.id, m = b.dataset.m;
+  if (b.hasAttribute("data-cmi")) { V.ov = null; V.menu = false; }
   if (PRESS.fired) { PRESS.fired = false; if (a == "like") return; }
+  if (HOLD.fired) { HOLD.fired = false; if (a == "open") return; }
   try {
     if (a == "mode") { V.mode = V.mode == "signup" ? "login" : "signup"; return render(); }
     if (a == "forgot") { V.mode = "recover"; return render(); }
@@ -1864,6 +1920,13 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "stopen") return openStories(id);
     if (a == "stclose") return closeStories();
+    if (a == "strsend") {
+      if (!STV) return; const p = STV.people[STV.pi], it = p.items[STV.si];
+      const t = ($("strin") && $("strin").value.trim()) || ""; if (!t) return;
+      try { const enc = await encryptFor(p.id, t).catch(() => null); await api("/messages", "POST", { to: p.id, body: enc || t, reply: "Status: " + String(it.body || "photo").slice(0, 60) }); $("strin").value = ""; toast("Reply sent"); }
+      catch (e) { toast(e.message); }
+      return;
+    }
     if (a == "stnoop") return;
     if (a == "stprof") { if (STV) { clearTimeout(STV.timer); STV = null; } return openProfile(id); }
     if (a == "stprev") { prevStory(); return; }
@@ -1944,6 +2007,7 @@ app.addEventListener("click", async (e) => {
       if (k == "repost") return doRepost(id);
       if (k == "copy") { const link = location.origin + location.pathname + "#post=" + id; if (navigator.clipboard) return navigator.clipboard.writeText(link).then(() => toast("Link copied"), () => toast("Copy is not available")); return toast("Copy is not available"); }
       if (k == "delete") return doDelPost(id);
+      if (k == "edit") { V.epid = id; V.ov = "editpost"; return render(); }
       if (k == "report") return doReport(id);
       return;
     }
@@ -2033,6 +2097,23 @@ app.addEventListener("click", async (e) => {
     if (a == "sgcardpass") { try { await api("/singles/like/" + id, "POST", { like: false }); } catch (e) { return toast(e.message); } SGD = SGD.filter((x) => x.user_id != id); if (!SGD.length) await loadDeck(); return render(); }
     if (a == "sglikeprof") { V.ov = null; return cardLike(id); }
     if (a == "sgprof") { const p = sgAll().find((x) => x.user_id == id) || SGM.find((x) => x.user_id == id); if (!p) return; SGPV = p; V.cid = id; SGMENU = false; V.ov = "sgprof"; return render(); }
+    if (a == "epx") { V.ov = null; return render(); }
+    if (a == "epsave") {
+      const t = ($("epb") && $("epb").value.trim()) || ""; if (!t) return toast("Write something first.");
+      try { await api("/posts/" + V.epid + "/edit", "PUT", { body: t }); const p = findPost(V.epid); if (p) p.body = t; V.ov = null; render(); return toast("Post updated"); }
+      catch (e) { return toast(e.message); }
+    }
+    if (a == "emx") { V.ov = null; return render(); }
+    if (a == "emsave") {
+      const t = ($("emb") && $("emb").value.trim()) || ""; if (!t) return toast("Write something first.");
+      try {
+        const enc = await encryptFor(V.cid, t).catch(() => null), body = enc || t;
+        await api("/messages/" + V.emid + "/edit", "PUT", { body });
+        const x = MS.find((z) => z.id == V.emid); if (x) { x.body = body; x._plain = t; x.edited = true; }
+        V.ov = null; render(); return toast("Message updated");
+      } catch (e) { return toast(e.message); }
+    }
+    if (a == "medit") { V.emid = m; V.ov = "editmsg"; V.sel = null; return render(); }
     if (a == "sgprofx") { SGMENU = false; V.ov = null; return render(); }
     if (a == "sgmenu") { SGMENU = !SGMENU; return render(); }
     if (a == "sgmore") { SGMORE = !SGMORE; return render(); }
@@ -2174,6 +2255,11 @@ app.addEventListener("click", async (e) => {
       try { await api("/posts/" + IMGV.pid + "/comments", "POST", { body: t }); $("imgc").value = ""; toast("Comment sent"); } catch (e) { toast(e.message); }
       return;
     }
+    if (a == "vbuy") {
+      try { const j = await api("/verify/checkout", "POST", {}); try { localStorage.setItem("bv.vpay", j.reference); } catch (e) {} location.href = j.authorization_url; }
+      catch (e) { toast(e.message); }
+      return;
+    }
     if (a == "keybackup") return backupKeys().catch((e) => toast(e.message));
     if (a == "trustok") { const fp = await fingerprintFor(id).catch(() => ""); if (fp) localStorage.setItem("bv.trust:" + id, fp); updateSecBar(); return; }
     if (a == "seccode") { V.menu = false; V.ov = "seccode"; SEC = { code: null }; render(); safetyCode(V.cid).then((c) => { SEC.code = c; if (V.ov == "seccode") render(); }).catch(() => { SEC.code = "Not available yet. Both people need the latest app."; if (V.ov == "seccode") render(); }); return; }
@@ -2189,7 +2275,11 @@ app.addEventListener("click", async (e) => {
     if (a == "reply" && x) { V.reply = x.view_once ? "View once message" : String(x._plain !== undefined ? x._plain : x.body).slice(0, 80); V.sel = null; upd(false); const i = $("msg"); if (i) i.focus(); return; }
     if (a == "react" && x) { V.sel = null; upd(false); await api("/messages/" + m + "/react", "POST", { emoji: x.reaction == b.dataset.e ? null : b.dataset.e }); return loadMsgs(false); }
     if (a == "copy" && x) { V.sel = null; upd(false); if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(x._plain !== undefined ? x._plain : x.body).then(() => toast("Copied"), () => toast("Copy is not available")); } else toast("Copy is not available"); return; }
-    if (a == "menu") { V.menu = !V.menu; const mn = $("mn"); if (mn) mn.innerHTML = menuHtml(); return; }
+    if (a == "menu") {
+      if (V.scr == "schat" || V.scr == "gchat") { V.menu = !V.menu; const mn = $("mn"); if (mn) mn.innerHTML = menuHtml(); return; }
+      V.ov = "cmenu"; return render();
+    }
+    if (a == "cmclose") { if (e.target !== b) return; V.ov = null; return render(); }
     if (a == "pin" || a == "archive") {
       const c = CH.find((x) => x.peer == V.cid); if (!c) return;
       const on = a == "pin" ? !c.pinned : !c.archived;
@@ -2283,6 +2373,7 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
   }
   if (c) refreshMain(); else { if (V.scr == "boot") V.scr = null; render(); start(); }
   checkPayment();
+  checkVerifyPay();
   if (ACTQ) { const q = ACTQ; ACTQ = null; runAct(q); }
 })();
 </script>
