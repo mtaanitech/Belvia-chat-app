@@ -109,7 +109,8 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-const VBADGE = '<span style="display:inline-flex;align-items:center;gap:5px;margin-top:2px;padding:2px 8px 2px 4px;border-radius:999px;background:#101828;color:#D92D20;font-size:12px;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#D92D20" d="M12 1.5l2.6 2.1 3.3-.3 1 3.2 2.9 1.7-.9 3.2 1.1 3.1-2.6 2.1-.2 3.3-3.3.6L12 22.5l-2.9-1.4-3.3-.6-.2-3.3-2.6-2.1 1.1-3.1-.9-3.2 2.9-1.7 1-3.2 3.3.3z"/><path fill="#101828" d="M10.3 15.2l-3-3 1.1-1.1 1.9 1.9 4.8-4.8 1.1 1.1z"/></svg>Verified account</span>';
+const VBADGE = '<span style="display:inline-flex;align-items:center;margin-left:6px;vertical-align:middle" aria-label="Verified account"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#D92D20" d="M12 1.5l2.6 2.1 3.3-.3 1 3.2 2.9 1.7-.9 3.2 1.1 3.1-2.6 2.1-.2 3.3-3.3.6L12 22.5l-2.9-1.4-3.3-.6-.2-3.3-2.6-2.1 1.1-3.1-.9-3.2 2.9-1.7 1-3.2 3.3.3z"/><path fill="#101828" d="M10.3 15.2l-3-3 1.1-1.1 1.9 1.9 4.8-4.8 1.1 1.1z"/></svg></span>';
+const VLABEL = '<div style="font-size:12px;font-weight:700;color:#D92D20;margin-top:1px">Verified account</div>';
 let VPLAN = null, SGMENU = false, SGMORE = false, SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
@@ -266,10 +267,13 @@ function presenceHtml(last) {
   const t = m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " d ago";
   return '<span style="opacity:.9">Last seen ' + t + "</span>";
 }
+function sgPic(p) {
+  return p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">' : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>";
+}
 function sgCardHtml(p, like) {
   const heart = (size, bg) => '<span style="font-size:' + size + 'px;line-height:1">♥</span>';
   return '<div data-a="sgprof" data-id="' + p.user_id + '" style="position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:' + sgGrad(p.nick) + ';color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(16,24,40,.18)">' +
-    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:84px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>" +
+    sgPic(p) +
     (like ? '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:19px;border:0;background:var(--ac);color:#fff;z-index:3;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(98,71,245,.4)">' + heart(16) + "</button>" : "") +
     '<div style="position:absolute;left:0;right:0;bottom:0;padding:44px 12px 60px;background:linear-gradient(transparent,rgba(0,0,0,.7))"><b style="display:block;font-size:17px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<div style="font-size:13px;opacity:.95;margin-top:3px">📍 ' + esc(p.town) + "</div>" : "") + '<div style="font-size:12px;margin-top:2px">' + presenceHtml(p.last_seen) + "</div></div>" +
     (like ? '<div style="position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;z-index:3">' +
@@ -298,7 +302,7 @@ async function cardLike(id) {
   const p = sgAll().find((x) => x.user_id == id); if (!p) return;
   SGLK = { liked_you: SGLK.liked_you.filter((x) => x.user_id != id), you_liked: SGLK.you_liked };
   const j = await api("/singles/like/" + id, "POST", { like: true });
-  SGD = SGD.filter((x) => x.user_id != id); SGN = SGN.filter((x) => x.user_id != id); if (!SGD.length) await loadDeck();
+  SGD.forEach((x) => { if (x.user_id == id) x.liked = true; }); SGN.forEach((x) => { if (x.user_id == id) x.liked = true; });
   if (j.match) { SGMP = p; SGM = (await api("/singles/matches")).matches; V.ov = "sgmatch"; }
   else SGL = Object.assign({}, SGL, { likes_left: Math.max(0, (SGL.likes_left || 1) - 1) });
   return render();
@@ -320,13 +324,12 @@ function sgMoreRow() {
 function sgProfHtml() {
   const p = SGPV; if (!p) return "";
   const mp = SGM.find((x) => x.user_id == p.user_id), matched = !!mp;
+  const btn = (icon, label, act) => matched
+    ? '<button data-a="' + act + '" data-id="' + p.user_id + '" data-n="' + esc(p.nick) + '" style="flex:1;border:0;border-radius:18px;min-height:76px;background:linear-gradient(135deg,var(--ac),#8b6dff);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600"><span style="font-size:20px">' + icon + "</span>" + label + "</button>"
+    : '<button data-a="sglocked" style="flex:1;border:0;border-radius:18px;min-height:76px;background:var(--sf);color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600"><span style="font-size:20px">' + icon + "</span>" + label + "</button>";
+  const addBtn = '<button data-a="sglikeprof" data-id="' + p.user_id + '" style="flex:1;border:0;border-radius:18px;min-height:76px;background:linear-gradient(135deg,var(--ac),#8b6dff);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600"><span style="font-size:20px">＋</span>Add</button>';
   const ring = (inner) => '<div style="width:150px;height:150px;border-radius:50%;padding:4px;background:var(--ac);box-shadow:0 8px 24px rgba(98,71,245,.3)"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:var(--bg)">' + inner + "</div></div>";
   const pic = mp && mp.photo ? '<img src="' + esc(mp.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:800;color:#fff;background:' + sgGrad(p.nick) + '">' + esc(ini(p.nick)) + "</div>";
-  // the four buttons: filled purple like the design; locked (grey) until both people like each other
-  const btn = (icon, label, act) => matched
-    ? '<button data-a="' + act + '" data-id="' + p.user_id + '" data-n="' + esc(p.nick) + '" style="flex:1;border:0;border-radius:18px;min-height:76px;background:linear-gradient(135deg,var(--ac),#8b6dff);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;box-shadow:0 6px 16px rgba(98,71,245,.3)"><span style="font-size:20px">' + icon + "</span>" + label + "</button>"
-    : '<button data-a="sglocked" style="flex:1;border:0;border-radius:18px;min-height:76px;background:var(--sf);color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600"><span style="font-size:20px">' + icon + "</span>" + label + "</button>";
-  const addBtn = '<button data-a="sglikeprof" data-id="' + p.user_id + '" style="flex:1;border:0;border-radius:18px;min-height:76px;background:linear-gradient(135deg,var(--ac),#8b6dff);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;box-shadow:0 6px 16px rgba(98,71,245,.3)"><span style="font-size:20px">＋</span>Add</button>';
   // media: nothing is shown until a match; then the profile photo is the first tile
   const tile = (inner) => '<div style="aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--sf);display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:22px">' + inner + "</div>";
   const media = matched && mp.photo ? tile('<img src="' + esc(mp.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover">') : tile("🔒");
@@ -335,7 +338,9 @@ function sgProfHtml() {
     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 16px 12px">' + ring(pic) +
     '<b style="font-size:24px;margin-top:8px">' + esc(p.nick) + ", " + p.age + "</b>" +
     '<div style="font-size:14px">' + presenceHtml(p.last_seen) + "</div>" +
+    '<div style="display:flex;gap:18px;margin-top:4px;color:var(--mu);font-size:14px"><span>❤ ' + (p.likes_received || 0) + ' likes</span><span>👥 ' + (p.matches || 0) + ' matches</span></div>' +
     (matched ? '<span style="color:var(--ok);font-weight:600">You matched</span>' : '<span class="mut">Like each other to unlock messages and calls</span>') + "</div>" +
+    '<div style="display:flex;gap:10px;padding:4px 14px 14px">' + btn("💬", "Message", "sgopen") + btn("📞", "Call", "callv") + btn("🎥", "Video", "callvid") + addBtn + "</div>" +
     '<div class="cd"><div style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:15px;background:var(--acs);color:var(--ac);display:flex;align-items:center;justify-content:center;font-weight:800">i</span><b>About</b></div>' +
     '<div style="line-height:1.5">' + (p.bio ? esc(p.bio) : '<span class="mut">No bio yet</span>') + "</div>" +
     '<div style="display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px;color:var(--mu);font-size:14px">' + (p.town ? "<span>📍 " + esc(p.town) + "</span>" : "") + (p.joined ? "<span>📅 Joined: " + esc(p.joined) + "</span>" : "") + "</div></div>" +
@@ -377,7 +382,7 @@ function singlesTab() {
     b = '<div class="sec">LIKED YOU</div>' + (SGLK.liked_you.length ? sgGridHtml(SGLK.liked_you, true) : '<p class="mut" style="padding:0 16px">Nobody has liked you yet.</p>') +
       '<div class="sec">YOU LIKED</div>' + (SGLK.you_liked.length ? sgGridHtml(SGLK.you_liked, false) : '<p class="mut" style="padding:0 16px">You have not liked anyone yet.</p>');
   } else if (SGt == "matches") {
-    b = SGM.length ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px">' + SGM.map((x) => '<button data-a="sgopen" data-id="' + x.user_id + '" style="border:0;padding:0;background:none;text-align:left"><div style="position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:' + sgGrad(x.nick) + '">' +
+    b = SGM.length ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px">' + SGM.map((x) => '<button data-a="sgprof" data-id="' + x.user_id + '" style="border:0;padding:0;background:none;text-align:left"><div style="position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:' + sgGrad(x.nick) + '">' +
       (x.photo ? '<img src="' + esc(x.photo) + '" style="width:100%;height:100%;object-fit:cover;display:block">' : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:56px;font-weight:800">' + esc(ini(x.nick)) + "</div>") +
       '<div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))"><b>' + esc(x.nick) + ", " + x.age + "</b>" + (x.last_body ? '<div style="font-size:12px;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc((x.last_from == U.id ? "You: " : "") + x.last_body) + "</div>" : '<div style="font-size:12px;opacity:.9">Say hello</div>') + "</div></div></button>").join("") + "</div>"
       : '<div class="empty"><b>No matches yet</b>When you and someone like each other, they appear here with their photo.</div>';
@@ -408,7 +413,7 @@ async function loadSChat(sc) {
 const smsgsHtml = () => SGCM.length ? SGCM.map((x, i) => dsep(x, SGCM[i - 1]) + '<div class="b ' + (x.from_id == U.id ? "me" : "") + '">' + esc(x.body) + '<div class="mt">' + tmt(x.created_at) + "</div></div>").join("") : '<div class="empty"><b>You matched!</b>Say hello.</div>';
 function schatView() {
   const p = SGPEER || SGM.find((x) => x.user_id == V.cid) || { nick: "Chat" };
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button><span class="av" style="width:40px;height:40px;font-size:14px;background:' + sgGrad(p.nick) + ';color:#fff">' + esc(ini(p.nick)) + '</span><div style="flex:1;min-width:0"><b>' + esc(p.nick) + '</b><small class="mut" style="display:block">Singles' + (p.age ? " · " + p.age : "") + '</small></div><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="msgs" id="msgs">' + smsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="sgsend" aria-label="Send">' + IC_SEND + '</button></div>';
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover">' : '<span class="av" style="width:40px;height:40px;font-size:14px;background:' + sgGrad(p.nick) + ';color:#fff">' + esc(ini(p.nick)) + '</span>') + '<div style="flex:1;min-width:0"><b>' + esc(p.nick) + '</b><small class="mut" style="display:block">Singles' + (p.age ? " · " + p.age : "") + '</small></div><button class="ib" data-a="menu" aria-label="Menu">⋮</button></div><div id="mn">' + menuHtml() + '</div><div class="msgs" id="msgs">' + smsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Message" autocomplete="off" aria-label="Message"><button class="sendb" data-a="sgsend" aria-label="Send">' + IC_SEND + '</button></div>';
 }
 async function sendS() {
   const i = $("msg"), t = i.value.trim(); if (!t) return;
@@ -623,7 +628,7 @@ function postCard(p) {
   const orig = o ? '<div style="border:1px solid var(--ln);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">' + esc(o.name) + '</b>' + (o.body ? '<div data-copy="' + esc(o.body) + '" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(o.body) + "</div>" : "") + (o.has_image ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:10px;background:var(--sf);min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") + "</div>" : (p.repost_of ? '<div class="note">This post is no longer available.</div>' : "");
   return '<article data-pid="' + p.id + '" style="border-bottom:1px solid var(--ln);padding:12px 14px;display:flex;flex-direction:column;gap:10px">' +
     reposted +
-    '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + esc(p.name) + '</b>' + (p.verified ? VBADGE : "") + '<small class="mut">' + clk + who + "</small></span></button>" +
+    '<div style="display:flex;align-items:center;gap:10px"><button data-a="profopen" data-id="' + p.user_id + '" style="border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;color:var(--ink);flex:1;min-width:0">' + av(p.name, 40, false, p.user_id) + '<span style="text-align:left;min-width:0"><b style="display:block">' + (p.verified ? VBADGE.replace('margin-left:6px', 'margin-right:6px') : "") + esc(p.name) + '</b>' + (p.verified ? VLABEL : "") + '<small class="mut">' + clk + who + "</small></span></button>" +
     (!me && !p.following ? '<button class="btn o" style="min-height:34px;padding:0 14px" data-a="follow" data-id="' + p.user_id + '">Follow</button>' : "") +
     '<button class="ib" data-a="pmenu" data-id="' + p.id + '" aria-label="More" style="color:var(--mu)">' + IC_DOTS + "</button></div>" +
     (p.sponsored ? '<span class="pill" style="align-self:flex-start">Sponsored</span>' : "") +
@@ -859,7 +864,7 @@ function profView() {
   const cover = coverBg(P.cover);
   return '<div class="ov"><div class="hd"><button class="ib" data-a="profx" aria-label="Back">' + IC_BACK + '</button><h1 style="font-size:18px">' + esc(P.name) + '</h1></div><div class="body">' +
     '<div style="position:relative;margin-bottom:46px"><div style="height:110px;background:' + cover + '"></div><div style="position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)">' + av(P.name, 80, false, P.id) + "</div></div>" +
-    '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px"><b style="font-size:20px">' + esc(P.name) + (P.mood ? " " + esc(P.mood) : "") + "</b>" + (P.verified ? VBADGE : "") + (P.about ? '<span class="mut" style="text-align:center">' + esc(P.about) + "</span>" : "") +
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px"><b style="font-size:20px">' + (P.verified ? VBADGE.replace('margin-left:6px', 'margin-right:6px') : "") + esc(P.name) + (P.mood ? " " + esc(P.mood) : "") + "</b>" + (P.verified ? VLABEL : "") + (P.about ? '<span class="mut" style="text-align:center">' + esc(P.about) + "</span>" : "") +
     '<div style="display:flex;gap:22px;margin:10px 0"><div style="text-align:center"><b>' + P.posts + '</b><br><small class="mut">Posts</small></div><div style="text-align:center"><b>' + P.followers + '</b><br><small class="mut">Followers</small></div><div style="text-align:center"><b>' + P.following + '</b><br><small class="mut">Following</small></div></div>' +
     (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
     '<div class="sec">POSTS</div><div id="profl">' + (P.locked && !P.am_following && P.id != U.id ? '<div class="empty"><b>This account is private</b>Follow it to see its posts.</div>' : PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
@@ -889,7 +894,7 @@ function openReactPicker(id) {
   const off = (ev) => { if (ev.target.closest && (ev.target.closest("#rpick") || ev.target.closest('[data-a="like"]'))) return; d.remove(); document.removeEventListener("click", off, true); };
   setTimeout(() => document.addEventListener("click", off, true), 0);
 }
-const PRESS = { t: null, fired: false };
+  const PRESS = { t: null, fired: false };
 app.addEventListener("pointerdown", (e) => {
   const b = e.target.closest && e.target.closest('[data-a="like"]'); if (!b) return;
   PRESS.fired = false; clearTimeout(PRESS.t);
@@ -900,7 +905,7 @@ app.addEventListener("pointerdown", (e) => { if (STV && e.target.closest && e.ta
 app.addEventListener("pointerup", (e) => { if (STV && STY !== null && STY - e.clientY > 70) { STY = null; nextPerson(); } else STY = null; });
 app.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest('[data-a="like"], [data-copy]')) e.preventDefault(); });
 // Hold a post's text for 2 seconds to copy it.
-  app.addEventListener("pointerdown", (e) => {
+app.addEventListener("pointerdown", (e) => {
   const c = e.target.closest && e.target.closest("[data-copy]"); if (!c) return;
   clearTimeout(CPT);
   CPFIRED = false;
@@ -2096,7 +2101,9 @@ app.addEventListener("click", async (e) => {
     if (a == "sgcardlike") return cardLike(id);
     if (a == "sgcardpass") { try { await api("/singles/like/" + id, "POST", { like: false }); } catch (e) { return toast(e.message); } SGD = SGD.filter((x) => x.user_id != id); if (!SGD.length) await loadDeck(); return render(); }
     if (a == "sglikeprof") { V.ov = null; return cardLike(id); }
-    if (a == "sgprof") { const p = sgAll().find((x) => x.user_id == id) || SGM.find((x) => x.user_id == id); if (!p) return; SGPV = p; V.cid = id; SGMENU = false; V.ov = "sgprof"; return render(); }
+    if (a == "sgprof") {
+      const p = sgAll().find((x) => x.user_id == id) || SGM.find((x) => x.user_id == id); if (!p) return;
+      if (!SGM.some((x) => x.user_id == id)) return toast("Like each other to open this profile."); SGPV = p; V.cid = id; SGMENU = false; V.ov = "sgprof"; return render(); }
     if (a == "epx") { V.ov = null; return render(); }
     if (a == "epsave") {
       const t = ($("epb") && $("epb").value.trim()) || ""; if (!t) return toast("Write something first.");
