@@ -25,6 +25,12 @@ if (!DATABASE_URL || !JWT_SECRET) {
 const db = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 app.set("trust proxy", 1);
+// Behind Cloudflare the visitor's real address is in CF-Connecting-IP. Use it, so limits apply to each person.
+app.use((req, res, next) => {
+  const cf = req.headers["cf-connecting-ip"];
+  if (cf) Object.defineProperty(req, "ip", { value: String(cf).split(",")[0].trim(), configurable: true });
+  next();
+});
 // If the security settings are ever rejected, start anyway (without the content policy) instead of crashing.
 let helmetMw;
 try {
@@ -48,13 +54,22 @@ try {
 } catch (e) { console.warn("helmet settings problem, using a simpler setup:", e.message); helmetMw = helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }); }
 app.use(helmetMw);
 app.use(cors({ origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(",") : false, maxAge: 86400 })); // browsers remember the "may I talk to this server?" check, so each request is one trip instead of two
-app.use(express.json({ limit: "256kb" }));
+app.use(express.json({ limit: "2mb" })); // room for one picture for the AI
 // Whole-app switch (set by the admin). While it is off, nothing works except the admin and the health check.
-let APPFLAG = { on: true, at: 0 };
+let APPFLAG = { on: true, off: [], at: 0 };
 app.use(async (req, res, next) => {
   if (req.path === "/health" || req.path.startsWith("/api/admin") || req.path === "/api/version") return next();
   if (Date.now() - APPFLAG.at > 10000) {
-    try { const r = await db.query("SELECT value FROM app_settings WHERE key='app'"); APPFLAG = { on: !r.rows[0] || r.rows[0].value.on !== false, at: Date.now() }; } catch (e) { APPFLAG.at = Date.now(); }
+    try {
+      const r = await db.query("SELECT value FROM app_settings WHERE key='app'");
+      const c = (await db.query("SELECT value FROM app_settings WHERE key='countries'")).rows[0];
+      APPFLAG = { on: !r.rows[0] || r.rows[0].value.on !== false, off: c ? Object.keys(c.value).filter((k) => c.value[k] === false) : [], at: Date.now() };
+    } catch (e) { APPFLAG.at = Date.now(); }
+  }
+  const visitorCountry = String(req.headers["cf-ipcountry"] || "").toUpperCase();
+  if (visitorCountry && APPFLAG.off.includes(visitorCountry)) {
+    if (req.path.startsWith("/api/")) return res.status(403).json({ error: "Orivoclass is not available in your country right now." });
+    return res.status(403).type("html").send("<!doctype html><meta charset=utf-8><body style='font-family:system-ui;text-align:center;padding:40px'><h2>Orivoclass is not available in your country right now.</h2>");
   }
   if (APPFLAG.on) return next();
   if (req.path.startsWith("/api/")) return res.status(503).json({ error: "Orivoclass is not available right now." });
