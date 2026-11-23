@@ -454,4 +454,71 @@ app.get("/api/singles/likes", need, wrap(async (req, res) => {
      ORDER BY l.created_at DESC LIMIT 100`, [req.uid]);
   res.json({ liked_you: liked_you.rows, you_liked: you_liked.rows });
 }));
+// Edit my own post (its text), and edit my own message.
+app.put("/api/posts/:id/edit", need, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const body = String(req.body.body || "").trim().slice(0, 500);
+  if (!body) return bad(res, "Write something first.");
+  const r = await db.query("UPDATE posts SET body=$3, edited=true WHERE id=$1 AND user_id=$2 AND NOT removed RETURNING id", [req.params.id, req.uid, body]);
+  if (!r.rowCount) return bad(res, "You can only edit your own posts.", 403);
+  res.json({ ok: true });
+}));
+app.put("/api/messages/:id/edit", need, wrap(async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
+  const raw = String(req.body.body || "").trim();
+  const body = raw.startsWith("e2e1:") ? raw.slice(0, 40000) : raw.slice(0, 4000);
+  if (!body) return bad(res, "Write something first.");
+  const r = await db.query("UPDATE messages SET body=$2, edited=true WHERE id=$1 AND from_id=$3 RETURNING id", [req.params.id, body, req.uid]);
+  if (!r.rowCount) return bad(res, "You can only edit your own messages.", 403);
+  res.json({ ok: true });
+}));
+// ---- Verified badge (subscription) ----
+const VERIFY_DEFAULT = { price: 300, days: 30 };
+async function verifyPlan() {
+  const r = await db.query("SELECT value FROM app_settings WHERE key='verify_plan'");
+  return r.rows[0] ? r.rows[0].value : VERIFY_DEFAULT;
+}
+app.get("/api/verify/plan", need, wrap(async (req, res) => {
+  const p = await verifyPlan();
+  const me = (await db.query("SELECT verified_until FROM users WHERE id=$1", [req.uid])).rows[0];
+  res.json({ paid: !!process.env.PAYSTACK_SECRET_KEY, price: p.price, days: p.days, until: me ? me.verified_until : null });
+}));
+app.post("/api/verify/checkout", need, boostLimit, wrap(async (req, res) => {
+  if (!process.env.PAYSTACK_SECRET_KEY) return bad(res, "Payments are not set up yet.", 503);
+  const p = await verifyPlan();
+  const ref = "VER" + crypto.randomBytes(9).toString("hex");
+  await db.query("INSERT INTO verify_orders(reference,user_id,amount,days,status) VALUES($1,$2,$3,$4,'pending')", [ref, req.uid, p.price, p.days]);
+  const email = "u" + req.uid.replace(/-/g, "").slice(0, 16) + "@orivoclass.app";
+  const r = await paystack("POST", "/transaction/initialize", { email, amount: p.price * 100, currency: "KES", reference: ref, callback_url: APP_URL, metadata: { kind: "verify" } });
+  if (!r.ok || !r.json.status) { await db.query("UPDATE verify_orders SET status='failed' WHERE reference=$1", [ref]); return bad(res, "Could not start the payment. Try again.", 502); }
+  res.json({ reference: ref, authorization_url: r.json.data.authorization_url });
+}));
+app.post("/api/verify/confirm", need, wrap(async (req, res) => {
+  const ref = String(req.body.reference || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40);
+  const o = (await db.query("SELECT * FROM verify_orders WHERE reference=$1 AND user_id=$2", [ref, req.uid])).rows[0];
+  if (!o) return bad(res, "Payment not found.", 404);
+  if (o.status === "paid") return res.json({ ok: true, status: "paid" });
+  const r = await paystack("GET", "/transaction/verify/" + ref);
+  const d = (r.json && r.json.data) || {};
+  if (!r.ok || d.status !== "success") return res.json({ ok: false, status: d.status || "pending" });
+  if (Number(d.amount) !== o.amount * 100 || d.currency !== "KES") { await db.query("UPDATE verify_orders SET status='mismatch' WHERE reference=$1", [ref]); return bad(res, "The payment does not match.", 400); }
+  const done = await db.query("UPDATE verify_orders SET status='paid' WHERE reference=$1 AND status<>'paid' RETURNING reference", [ref]);
+  if (done.rowCount) await db.query("UPDATE users SET verified_until = GREATEST(COALESCE(verified_until, now()), now()) + make_interval(days => $2) WHERE id=$1", [req.uid, o.days]);
+  res.json({ ok: true, status: "paid" });
+}));
+app.put("/api/admin/verify", adminLimit, adminOnly, wrap(async (req, res) => {
+  const phone = phoneOf(req.body.phone);
+  const days = Math.round(Number(req.body.days));
+  if (!(days >= 0 && days <= 3650)) return bad(res, "Days must be 0 to 3650. Use 0 to remove the badge.");
+  const u = (await db.query("SELECT id FROM users WHERE phone=$1", [phone])).rows[0];
+  if (!u) return bad(res, "No account with this number.", 404);
+  await db.query("UPDATE users SET verified_until = CASE WHEN $2::int = 0 THEN NULL ELSE GREATEST(COALESCE(verified_until, now()), now()) + make_interval(days => $2::int) END WHERE id=$1", [u.id, days]);
+  res.json({ ok: true });
+}));
+app.put("/api/admin/verify-plan", adminLimit, adminOnly, wrap(async (req, res) => {
+  const price = Math.round(Number(req.body.price)), days = Math.round(Number(req.body.days));
+  if (!(price >= 10 && price <= 100000) || !(days >= 1 && days <= 365)) return bad(res, "Check the price (10 to 100000) and the days (1 to 365).");
+  await db.query("INSERT INTO app_settings(key,value,updated_at) VALUES('verify_plan',$1,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()", [JSON.stringify({ price, days })]);
+  res.json({ ok: true });
+}));
 // END OF PART 10
