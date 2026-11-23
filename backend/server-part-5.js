@@ -120,10 +120,13 @@ const AI_FORMATS = ["messages", "message", "prompt"];
 let aiGood = null; // the request format that worked last, tried first next time
 const aiBody = (fmt, msgs, sys) => {
   const S = sys !== undefined ? sys : AI_SYSTEM;
-  const last = msgs[msgs.length - 1].content;
-  return fmt === "message" ? { message: last, history: msgs.slice(0, -1), system: S }
-    : fmt === "prompt" ? { prompt: (S ? S + "\n\n" : "") + last }
-    : { messages: (S ? [{ role: "system", content: S }] : []).concat(msgs) };
+  // The instructions also go inside the last user message, so every service reads them, whatever it does with a "system" field.
+  const withS = msgs.map((m, i) => (i === msgs.length - 1 && S) ? { ...m, content: S + "\n\n---\nThe person says:\n" + m.content } : m);
+  const last = withS[withS.length - 1].content;
+  // Some services ignore a separate "system" field, so the instructions go inside the message itself.
+  return fmt === "message" ? { message: last, history: withS.slice(0, -1), system: S }
+    : fmt === "prompt" ? { prompt: last }
+    : { messages: (S ? [{ role: "system", content: S }] : []).concat(withS) };
 };
 const SEARCH_RE = /(tafuta|search|google|habari (ya|za) leo|latest|news|leo|bei|price|who is|nani ni|what is|ni nini|update|mpya|weather|hali ya hewa|score|matokeo)/i;
 async function webSearch(q) {
