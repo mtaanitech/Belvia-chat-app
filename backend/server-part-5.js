@@ -76,12 +76,50 @@ async function aiCall(fmt, msgs, sys) {
   } catch (e) { return { ok: false, status: 0, raw: "", error: e.name === "AbortError" ? "timeout" : e.message }; }
   finally { clearTimeout(timer); }
 }
+// Gemini answers text, with the conversation so far.
+async function geminiChat(msgs) {
+  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(process.env.GEMINI_API_KEY), {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYSTEM }] }, contents: msgs.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error("Gemini error " + r.status);
+  return ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || "").join("").trim();
+}
+// Gemini reads a picture together with the question.
+async function geminiLook(question, dataUrl) {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(dataUrl);
+  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(process.env.GEMINI_API_KEY), {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYSTEM }] }, contents: [{ role: "user", parts: [{ text: question }, { inline_data: { mime_type: m[1], data: m[2] } }] }] }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error("Picture service error " + r.status);
+  return ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || "").join("").trim();
+}
 app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
   if (typeof fetch !== "function") return bad(res, "The server needs Node 18 or newer for the AI.", 500);
   const msgs = (Array.isArray(req.body.messages) ? req.body.messages : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-6).map((m) => ({ role: m.role, content: m.content.slice(0, m.role === "user" ? 800 : 400) })); // keeps the whole request under the service's 8000-character limit
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") return bad(res, "Type a message first.");
+  if (process.env.GEMINI_API_KEY && !req.body.image) { // text: answered by Gemini when its key is set
+    try {
+      const reply = await geminiChat(msgs);
+      if (reply) return res.json({ reply: reply.slice(0, 4000) });
+    } catch (e) { /* fall back to the older service below */ }
+  }
+  if (req.body.image) { // a picture: understood by Gemini (needs GEMINI_API_KEY on the server); the picture is not stored
+    if (!process.env.GEMINI_API_KEY) return bad(res, "Picture understanding is not set up yet.", 503);
+    const img = String(req.body.image);
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2700000) return bad(res, "Please choose a smaller picture (JPG, PNG or WEBP).");
+    try {
+      const reply = await geminiLook(msgs[msgs.length - 1].content || "What do you see in this picture? Explain it simply.", img);
+      return res.json({ reply: reply || "I could not see anything clearly in that picture." });
+    } catch (e) { return bad(res, "The picture service is busy. Try again in a moment.", 502); }
+  }
   let sysNow = AI_SYSTEM;
   const q = msgs[msgs.length - 1].content;
   if (SEARCH_RE.test(q)) {
