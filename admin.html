@@ -142,8 +142,8 @@ function viewAccounts() {
 }
 function verifyBox() {
   return '<div class="box" style="max-width:720px;margin-bottom:18px"><h3>Verified badge</h3>' +
-    '<span class="muted">Give a person the verified badge for a number of days (0 removes it). Renewing adds days on top of what is left.</span>' +
-    '<div style="display:flex;gap:10px;flex-wrap:wrap"><input id="vphone" placeholder="+254712345678" style="flex:1;min-width:200px"><input id="vdays" type="number" min="0" placeholder="Days" style="width:110px"><button class="b" id="vset">Set badge</button></div>' +
+    '<span class="muted">A badge is given only when a person pays with Paystack. Here you can only remove a badge, for example for abuse.</span>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap"><input id="vphone" placeholder="+254712345678" style="flex:1;min-width:200px"><button class="b danger" id="vset">Remove badge</button></div>' +
     '<span class="label" style="margin-top:6px">Subscription price</span>' +
     '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="muted">KSh <input id="vprice" type="number" min="10" style="width:120px"></label><label class="muted">Days <input id="vplan" type="number" min="1" style="width:100px"></label><button class="b sec" id="vplansave">Save price</button></div>' +
     '<span class="muted">People pay this amount with Paystack. New payments use the new price.</span></div>';
@@ -318,10 +318,10 @@ function bind() {
   }));
   const vs = $("vset");
   if (vs) vs.onclick = async () => {
-    const ph = ($("vphone").value || "").trim(), days = Number($("vdays").value);
+    const ph = ($("vphone").value || "").trim();
     if (!ph) return showErr(new Error("Enter the phone number."));
-    if (!Number.isFinite(days) || days < 0) return showErr(new Error("Enter the number of days (0 removes the badge)."));
-    try { await call("/verify", "PUT", { phone: ph, days }); alert(days ? "Badge set for " + days + " days." : "Badge removed."); }
+    if (!confirm("Remove the verified badge from " + ph + "?")) return;
+    try { await call("/verify", "PUT", { phone: ph, days: 0 }); alert("Badge removed."); }
     catch (e) { showErr(e); }
   };
   const vp = $("vplansave");
