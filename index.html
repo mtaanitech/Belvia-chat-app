@@ -109,7 +109,7 @@ const coverBg = (i) => { const c = COV[(i || 0) % COV.length]; return "radial-gr
 const TH = () => { try { return Object.assign({ m: "light", a: 0 }, JSON.parse(localStorage.getItem("bv.th") || "{}")); } catch (e) { return { m: "light", a: 0 }; } };
 function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = d ? "#0E1013" : "#FFFFFF"; document.documentElement.dataset.theme = d ? "dark" : "light"; document.documentElement.style.setProperty("--ac", (PAL[t.a] || PAL[0])[d ? 1 : 0]); }
 applyTheme();
-let SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let SGMENU = false, SGMORE = false, SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -257,11 +257,24 @@ function sgCard(p) {
     '<div style="padding:0 18px 14px">' + (p.town ? row("Location", esc(p.town)) : "") + row("About", p.bio ? esc(p.bio) : '<span class="mut">No bio yet</span>') + "</div></div>";
 }
 function sgAll() { return [...SGD, ...SGN, ...SGLK.liked_you, ...SGLK.you_liked]; }
+function presenceHtml(last) {
+  if (!last) return "";
+  const ms = Date.now() - new Date(last).getTime();
+  if (ms < 120000) return '<span style="color:#2ecc71;font-weight:600">● Online</span>';
+  const m = Math.round(ms / 60000);
+  const t = m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " d ago";
+  return '<span style="opacity:.9">Last seen ' + t + "</span>";
+}
 function sgCardHtml(p, like) {
-  return '<div data-a="sgprof" data-id="' + p.user_id + '" style="position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:' + sgGrad(p.nick) + ';color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(16,24,40,.12)">' +
-    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>" +
-    (like ? '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:17px;border:0;background:var(--ac);color:#fff;font-size:15px;z-index:2">♥</button>' : "") +
-    '<div style="position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.6))"><b style="display:block;font-size:15px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<small style="opacity:.9">📍 ' + esc(p.town) + "</small>" : "") + "</div></div>";
+  const heart = (size, bg) => '<span style="font-size:' + size + 'px;line-height:1">♥</span>';
+  return '<div data-a="sgprof" data-id="' + p.user_id + '" style="position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:' + sgGrad(p.nick) + ';color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(16,24,40,.18)">' +
+    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:84px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>" +
+    (like ? '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:19px;border:0;background:var(--ac);color:#fff;z-index:3;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(98,71,245,.4)">' + heart(16) + "</button>" : "") +
+    '<div style="position:absolute;left:0;right:0;bottom:0;padding:44px 12px 60px;background:linear-gradient(transparent,rgba(0,0,0,.7))"><b style="display:block;font-size:17px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<div style="font-size:13px;opacity:.95;margin-top:3px">📍 ' + esc(p.town) + "</div>" : "") + '<div style="font-size:12px;margin-top:2px">' + presenceHtml(p.last_seen) + "</div></div>" +
+    (like ? '<div style="position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;z-index:3">' +
+      '<button data-a="sgcardpass" data-id="' + p.user_id + '" aria-label="Pass" style="flex:1;height:44px;border-radius:22px;border:0;background:rgba(40,30,70,.85);color:#fff;font-size:18px">✕</button>' +
+      '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="flex:1;height:44px;border-radius:22px;border:0;background:var(--ac);color:#fff;font-size:18px">♥</button></div>' : "") +
+    "</div>";
 }
 function sgGridHtml(list, like) { return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px">' + list.map((p) => sgCardHtml(p, like)).join("") + "</div>"; }
 async function cardLike(id) {
@@ -272,6 +285,20 @@ async function cardLike(id) {
   if (j.match) { SGMP = p; SGM = (await api("/singles/matches")).matches; V.ov = "sgmatch"; }
   else SGL = Object.assign({}, SGL, { likes_left: Math.max(0, (SGL.likes_left || 1) - 1) });
   return render();
+}
+function sgMenuHtml(p, matched) {
+  const item = (label, act, extra, danger) => '<button data-a="' + act + '" data-id="' + p.user_id + '" data-n="' + esc(p.nick) + '" style="display:block;width:100%;text-align:left;border:0;background:none;padding:13px 18px;font:inherit;font-size:15px;color:' + (danger ? "var(--cr)" : matched || extra === "free" ? "var(--ink)" : "var(--mu)") + '">' + label + (matched || extra === "free" || danger ? "" : " 🔒") + "</button>";
+  const dv = '<div style="height:1px;background:var(--ln)"></div>';
+  return '<div style="position:absolute;top:56px;right:12px;z-index:80;min-width:230px;background:var(--bg);border:1px solid var(--ln);border-radius:16px;box-shadow:0 12px 30px rgba(16,24,40,.18);overflow:hidden">' +
+    (matched ? item("Message", "sgopen", "free") + item("Call", "callv", "free") + item("Video call", "callvid", "free") : item("Message", "sglocked") + item("Call", "sglocked") + item("Video call", "sglocked")) +
+    dv + item("Add (like)", "sglikeprof", "free") + dv + item("Block", "blk", "free", true) + item("Report", "sgrepid", "free", true) + "</div>";
+}
+function sgMoreRow() {
+  return '<div style="position:relative;display:flex;justify-content:flex-end;padding:0 14px 4px"><button class="ib" data-a="sgmore" aria-label="More" style="font-size:24px;color:var(--ink);line-height:1">⋮</button>' +
+    (SGMORE ? '<div style="position:absolute;top:40px;right:14px;z-index:80;min-width:240px;background:var(--bg);border:1px solid var(--ln);border-radius:16px;box-shadow:0 12px 30px rgba(16,24,40,.18);overflow:hidden">' +
+      '<button data-a="shareapp" style="display:block;width:100%;text-align:left;border:0;background:none;padding:13px 18px;font:inherit;font-size:15px;color:var(--ink)">Invite friends to Orivoclass</button>' +
+      '<div style="height:1px;background:var(--ln)"></div>' +
+      '<button data-a="sgt" data-t="me" style="display:block;width:100%;text-align:left;border:0;background:none;padding:13px 18px;font:inherit;font-size:15px;color:var(--ink)">My profile</button></div>' : "") + "</div>";
 }
 function sgProfHtml() {
   const p = SGPV; if (!p) return "";
@@ -287,11 +314,11 @@ function sgProfHtml() {
   const tile = (inner) => '<div style="aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--sf);display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:22px">' + inner + "</div>";
   const media = matched && mp.photo ? tile('<img src="' + esc(mp.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover">') : tile("🔒");
   const mediaRow = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' + media + tile("🔒") + tile("🔒") + tile("🔒") + "</div>";
-  return '<div class="ov"><div class="hd"><button class="ib" data-a="sgprofx" aria-label="Back">' + IC_BACK + '</button><span style="display:flex;align-items:center;gap:8px;font-weight:700"><span style="width:28px;height:28px;border-radius:14px;background:var(--ac);display:inline-block"></span>Orivoclass</span><span style="width:40px"></span></div><div class="body" style="padding-bottom:20px">' +
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="sgprofx" aria-label="Back">' + IC_BACK + '</button><span style="display:flex;align-items:center;gap:8px;font-weight:700"><span style="width:28px;height:28px;border-radius:14px;background:var(--ac);display:inline-block"></span>Orivoclass</span><button class="ib" data-a="sgmenu" aria-label="More" style="font-size:24px;color:var(--ink);line-height:1">⋮</button></div>' + (SGMENU ? sgMenuHtml(p, matched) : "") + '<div class="body" style="padding-bottom:20px">' +
     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 16px 12px">' + ring(pic) +
     '<b style="font-size:24px;margin-top:8px">' + esc(p.nick) + ", " + p.age + "</b>" +
+    '<div style="font-size:14px">' + presenceHtml(p.last_seen) + "</div>" +
     (matched ? '<span style="color:var(--ok);font-weight:600">You matched</span>' : '<span class="mut">Like each other to unlock messages and calls</span>') + "</div>" +
-    '<div style="display:flex;gap:10px;padding:4px 14px 14px">' + btn("💬", "Message", "sgopen") + btn("📞", "Call", "callv") + btn("🎥", "Video", "callvid") + addBtn + "</div>" +
     '<div class="cd"><div style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:15px;background:var(--acs);color:var(--ac);display:flex;align-items:center;justify-content:center;font-weight:800">i</span><b>About</b></div>' +
     '<div style="line-height:1.5">' + (p.bio ? esc(p.bio) : '<span class="mut">No bio yet</span>') + "</div>" +
     '<div style="display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px;color:var(--mu);font-size:14px">' + (p.town ? "<span>📍 " + esc(p.town) + "</span>" : "") + (p.joined ? "<span>📅 Joined: " + esc(p.joined) + "</span>" : "") + "</div></div>" +
@@ -322,11 +349,8 @@ function singlesTab() {
   if (SGt == "discover") {
     if (!SGP.active) b = '<div class="empty"><b>Your profile is hidden</b>Show it again to meet people.<button class="btn" data-a="sgtoggle">Show my profile</button></div>';
     else if (SGD.length) {
-      const cards = SGD.map((p) => '<div data-a="sgprof" data-id="' + p.user_id + '" style="position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:' + sgGrad(p.nick) + ';color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(16,24,40,.12)">' +
-        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;opacity:.22">' + esc(ini(p.nick)) + "</div>" +
-        '<button data-a="sgcardlike" data-id="' + p.user_id + '" aria-label="Like" style="position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:17px;border:0;background:var(--ac);color:#fff;font-size:15px;z-index:2">♥</button>' +
-        '<div style="position:absolute;left:0;right:0;bottom:0;padding:26px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.6))"><b style="display:block;font-size:15px">' + esc(p.nick) + ", " + p.age + "</b>" + (p.town ? '<small style="opacity:.9">📍 ' + esc(p.town) + "</small>" : "") + "</div></div>").join("");
-      b = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px">' + cards + "</div>" +
+      const cards = SGD.map((p) => sgCardHtml(p, true)).join("");
+      b = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px">' + cards + "</div>" +
         '<p class="note" style="text-align:center;margin:0 0 12px">Today: ' + (L.views_left || 0) + " new profiles · " + (L.likes_left || 0) + " likes left</p>";
     } else if (!L.views_left) b = '<div class="empty"><b>That is all for today</b>Come back tomorrow. The daily limit keeps Singles calm for everyone.</div>';
     else b = '<div class="empty"><b>No one new right now</b>Check again later.<button class="btn o" data-a="sgref">Refresh</button></div>';
@@ -343,7 +367,7 @@ function singlesTab() {
   } else {
     b = sgOwnHtml(SGP) + '<div class="cd"><button class="btn" data-a="sgedit">Edit profile and photo</button><button class="btn o" data-a="sgtoggle">' + (SGP.active ? "Hide my profile" : "Show my profile") + '</button><button class="btn d" data-a="sgdel">Delete my Singles profile</button></div><p class="note" style="padding:0 20px 8px">Each day you can see up to ' + (L.view_cap || 30) + " new profiles and send " + (L.like_cap || 15) + " likes.</p>";
   }
-  return seg + b;
+  return seg + sgMoreRow() + b;
 }
 function sgpHtml() {
   const e = SGP || {}, isNew = !SGP;
@@ -757,7 +781,7 @@ function cmtsHtml() {
 async function loadCommentImages() {
   const todo = (CMTS && CMTS.list || []).filter((c) => c.has_image && !c._img && document.querySelector('[data-cimg="' + c.id + '"]'));
   await Promise.all(todo.map(async (c) => {
-    try { const j = await api("/comments/" + c.id + "/image"); c._img = j.image; const el = document.querySelector('[data-cimg="' + c.id + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(c._img) + '" style="width:100%;display:block">'; }
+    try { const j = { image: await cachedImage("c" + c.id, "/comments/" + c.id + "/image") }; c._img = j.image; const el = document.querySelector('[data-cimg="' + c.id + '"]'); if (el) el.innerHTML = '<img alt="" decoding="async" src="' + esc(c._img) + '" style="width:100%;display:block">'; }
     catch (e) { const el = document.querySelector('[data-cimg="' + c.id + '"]'); if (el) el.innerHTML = '<span class="note">Photo not available</span>'; }
   }));
 }
@@ -898,7 +922,7 @@ async function doDelPost(id) {
 }
 async function loadExtra() { try { EXTRA = await api("/me/extras"); } catch (e) {} }
 async function doDash() {
-V.ov = "dash"; DTAB = "over"; render();
+  V.ov = "dash"; DTAB = "over"; render();
   try { const [d, , bst] = await Promise.all([api("/me/dashboard"), loadExtra(), api("/boosts/mine").catch(() => ({ campaigns: [] }))]); DASH = d; BST = bst.campaigns || []; }
   catch (e) { toast(e.message); DASH = null; }
   if (V.ov == "dash") render();
@@ -1172,6 +1196,12 @@ const loadCH = async () => {
 };
 function seenLocal() { try { return new Set(JSON.parse(localStorage.getItem("bv.seenst") || "[]")); } catch (e) { return new Set(); } }
 function markSeenLocal(id) { const set = seenLocal(); set.add(String(id)); localStorage.setItem("bv.seenst", JSON.stringify([...set].slice(-500))); }
+// A picture is fetched once and kept on the phone; the next time it is shown at once.
+async function cachedImage(key, url) {
+  let v = await IMGDB.get(key);
+  if (!v) { v = (await api(url)).image; IMGDB.set(key, v); }
+  return v;
+}
 const loadST = async () => {
   const fresh = (await api("/status/feed")).status;
   const old = new Map(ST.map((x) => [x.id, x]));
@@ -1443,7 +1473,7 @@ function loadTileImages() {
   ST.forEach((x) => {
     if (!x.has_image || x._img || x._fetching) return;
     x._fetching = true;
-    api("/status/" + x.id + "/photo").then((j) => { x._img = j.image; x._fetching = false; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<img src="' + esc(j.image) + '" style="width:100%;height:100%;object-fit:cover">'; }); })
+    cachedImage("s" + x.id, "/status/" + x.id + "/photo").then((img) => ({ image: img })).then((j) => { x._img = j.image; x._fetching = false; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<img src="' + esc(j.image) + '" style="width:100%;height:100%;object-fit:cover">'; }); })
       .catch(() => { x._fetching = false; x._failed = true; document.querySelectorAll('[data-tile="' + x.id + '"]').forEach((el) => { el.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px">Photo not available</div>'; }); });
   });
 }
@@ -1464,11 +1494,11 @@ function showStory() {
   const p = STV.people[STV.pi], it = p.items[STV.si];
   if (!it) return closeStories();
   if (!p.mine && !it.seen) { it.seen = true; markSeenLocal(it.id); api("/status/" + it.id + "/view", "POST").catch(() => {}); }
-  if (it.has_image && !it._img && !it._fetching) { it._fetching = true; api("/status/" + it.id + "/photo").then((j) => { it._img = j.image; it._fetching = false; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }).catch(() => { it._fetching = false; it._failed = true; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }); }
+  if (it.has_image && !it._img && !it._fetching) { it._fetching = true; cachedImage("s" + it.id, "/status/" + it.id + "/photo").then((img) => ({ image: img })).then((j) => { it._img = j.image; it._fetching = false; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }).catch(() => { it._fetching = false; it._failed = true; if (STV && STV.people[STV.pi] === p && p.items[STV.si] === it) paintStory(); }); }
   paintStory();
   STV.timer = setTimeout(nextStory, STV_LEN);
 }
-function prefetchStory() { if (!STV) return; const p = STV.people[STV.pi]; (p.items.slice(STV.si + 1, STV.si + 3)).forEach((x) => { if (x.has_image && x._img === undefined) { x._img = ""; api("/status/" + x.id + "/photo").then((j) => { x._img = j.image; }).catch(() => {}); } }); }
+function prefetchStory() { if (!STV) return; const p = STV.people[STV.pi]; (p.items.slice(STV.si + 1, STV.si + 3)).forEach((x) => { if (x.has_image && !x._img && !x._fetching) { x._fetching = true; cachedImage("s" + x.id, "/status/" + x.id + "/photo").then((img) => { x._img = img; x._fetching = false; }).catch(() => { x._fetching = false; }); } }); }
 function nextStory() { if (!STV) return; const p = STV.people[STV.pi]; if (STV.si < p.items.length - 1) { STV.si++; showStory(); } else if (STV.pi < STV.people.length - 1) { STV.pi++; STV.si = 0; showStory(); } else closeStories(); }
 function prevStory() { if (!STV) return; if (STV.si > 0) { STV.si--; showStory(); } else if (STV.pi > 0) { STV.pi--; STV.si = STV.people[STV.pi].items.length - 1; showStory(); } else showStory(); }
 function nextPerson() { if (!STV) return; if (STV.pi < STV.people.length - 1) { STV.pi++; STV.si = 0; showStory(); } else closeStories(); }
@@ -1521,7 +1551,7 @@ function main() {
   const t = V.tab; let b = "", f = "";
   if (t == "chats") {
     b = (V.sq ? '<input id="q" class="srch" style="margin-top:12px" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '">' : "") + strip() +
-      '<div class="chips">' + [["all", "All"], ["unread", "Unread"], ["groups", "Groups"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + (LSTH = listHtml()) + "</div>";
+      '<div class="chips">' + [["all", "All"], ["unread", "Unread"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + (LSTH = listHtml()) + "</div>";
     f = '<button class="aib" data-a="ai" aria-label="Orivoclass AI">' + AISVG + '</button><button class="fab" data-a="cov" aria-label="New chat">+</button>';
   }
   else if (t == "status") b = statusTab();
@@ -1530,8 +1560,8 @@ function main() {
   else if (t == "singles") b = singlesTab();
   else b = meTab();
   return installBanner() + topbar() + '<div class="body">' + b + "</div>" + f;
-  }
-  function bodyHtml(x, me) {
+}
+function bodyHtml(x, me) {
   if (!x.view_once) return (x.forwarded ? '<div class="q">Forwarded</div>' : "") + esc(x._plain !== undefined ? x._plain : x.body);
   if (me) return "View once · " + (x.opened_at ? "Opened" : "Not opened yet");
   return x.opened_at ? "View once · Opened" : "View once message · tap to open";
@@ -1801,7 +1831,10 @@ function render() {
   else if (V.scr == "ai") h = aiView();
   else if (V.scr == "chat") h = chatView();
   else h = main();
+  const keyNow = navKey(), oldBody = document.querySelector(".body"), keepTop = oldBody && window.__scrKey === keyNow ? oldBody.scrollTop : null;
   app.innerHTML = h + (U && V.scr != "code" ? overlays() : "");
+  window.__scrKey = keyNow;
+  if (keepTop !== null) { const nb = document.querySelector(".body"); if (nb) nb.scrollTop = keepTop; }
   const lstEl = $("lst"); if (lstEl) lstEl._h = LSTH; // remember what is on screen, so the 3-second refresh only redraws when something changed
   if (U && LR) drawLR();
   if (U && NT) drawNT();
@@ -1987,7 +2020,7 @@ app.addEventListener("click", async (e) => {
     if (a == "saveper") { const c = peer(); if (!c) return; await api("/contacts", "POST", { phone: c.phone, alias: c.pname || "" }); await loadCT(); await loadCH(); render(); loadPr().catch(() => {}); loadMsgs(true).catch(() => {}); return toast("Added to contacts"); }
     if (a == "sgnew" || a == "sgedit") { V.ov = "sgp"; return render(); }
     if (a == "sgt") {
-      SGt = b.dataset.t;
+      SGt = b.dataset.t; SGMORE = false;
       try {
         if (SGt == "matches") SGM = (await api("/singles/matches")).matches;
         if (SGt == "nearby") SGN = (await api("/singles/nearby")).profiles;
@@ -1997,9 +2030,12 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "sgref") { await loadDeck(); return render(); }
     if (a == "sgcardlike") return cardLike(id);
+    if (a == "sgcardpass") { try { await api("/singles/like/" + id, "POST", { like: false }); } catch (e) { return toast(e.message); } SGD = SGD.filter((x) => x.user_id != id); if (!SGD.length) await loadDeck(); return render(); }
     if (a == "sglikeprof") { V.ov = null; return cardLike(id); }
-    if (a == "sgprof") { const p = sgAll().find((x) => x.user_id == id) || SGM.find((x) => x.user_id == id); if (!p) return; SGPV = p; V.cid = id; V.ov = "sgprof"; return render(); }
-    if (a == "sgprofx") { V.ov = null; return render(); }
+    if (a == "sgprof") { const p = sgAll().find((x) => x.user_id == id) || SGM.find((x) => x.user_id == id); if (!p) return; SGPV = p; V.cid = id; SGMENU = false; V.ov = "sgprof"; return render(); }
+    if (a == "sgprofx") { SGMENU = false; V.ov = null; return render(); }
+    if (a == "sgmenu") { SGMENU = !SGMENU; return render(); }
+    if (a == "sgmore") { SGMORE = !SGMORE; return render(); }
     if (a == "sglocked") return toast("Your friend must like you back to use this.");
     if (a == "sgrepid") { V.cid = id; V.rpS = true; V.ov = "rep"; return render(); }
     if (a == "sgsave") {
