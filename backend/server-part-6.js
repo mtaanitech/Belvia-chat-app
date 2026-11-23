@@ -75,7 +75,7 @@ app.get("/api/singles/deck", need, wrap(async (req, res) => {
   const lim = await sgLimits(req.uid);
   if (!me.active) return res.json({ profiles: [], limits: lim });
   const q = await db.query(
-    `SELECT s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age,
+    `SELECT s.user_id, s.nick, s.gender, s.town, s.bio, NULL::text AS photo, date_part('year', age(s.birth_date))::int AS age, u.last_seen,
             EXISTS (SELECT 1 FROM singles_views v WHERE v.viewer=$1 AND v.profile=s.user_id AND v.day=${DAY}) AS seen_today
      FROM singles s JOIN users u ON u.id=s.user_id
      WHERE s.user_id<>$1 AND s.active AND NOT u.banned AND (u.rest_until IS NULL OR u.rest_until < now())
@@ -126,8 +126,8 @@ app.post("/api/singles/like/:id", need, wrap(async (req, res) => {
 
 app.get("/api/singles/matches", need, wrap(async (req, res) => {
   const r = await db.query(
-    `SELECT s.user_id, s.nick, s.photo, date_part('year', age(s.birth_date))::int AS age, l.body AS last_body, l.from_id AS last_from, l.created_at AS last_at, mt.created_at AS matched_at
-     FROM singles_matches mt JOIN singles s ON s.user_id = CASE WHEN mt.a=$1 THEN mt.b ELSE mt.a END
+    `SELECT s.user_id, s.nick, s.photo, date_part('year', age(s.birth_date))::int AS age, l.body AS last_body, l.from_id AS last_from, l.created_at AS last_at, mt.created_at AS matched_at, pu.last_seen
+     FROM singles_matches mt JOIN singles s ON s.user_id = CASE WHEN mt.a=$1 THEN mt.b ELSE mt.a END JOIN users pu ON pu.id=s.user_id
      LEFT JOIN LATERAL (SELECT body, from_id, created_at FROM singles_messages m WHERE (m.from_id=$1 AND m.to_id=s.user_id) OR (m.from_id=s.user_id AND m.to_id=$1) ORDER BY m.id DESC LIMIT 1) l ON true
      WHERE (mt.a=$1 OR mt.b=$1) AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=s.user_id) OR (b.blocker=s.user_id AND b.blocked=$1))
      ORDER BY COALESCE(l.created_at, mt.created_at) DESC`, [req.uid]);
