@@ -78,6 +78,10 @@ CREATE TABLE IF NOT EXISTS status_list(owner uuid NOT NULL REFERENCES users(id) 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS country text;
 CREATE TABLE IF NOT EXISTS device_keys(user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, device_id text NOT NULL, pub jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id, device_id));
 CREATE TABLE IF NOT EXISTS key_backups(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, blob text NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited boolean NOT NULL DEFAULT false;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited boolean NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_until timestamptz;
+CREATE TABLE IF NOT EXISTS verify_orders(reference text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, amount int NOT NULL, days int NOT NULL, status text NOT NULL DEFAULT 'pending', created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
