@@ -138,7 +138,15 @@ function viewCountries() {
 let ACC = null;
 function viewAccounts() {
   const box = '<div class="box" style="max-width:720px;margin-bottom:18px"><h3>Reset an account</h3><span class="muted">Use this when someone lost their phone or password. Their number and password are removed, but their chats, contacts and posts stay. When they sign up again with the same number, the app asks if they want to restore their chats.</span><div style="display:flex;gap:10px;flex-wrap:wrap"><input id="resetphone" placeholder="+254712345678" autocomplete="off" style="flex:1;min-width:220px"><button class="b danger" id="resetgo">Reset this account</button></div></div>';
-  return box + viewAccountsHelp();
+  return verifyBox() + box + viewAccountsHelp();
+}
+function verifyBox() {
+  return '<div class="box" style="max-width:720px;margin-bottom:18px"><h3>Verified badge</h3>' +
+    '<span class="muted">Give a person the verified badge for a number of days (0 removes it). Renewing adds days on top of what is left.</span>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap"><input id="vphone" placeholder="+254712345678" style="flex:1;min-width:200px"><input id="vdays" type="number" min="0" placeholder="Days" style="width:110px"><button class="b" id="vset">Set badge</button></div>' +
+    '<span class="label" style="margin-top:6px">Subscription price</span>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="muted">KSh <input id="vprice" type="number" min="10" style="width:120px"></label><label class="muted">Days <input id="vplan" type="number" min="1" style="width:100px"></label><button class="b sec" id="vplansave">Save price</button></div>' +
+    '<span class="muted">People pay this amount with Paystack. New payments use the new price.</span></div>';
 }
 function viewAccountsHelp() {
   let h = head("Accounts", "Help someone who forgot their password or recovery code. Find the account by its phone number.");
@@ -308,6 +316,19 @@ function bind() {
     if (off && !confirm("Turn this country OFF? People there will not be able to sign up.")) return;
     try { await call("/countries", "PUT", { code: b.dataset.cty, enabled: !off }); await loadCountries(); render(); } catch (e) { showErr(e); }
   }));
+  const vs = $("vset");
+  if (vs) vs.onclick = async () => {
+    const ph = ($("vphone").value || "").trim(), days = Number($("vdays").value);
+    if (!ph) return showErr(new Error("Enter the phone number."));
+    if (!Number.isFinite(days) || days < 0) return showErr(new Error("Enter the number of days (0 removes the badge)."));
+    try { await call("/verify", "PUT", { phone: ph, days }); alert(days ? "Badge set for " + days + " days." : "Badge removed."); }
+    catch (e) { showErr(e); }
+  };
+  const vp = $("vplansave");
+  if (vp) vp.onclick = async () => {
+    try { await call("/verify-plan", "PUT", { price: Number($("vprice").value), days: Number($("vplan").value) }); alert("Price saved."); }
+    catch (e) { showErr(e); }
+  };
   const rg = $("resetgo");
   if (rg) rg.onclick = async () => {
     const ph = ($("resetphone").value || "").trim();
