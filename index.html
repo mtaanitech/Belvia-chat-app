@@ -566,9 +566,14 @@ function aimsgsHtml() {
   if (!AIM.length) return '<div class="empty">' + aiLogo(72) + '<b>Orivoclass AI</b>Ask me anything. I can help you write a message, explain something or answer a question.<span class="note">AI can make mistakes. Do not share passwords or private details. What you type here is sent to an AI service. You choose whether chats are saved in ⚙ settings.</span></div>';
   return AIM.map((m) => '<div class="b ' + (m.role == "user" ? "me" : "") + '">' + esc(m.content) + "</div>").join("") + (AIB ? '<div class="b">…</div>' : "");
 }
-function aiView() {
-  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiset" aria-label="AI settings">⚙</button><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div class="comp"><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="sendb" data-a="aisend" aria-label="Send">' + IC_SEND + '</button></div>';
+let AIIMG = "";
+function aiPrevHtml() {
+  return AIIMG ? '<div class="rp" style="justify-content:flex-start;gap:10px"><img alt="" src="' + esc(AIIMG) + '" style="height:48px;width:48px;object-fit:cover;border-radius:10px"><span style="flex:1">Picture ready</span><button class="lnk" data-a="aiimgx" style="min-height:30px">✕</button></div>' : "";
 }
+function aiView() {
+  return '<div class="hd"><button class="ib" data-a="back" aria-label="Back">' + IC_BACK + '</button>' + aiLogo(40) + '<div style="flex:1;min-width:0"><b>Orivoclass AI</b><small id="ais" class="mut" style="display:block">' + (AIB ? "typing..." : "AI assistant") + '</small></div><button class="ib" data-a="aiset" aria-label="AI settings">⚙</button><button class="ib" data-a="aiclear" aria-label="Clear chat">🗑</button></div><div class="msgs" id="msgs">' + aimsgsHtml() + '</div><div id="aiprev">' + aiPrevHtml() + '<input id="aifile" type="file" accept="image/*" style="display:none"></div><div class="comp"><button class="ib" data-a="aipick" aria-label="Add picture" style="font-size:22px">📎</button><input id="msg" placeholder="Ask Orivoclass AI" autocomplete="off" aria-label="Message"><button class="sendb" data-a="aisend" aria-label="Send">' + IC_SEND + '</button></div>';
+}
+function aiPrevRefresh() { const el = $("aiprev"); if (el) el.innerHTML = aiPrevHtml() + '<input id="aifile" type="file" accept="image/*" style="display:none">'; }
 function refreshAI(sc) {
   if (V.scr != "ai") return;
   const el = $("msgs"); if (el) { el.innerHTML = aimsgsHtml(); if (sc) el.scrollTop = el.scrollHeight; }
@@ -576,10 +581,11 @@ function refreshAI(sc) {
 }
 async function sendAI() {
   if (AIB) return;
-  const i = $("msg"), t = i.value.trim(); if (!t) return;
-  i.value = ""; AIM.push({ role: "user", content: t, t: Date.now() }); AIB = true; refreshAI(true);
-  try { const j = await api("/ai", "POST", { messages: AIM.slice(-12).map((m) => ({ role: m.role, content: m.content })) }); AIM.push({ role: "assistant", content: j.reply, t: Date.now() }); }
-  catch (e) { toast(e.message); AIM.pop(); i.value = t; }
+  const i = $("msg"), t = i.value.trim(); if (!t && !AIIMG) return;
+  const img = AIIMG; i.value = ""; AIIMG = ""; aiPrevRefresh();
+  AIM.push({ role: "user", content: t || "What do you see in this picture?", t: Date.now() }); AIB = true; refreshAI(true);
+  try { const j = await api("/ai", "POST", { messages: AIM.slice(-12).map((m) => ({ role: m.role, content: m.content })), image: img || undefined }); AIM.push({ role: "assistant", content: j.reply, t: Date.now() }); }
+  catch (e) { toast(e.message); AIM.pop(); i.value = t; AIIMG = img; aiPrevRefresh(); }
   AIB = false; refreshAI(true); const n = $("msg"); if (n) n.focus();
 }
 async function checkJoin() {
@@ -2073,6 +2079,8 @@ app.addEventListener("click", async (e) => {
     if (a == "aiset") { V.pg = "aiset"; V.ov = "pg"; return render(); }
     if (a == "aidel") { if (!confirm("Delete your saved AI chats?")) return; await api("/ai/history", "DELETE"); AIM = []; refreshAI(false); render(); return toast("AI chats deleted"); }
     if (a == "aisend") return sendAI();
+    if (a == "aipick") { const f = $("aifile"); if (f) f.click(); return; }
+    if (a == "aiimgx") { AIIMG = ""; aiPrevRefresh(); return; }
     if (a == "aiclear") { if (AIKEEP !== 0) { if (!confirm("Clear this chat? Your saved AI chat will be deleted too.")) return; await api("/ai/history", "DELETE"); } AIM = []; refreshAI(false); return toast("Chat cleared"); }
     if (a == "newcall") { V.ov = "cc"; return render(); }
     if (a == "callv" || a == "callvid") { V.ov = null; return startCall(id, a == "callvid" ? "video" : "voice", b.dataset.n || callName(id)); }
@@ -2341,6 +2349,7 @@ app.addEventListener("input", (e) => {
   else if (e.target.id == "msg" && V.scr == "chat" && Date.now() - lastTy > 3000) { lastTy = Date.now(); api("/typing/" + V.cid, "POST").catch(() => {}); }
 });
 app.addEventListener("change", async (e) => {
+  if (e.target.id == "aifile" && e.target.files && e.target.files[0]) { try { AIIMG = await fitImg(e.target.files[0]); aiPrevRefresh(); } catch (err) { toast(err.message); } e.target.value = ""; return; }
   if (e.target.id == "cmtfile" && e.target.files && e.target.files[0]) { try { CMTIMG = await fitImg(e.target.files[0]); cmtPrev(); } catch (err) { toast(err.message); } e.target.value = ""; return; }
   if (e.target.id == "plock" || e.target.id == "psug") { try { await api("/me/privacy", "PUT", { locked: $("plock").checked, suggest: $("psug").checked }); await loadExtra(); render(); toast("Saved"); } catch (err) { toast(err.message); } return; }
   if (e.target.id == "cpf" && e.target.files && e.target.files[0]) { try { const d = await fitImg(e.target.files[0]); CMP = { body: $("cpb") ? $("cpb").value : CMP.body, image: d }; render(); } catch (err) { toast(err.message); } return; }
