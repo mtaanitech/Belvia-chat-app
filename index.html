@@ -296,7 +296,7 @@ function cmtPostPreview() {
   const text = p.body ? '<div style="padding:12px 14px;white-space:pre-wrap;font-size:16px;overflow-wrap:anywhere">' + esc(p.body) + "</div>" : "";
   if (!p.has_image) return text ? text + '<div style="height:1px;background:var(--ln)"></div>' : "";
   if (!p._img) setTimeout(loadPostImages, 0);
-  return text + '<div data-a="imgv" data-img="p' + p.id + '" style="margin:12px 14px;border-radius:14px;overflow:hidden;background:var(--sf);min-height:120px;cursor:pointer">' + (p._img ? '<img alt="" src="' + esc(p._img) + '" style="width:100%;display:block">' : '<span class="note" style="padding:20px;display:block;text-align:center">Loading photo…</span>') + "</div>";
+  return text + '<div data-a="imgv" data-img="p' + p.id + '" style="margin:12px 14px;border-radius:14px;overflow:hidden;background:var(--sf);min-height:120px;cursor:pointer">' + (p._img ? '<img alt="" src="' + esc(p._img) + '" style="width:100%;max-height:34vh;object-fit:contain;display:block">' : '<span class="note" style="padding:20px;display:block;text-align:center">Loading photo…</span>') + "</div>";
 }
 async function cardLike(id) {
   const p = sgAll().find((x) => x.user_id == id); if (!p) return;
@@ -315,11 +315,13 @@ function sgMenuHtml(p, matched) {
     dv + item("Add (like)", "sglikeprof", "free") + dv + item("Block", "blk", "free", true) + item("Report", "sgrepid", "free", true) + "</div>";
 }
 function sgMoreRow() {
+  const it = (label, act, danger) => '<button data-a="' + act + '" style="display:block;width:100%;text-align:left;border:0;background:none;padding:13px 18px;font:inherit;font-size:15px;color:' + (danger ? "var(--cr)" : "var(--ink)") + '">' + label + "</button>";
+  const dv = '<div style="height:1px;background:var(--ln)"></div>';
+  const mine = SGt == "me" && SGP;
   return '<div style="position:relative;display:flex;justify-content:flex-end;padding:0 14px 4px"><button class="ib" data-a="sgmore" aria-label="More" style="font-size:24px;color:var(--ink);line-height:1">⋮</button>' +
     (SGMORE ? '<div style="position:absolute;top:40px;right:14px;z-index:80;min-width:240px;background:var(--bg);border:1px solid var(--ln);border-radius:16px;box-shadow:0 12px 30px rgba(16,24,40,.18);overflow:hidden">' +
-      '<button data-a="shareapp" style="display:block;width:100%;text-align:left;border:0;background:none;padding:13px 18px;font:inherit;font-size:15px;color:var(--ink)">Invite friends to Orivoclass</button>' +
-      '<div style="height:1px;background:var(--ln)"></div>' +
-      '<button data-a="sgt" data-t="me" style="display:block;width:100%;text-align:left;border:0;background:none;padding:13px 18px;font:inherit;font-size:15px;color:var(--ink)">My profile</button></div>' : "") + "</div>";
+      (mine ? it("Edit profile and photo", "sgedit") + dv + it(SGP.active ? "Hide my profile" : "Show my profile", "sgtoggle") + dv + it("Delete my Singles profile", "sgdel", true) + dv : "") +
+      it("Invite friends to Orivoclass", "shareapp") + dv + it("My profile", "sgtme") + "</div>" : "") + "</div>";
 }
 function sgProfHtml() {
   const p = SGPV; if (!p) return "";
@@ -387,7 +389,7 @@ function singlesTab() {
       '<div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))"><b>' + esc(x.nick) + ", " + x.age + "</b>" + (x.last_body ? '<div style="font-size:12px;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc((x.last_from == U.id ? "You: " : "") + x.last_body) + "</div>" : '<div style="font-size:12px;opacity:.9">Say hello</div>') + "</div></div></button>").join("") + "</div>"
       : '<div class="empty"><b>No matches yet</b>When you and someone like each other, they appear here with their photo.</div>';
   } else {
-    b = sgOwnHtml(SGP) + '<div class="cd"><button class="btn" data-a="sgedit">Edit profile and photo</button><button class="btn o" data-a="sgtoggle">' + (SGP.active ? "Hide my profile" : "Show my profile") + '</button><button class="btn d" data-a="sgdel">Delete my Singles profile</button></div><p class="note" style="padding:0 20px 8px">Each day you can see up to ' + (L.view_cap || 30) + " new profiles and send " + (L.like_cap || 15) + " likes.</p>";
+    b = sgOwnHtml(SGP) + '<p class="note" style="padding:0 20px 8px">Each day you can see up to ' + (L.view_cap || 30) + " new profiles and send " + (L.like_cap || 15) + " likes.</p>";
   }
   return seg + sgMoreRow() + b;
 }
@@ -783,9 +785,9 @@ async function shareCmp() {
 }
 function commentsView() {
   const bar = CMTS && CMTS.replyTo ? 'Replying to <b>' + esc(CMTS.replyTo.name) + '</b> <button class="lnk" data-a="cmtrpx" style="min-height:30px">✕</button>' : "";
-  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div id="cmtpv">' + cmtPostPreview() + '</div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div>' +
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div id="cmtpv" style="flex:none;max-height:40vh;overflow:auto">' + cmtPostPreview() + '</div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div>' +
     '<div id="cmtrp" class="rp">' + bar + '</div><div id="cmtprev">' + cmtPrevHtml() + '</div>' +
-    '<div class="comp"><button class="ib" data-a="cmtpick" aria-label="Add a photo" style="font-size:30px;line-height:1;color:var(--ac);min-width:40px">+</button><input id="cmtin" placeholder="Write a comment" maxlength="300" autocomplete="off"><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + '</button></div>' +
+    '<div class="comp"><button class="ib" data-a="cmtpick" aria-label="Add a photo" style="font-size:30px;line-height:1;color:var(--ac);min-width:40px">+</button><textarea id="cmtin" rows="1" placeholder="Write a comment" maxlength="300" autocomplete="off" style="flex:1;min-width:0;resize:none;max-height:120px;font:inherit;padding:10px 14px;border-radius:22px;border:1px solid var(--ln);background:var(--sf);color:var(--ink);line-height:1.35"></textarea><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + '</button></div>' +
     '<input id="cmtfile" type="file" accept="image/*" style="display:none"></div>';
 }
 function cmtPrevHtml() {
@@ -900,7 +902,7 @@ function openReactPicker(id) {
   const off = (ev) => { if (ev.target.closest && (ev.target.closest("#rpick") || ev.target.closest('[data-a="like"]'))) return; d.remove(); document.removeEventListener("click", off, true); };
   setTimeout(() => document.addEventListener("click", off, true), 0);
 }
-  const PRESS = { t: null, fired: false };
+const PRESS = { t: null, fired: false };
 app.addEventListener("pointerdown", (e) => {
   const b = e.target.closest && e.target.closest('[data-a="like"]'); if (!b) return;
   PRESS.fired = false; clearTimeout(PRESS.t);
@@ -2129,6 +2131,7 @@ app.addEventListener("click", async (e) => {
       } catch (e) { return toast(e.message); }
     }
     if (a == "medit") { V.emid = m; V.ov = "editmsg"; V.sel = null; return render(); }
+    if (a == "sgtme") { SGMORE = false; SGt = "me"; return render(); }
     if (a == "sgprofx") { SGMENU = false; V.ov = null; return render(); }
     if (a == "sgmenu") { SGMENU = !SGMENU; return render(); }
     if (a == "sgmore") { SGMORE = !SGMORE; return render(); }
@@ -2244,7 +2247,7 @@ app.addEventListener("click", async (e) => {
       if (tb == "me") loadExtra().then(() => { if (V.tab == "me" && !V.scr && !V.ov) render(); });
       const still = () => V.tab == tb && !V.scr && !V.ov; // only redraw if the person is still on this tab (never wipe what they are typing elsewhere)
       if (tb == "status") { await loadST(); if (still()) render(); }
-      if (tb == "singles") { try { await loadSG(); } catch (e) { toast(e.message); } if (still()) render(); }
+      if (tb == "singles") { SGMORE = false; SGMENU = false; if (V.ov == "sgp") V.ov = null; try { await loadSG(); } catch (e) { toast(e.message); } if (SGP) SGt = "discover"; if (still()) render(); }
       if (tb == "calls") { try { await loadCalls(); } catch (e) {} if (still()) render(); }
       return;
     }
@@ -2343,6 +2346,7 @@ app.addEventListener("click", async (e) => {
   } catch (err) { toast(err.message); }
 });
 app.addEventListener("input", (e) => {
+  if (e.target.id == "cmtin") { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }
   if (e.target.id == "fsearch") { FQ = e.target.value.trim(); clearTimeout(SQT); SQT = setTimeout(async () => { if (FQ.length < 2) SRES = []; else { try { SRES = (await api("/search?q=" + encodeURIComponent(FQ))).people; } catch (err) { SRES = []; } } if (V.tab == "feed" && !V.scr && !V.ov) { const l = $("feedl"); if (l) l.innerHTML = feedListHtml(); } }, 300); return; }
   if (e.target.id == "ph" || e.target.id == "cc") showLine();
   if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); }
