@@ -80,7 +80,7 @@ async function aiCall(fmt, msgs, sys) {
 async function geminiChat(msgs) {
   const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(process.env.GEMINI_API_KEY), {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(25000),
     body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYSTEM }] }, contents: msgs.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }),
   });
   const j = await r.json().catch(() => ({}));
@@ -92,7 +92,7 @@ async function geminiLook(question, dataUrl) {
   const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(dataUrl);
   const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(process.env.GEMINI_API_KEY), {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(25000),
     body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYSTEM }] }, contents: [{ role: "user", parts: [{ text: question }, { inline_data: { mime_type: m[1], data: m[2] } }] }] }),
   });
   const j = await r.json().catch(() => ({}));
