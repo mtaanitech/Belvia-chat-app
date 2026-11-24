@@ -96,7 +96,7 @@ async function geminiLook(question, dataUrl) {
     body: JSON.stringify({ systemInstruction: { parts: [{ text: AI_SYSTEM }] }, contents: [{ role: "user", parts: [{ text: question }, { inline_data: { mime_type: m[1], data: m[2] } }] }] }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error("Picture service error " + r.status);
+  if (!r.ok) { const m = (j.error && j.error.message) ? ": " + String(j.error.message).slice(0, 160) : ""; throw new Error("Gemini error " + r.status + m); }
   return ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || "").join("").trim();
 }
 app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
@@ -118,7 +118,7 @@ app.post("/api/ai", need, aiLimit, wrap(async (req, res) => {
     try {
       const reply = await geminiLook(msgs[msgs.length - 1].content || "What do you see in this picture? Explain it simply.", img);
       return res.json({ reply: reply || "I could not see anything clearly in that picture." });
-    } catch (e) { return bad(res, "The picture service is busy. Try again in a moment.", 502); }
+    } catch (e) { console.error("Picture service:", e.message); return bad(res, "Picture service: " + e.message + ". Check the Logs on Render.", 502); }
   }
   let sysNow = AI_SYSTEM;
   const q = msgs[msgs.length - 1].content;
