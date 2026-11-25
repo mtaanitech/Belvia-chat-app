@@ -191,7 +191,10 @@ app.get("/api/profile/:uid", need, wrap(async (req, res) => {
      FROM users u WHERE u.id=$2 AND NOT u.banned
        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=u.id) OR (b.blocker=u.id AND b.blocked=$1))`, [req.uid, req.params.uid.toLowerCase()]);
   if (!r.rows[0]) return bad(res, "This profile is not available.", 404);
-  res.json(r.rows[0]);
+  const P = r.rows[0];
+  // A private account hides its posts AND its numbers from people who do not follow it.
+  if (P.locked && !P.am_following && P.id !== req.uid) { P.posts = null; P.followers = null; P.following = null; P.hidden = true; }
+  res.json(P);
 }));
 
 // Creator dashboard: only the owner sees these numbers.
