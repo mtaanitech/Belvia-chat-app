@@ -578,4 +578,50 @@ app.get("/api/singles/stats/:uid", need, wrap(async (req, res) => {
   const matches = (await db.query("SELECT count(*)::int AS n FROM singles_matches WHERE a=$1 OR b=$1", [who])).rows[0].n;
   res.json({ likes_received: likes, matches });
 }));
+// ---- Message requests: people who are not saved in each other's contacts ("Public" chats) ----
+async function savedBetween(a, b) {
+  return (await db.query("SELECT 1 FROM contacts WHERE (owner=$1 AND contact=$2) OR (owner=$2 AND contact=$1) LIMIT 1", [a, b])).rowCount > 0;
+}
+async function requestRow(a, b) {
+  return (await db.query("SELECT from_id, to_id, status, sent FROM chat_requests WHERE (from_id=$1 AND to_id=$2) OR (from_id=$2 AND to_id=$1) LIMIT 1", [a, b])).rows[0] || null;
+}
+// Can I read this chat? Saved people can; others only after the request is accepted.
+async function requestAccess(me, peer) {
+  if (await savedBetween(me, peer)) return { ok: true };
+  const r = await requestRow(me, peer);
+  if (r && r.status === "accepted") return { ok: true };
+  if (!r) return { ok: false, state: "none" };
+  if (r.status === "declined") return { ok: false, state: "declined" };
+  return { ok: false, state: r.from_id === me ? "outgoing" : "incoming" };
+}
+// Can I send to this person? A stranger gets up to 3 messages while the request waits.
+async function requestGate(me, to) {
+  if (await savedBetween(me, to)) return null;
+  const r = await requestRow(me, to);
+  if (r && r.status === "accepted") return null;
+  if (r && r.status === "declined") return "Message not delivered.";
+  if (r && r.from_id !== me) { await db.query("UPDATE chat_requests SET status='accepted', updated_at=now() WHERE from_id=$1 AND to_id=$2", [r.from_id, r.to_id]); return null; }
+  if (r) {
+    if (r.sent >= 3) return "Wait for them to accept your request. You can send up to 3 messages.";
+    await db.query("UPDATE chat_requests SET sent=sent+1, updated_at=now() WHERE from_id=$1 AND to_id=$2", [r.from_id, r.to_id]);
+    return null;
+  }
+  await db.query("INSERT INTO chat_requests(from_id,to_id,status,sent) VALUES($1,$2,'pending',1) ON CONFLICT (from_id,to_id) DO NOTHING", [me, to]);
+  return null;
+}
+app.get("/api/requests", need, wrap(async (req, res) => {
+  const incoming = (await db.query("SELECT r.from_id AS id, u.name, r.created_at FROM chat_requests r JOIN users u ON u.id=r.from_id WHERE r.to_id=$1 AND r.status='pending' ORDER BY r.created_at DESC LIMIT 100", [req.uid])).rows;
+  const outgoing = (await db.query("SELECT r.to_id AS id, u.name, r.created_at FROM chat_requests r JOIN users u ON u.id=r.to_id WHERE r.from_id=$1 AND r.status='pending' ORDER BY r.created_at DESC LIMIT 100", [req.uid])).rows;
+  res.json({ incoming, outgoing });
+}));
+app.post("/api/requests/:uid/accept", need, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  await db.query("UPDATE chat_requests SET status='accepted', updated_at=now() WHERE from_id=$2 AND to_id=$1 AND status='pending'", [req.uid, req.params.uid.toLowerCase()]);
+  res.json({ ok: true });
+}));
+app.post("/api/requests/:uid/decline", need, wrap(async (req, res) => {
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  await db.query("UPDATE chat_requests SET status='declined', updated_at=now() WHERE from_id=$2 AND to_id=$1 AND status='pending'", [req.uid, req.params.uid.toLowerCase()]);
+  res.json({ ok: true });
+}));
 // END OF PART 10
