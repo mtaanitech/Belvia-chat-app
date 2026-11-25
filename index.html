@@ -880,7 +880,7 @@ function profView() {
     '<div style="position:relative;margin-bottom:46px"><div style="height:110px;background:' + cover + '"></div><div style="position:absolute;left:50%;bottom:-40px;transform:translateX(-50%)">' + av(P.name, 80, false, P.id) + "</div></div>" +
     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 16px"><b style="font-size:20px">' + (P.verified ? VBADGE.replace('margin-left:6px', 'margin-right:6px') : "") + esc(P.name) + (P.mood ? " " + esc(P.mood) : "") + "</b>" + (P.verified ? VLABEL : "") + (P.about ? '<span class="mut" style="text-align:center">' + esc(P.about) + "</span>" : "") +
     '<div style="display:flex;gap:22px;margin:10px 0"><div style="text-align:center"><b>' + P.posts + '</b><br><small class="mut">Posts</small></div><div style="text-align:center"><b>' + P.followers + '</b><br><small class="mut">Followers</small></div><div style="text-align:center"><b>' + P.following + '</b><br><small class="mut">Following</small></div></div>' +
-    (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
+    (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn o" style="min-width:120px" data-a="pmsg" data-id="' + P.id + '">Message</button><button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
     '<div class="sec">POSTS</div><div id="profl">' + (P.locked && !P.am_following && P.id != U.id ? '<div class="empty"><b>This account is private</b>Follow it to see its posts.</div>' : PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
 }
 async function openProfile(id) {
@@ -898,7 +898,7 @@ function askConfirm(msg, ok) {
     d.addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (!b) return; d.remove(); res(b.dataset.c === "1"); });
     document.body.appendChild(d);
   });
-}
+  }
 // replace every "!(await askConfirm(msg))" with "!(await askConfirm(msg))", keeping the message as it is
 (function () {
   let src = document.currentScript ? null : null;
@@ -1524,6 +1524,14 @@ async function otpGo() {
 }
 
 function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
+let REQS = { incoming: [], outgoing: [] };
+async function loadRequests() { try { REQS = await api("/requests"); } catch (e) {} }
+function reqsHtml() {
+  const inc = REQS.incoming || [], out = REQS.outgoing || [];
+  if (!inc.length && !out.length) return '<p class="mut" style="padding:12px 16px">No message requests. People who are not in your contacts appear here.</p>';
+  return '<div class="sec">MESSAGE REQUESTS</div>' + inc.map((x) => '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ln)">' + av(x.name, 44, false, x.id) + '<span style="flex:1;min-width:0"><b>' + esc(x.name) + '</b><small class="mut" style="display:block">wants to message you</small></span><button class="btn" style="min-height:34px;padding:0 12px" data-a="reqacc" data-id="' + x.id + '">Accept</button><button class="btn o" style="min-height:34px;padding:0 12px" data-a="reqdec" data-id="' + x.id + '">Decline</button></div>').join("") +
+    out.map((x) => '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ln)">' + av(x.name, 44, false, x.id) + '<span style="flex:1;min-width:0"><b>' + esc(x.name) + '</b><small class="mut" style="display:block">Request sent. Waiting for them to accept.</small></span></div>').join("");
+}
 function listHtml() {
   const q = V.q.trim().toLowerCase();
   const nArch = CH.filter((x) => x.archived).length;
@@ -1531,6 +1539,9 @@ function listHtml() {
   if (q) { L = L.filter((x) => (x.display + " " + (x.pname || "")).toLowerCase().indexOf(q) > -1); G = G.filter((g) => g.name.toLowerCase().indexOf(q) > -1); }
   if (V.f == "unread") { L = []; G = []; }
   if (V.f == "groups") L = [];
+  const pub = V.cseg == "public";
+  L = L.filter((x) => pub ? !(x.saved || x.theirs) : (x.saved || x.theirs));
+  if (pub) G = [];
   const row = (x) => '<button class="row" data-a="open" data-id="' + x.peer + '">' + av(x.saved ? x.display : (x.pname || x.display), 52, x.online, x.peer) + '<span class="t"><b' + (x.unread ? ' style="font-weight:800"' : '') + '>' + esc(x.display) + (x.saved || !x.pname ? "" : ' <span class="mut" style="font-weight:400;font-size:12px">~' + esc(x.pname) + "</span>") + "</b><small>" + (x.typing ? '<span style="color:var(--ok)">typing...</span>' : x.online ? '<span style="color:var(--ok)">Online</span>' : (x.from_id == U.id ? "You: " : "") + esc(x._plain !== undefined ? x._plain : String(x.body || "").startsWith("e2e1:") ? "🔒 Message" : x.body)) + "</small></span><small>" + tm(x.created_at) + (x.pinned ? ' <span class="pin">' + IC_PIN + "</span>" : "") + (x.unread ? ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--ac);color:var(--on);font-size:12px;font-weight:700">' + x.unread + '</span>' : "") + "</small></button>";
   const grow = (g) => '<button class="row" data-a="opengrp" data-id="' + g.id + '">' + av(g.name, 52) + '<span class="t"><b>' + esc(g.name) + "</b><small>" + (g.last_kind == "text" ? esc((g.last_from == U.id ? "You" : g.last_name) + ": " + g.last_body) : g.last_kind == "poll" ? "📊 " + esc(g.last_body) : g.last_kind ? "Group update" : g.members + " members") + "</small></span><small>" + (g.last_at ? tm(g.last_at) : "") + "</small></button>";
   const items = L.map((x) => ({ pin: x.pinned ? 1 : 0, t: +new Date(x.created_at), h: row(x) })).concat(G.map((g) => ({ pin: 0, t: +new Date(g.last_at || g.created_at), h: grow(g) })));
@@ -1682,7 +1693,7 @@ function main() {
   const t = V.tab; let b = "", f = "";
   if (t == "chats") {
     b = (V.sq ? '<input id="q" class="srch" style="margin-top:12px" placeholder="Search chats" aria-label="Search chats" value="' + esc(V.q) + '">' : "") + strip() +
-      '<div class="chips">' + [["all", "All"], ["unread", "Unread"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + (LSTH = listHtml()) + "</div>";
+      '<div style="display:flex;gap:8px;padding:12px 14px 0">' + [["private", "Private"], ["public", "Public"]].map((x) => '<button data-a="cseg" data-t="' + x[0] + '" style="flex:1;min-height:40px;border-radius:20px;border:0;font-weight:600;background:' + ((V.cseg || "private") == x[0] ? "var(--ac)" : "var(--sf)") + ';color:' + ((V.cseg || "private") == x[0] ? "var(--on)" : "var(--ink)") + '">' + x[1] + "</button>").join("") + '</div>' + ((V.cseg == "public") ? reqsHtml() : "") + '<div class="chips">' + [["all", "All"], ["unread", "Unread"]].map((x) => '<button class="chip ' + (V.f == x[0] ? "on" : "") + '" data-a="flt" data-t="' + x[0] + '">' + x[1] + "</button>").join("") + '</div><div id="lst">' + (LSTH = listHtml()) + "</div>";
     f = '<button class="aib" data-a="ai" aria-label="Orivoclass AI">' + AISVG + '</button><button class="fab" data-a="cov" aria-label="New chat">+</button>';
   }
   else if (t == "status") b = statusTab();
@@ -1786,8 +1797,8 @@ async function send() {
   try { const enc = await encryptFor(cid, t).catch(() => null); await api("/messages", "POST", { to: cid, body: enc || t, reply: rp, once }); drop(); await loadMsgs(true); loadCH().catch(() => {}); }
   catch (e) { drop(); MS = MS.filter((x) => x !== tmp); upd(false); toast(e.message); i.value = t; }
   i.focus();
-}
-const LEGAL = {
+  }
+  const LEGAL = {
   terms: ["Terms of Service", [
     ["Using Orivoclass", "By creating an account you agree to these terms. You must be old enough to use the service in your country, and at least 18 to use Singles."],
     ["Verified badge", "The verified badge is a paid service. To apply, you fill in a short form and pay KSh 3 to send it. Applications are approved automatically 30 minutes later, and the first month is free. After the free month you pay again each time you renew (KSh 80 for 45 days, or a prepaid plan of 7 months or 1 year). We do not keep your card, so renewals are not charged automatically. Payments are processed by Paystack. To ask about a payment, write to mtaanitech76@gmail.com."],
@@ -1839,7 +1850,7 @@ function pageOv() {
     b = '<div id="cvp" style="height:96px;border-radius:18px;margin:6px 16px;background:' + coverBg(EDT.cover) + '"></div><div class="cd"><b>Cover</b><div class="sw" style="flex-wrap:wrap">' + COV.map((c, i) => '<button class="cov ' + (EDT.cover == i ? "on" : "") + '" data-a="cvsel" data-i="' + i + '" style="background:' + coverBg(i) + '" aria-label="Cover ' + (i + 1) + '"></button>').join("") + '</div><b>Mood</b><div class="chips" style="padding:0;flex-wrap:wrap">' + MOODS.map((e) => '<button class="chip ' + (EDT.mood == e ? "on" : "") + '" data-a="mdsel" data-v="' + e + '">' + (e || "None") + "</button>").join("") + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save</button></div>';
   } else if (p == "priv") {
     t = "Privacy";
-  b = privExtra() + '<div class="cd"><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><span class="note">“My contacts except…” comes in a later update.</span></div>' +
+    b = privExtra() + '<div class="cd"><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><span class="note">“My contacts except…” comes in a later update.</span></div>' +
       '<div class="cd"><b>Blocked contacts</b><span class="mut">People you block cannot see your status or last seen, and cannot reach you.</span><button class="btn o" data-a="bls">Blocked contacts (' + BL.length + ')</button></div>' +
       '<div class="cd"><b>Coming soon</b><span class="mut">Who can see your status, and read receipts control. Photo privacy is in Profile photo.</span></div>';
   } else if (p == "acct") {
@@ -2030,6 +2041,10 @@ app.addEventListener("click", async (e) => {
       return;
     }
     if (a == "linkstart") return linkStartNew();
+    if (a == "cseg") { V.cseg = b.dataset.t; if (V.cseg == "public") await loadRequests(); return render(); }
+    if (a == "reqacc") { try { await api("/requests/" + id + "/accept", "POST", {}); } catch (e) { toast(e.message); } await loadRequests(); await loadCH().catch(() => {}); return render(); }
+    if (a == "reqdec") { try { await api("/requests/" + id + "/decline", "POST", {}); } catch (e) { toast(e.message); } await loadRequests(); return render(); }
+    if (a == "pmsg") { V.ov = null; return runAct({ peer: id }); }
     if (a == "linknew") return linkStartNew();
     if (a == "linkcancel") { clearInterval(LNKT); LNK = null; V.scr = null; V.mode = "login"; return render(); }
     if (a == "linkenter") { V.ov = "linkin"; return render(); }
