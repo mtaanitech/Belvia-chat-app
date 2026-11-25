@@ -83,6 +83,12 @@ div[style*="border-bottom:1px solid var(--ln)"]>.row{background-image:none}
 .rpick{position:absolute;left:50%;transform:translateX(-50%);bottom:110px;z-index:50;display:flex;gap:2px;background:var(--bg);border:1px solid var(--ln);border-radius:30px;padding:6px 10px;box-shadow:0 6px 20px rgba(16,24,40,.18)}
 .rpick button{border:0;background:none;font-size:26px;padding:4px 5px;transition:transform .12s}
 .rpick button:active{transform:scale(1.3)}
+.mrow{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:0;background:none;border-bottom:1px solid var(--ln);text-align:left;color:var(--ink);font:inherit}
+.mrow-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mrow-t b{font-weight:600;font-size:16px}
+.mrow-t small{font-size:13px}
+.chev{color:var(--mu);font-size:22px;line-height:1}
+.mhead{padding:22px 16px 6px;font-size:12px;font-weight:700;color:var(--mu);letter-spacing:.04em;text-transform:uppercase}
 body,#app{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 #app button svg{display:block}
@@ -901,7 +907,7 @@ function likeInner(p, r) {
   const top = ((p && p.top_reactions) || []).slice(0, 3).join("");
   return '<span style="font-size:17px;line-height:1">' + (top || r || "♡") + '</span><b style="font-weight:600">' + ((p && p.likes) || 0) + "</b>";
 }
-  function paintReact(id, r) { const p = findPost(id); document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = likeInner(p, r); b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
+function paintReact(id, r) { const p = findPost(id); document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = likeInner(p, r); b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
 async function setReaction(id, emoji) {
   const p = findPost(id); if (!p) return;
   const prev = p.my_reaction || null, undo = prev === emoji, wasLiked = !!prev, nowLiked = !undo;
@@ -985,7 +991,7 @@ function suggHtml() {
 async function loadSugg() { try { SUGG = (await api("/suggestions")).people; } catch (e) { SUGG = []; } }
 function privExtra() {
   const E = EXTRA || {};
-  return '<div class="cd"><label class="chk" style="font-size:15px"><input type="checkbox" id="plock"' + (E.locked ? " checked" : "") + '> Private account</label><span class="note">Only your followers see your posts. Anyone else sends a follow request that you approve. Boosting is not available while your account is private.</span></div>' +
+  return '<div class="cd"><label class="chk" style="font-size:15px"><input type="checkbox" id="plock"' + (E.locked ? " checked" : "") + '> Private account (hide posts and numbers)</label><span class="note">When this is on, people who do not follow you cannot see your posts, followers, or following. They can only send a follow request, which you approve. Boosting is not available while your account is private.</span></div>' +
     '<div class="cd"><label class="chk" style="font-size:15px"><input type="checkbox" id="psug"' + (E.suggest !== false ? " checked" : "") + '> Suggest my account to other people</label><span class="note">When this is on, your account can appear in “Suggested for you”. Private accounts are never suggested.</span></div>';
 }
 async function doFollow(uid) {
@@ -1007,6 +1013,15 @@ async function doFollow(uid) {
 
 
 // ---- Link a computer with a code ----
+function vpickView() {
+  const plans = (VPLAN && VPLAN.plans) || {};
+  const rec = plans.recurring || { price: 80, days: 45 };
+  const pre = plans.prepaid || [{ id: "7m", label: "7 months", price: 200 }, { id: "1y", label: "1 year", price: 700 }];
+  const row = (title, sub, price, id) => '<button data-a="vbuy" data-p="' + id + '" class="mrow"><span class="mrow-t"><b>' + title + '</b><small class="mut">' + sub + '</small></span><b style="color:var(--ac)">KSh ' + price + '</b><span class="chev">›</span></button>';
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="vpx" aria-label="Back">' + IC_BACK + '</button><h1>Choose a package</h1></div><div class="body">' +
+    row("Every " + rec.days + " days", "Pay again each time it runs out", rec.price, "recurring") +
+    pre.map((x) => row(x.label, "Prepaid, one payment", x.price, x.id)).join("") + "</div></div>";
+}
 function verifyCard() {
   const v = VPLAN || {};
   const now = new Date();
@@ -1021,7 +1036,7 @@ function verifyCard() {
     const from = v.from && new Date(v.from) > now ? "starts " + new Date(v.from).toLocaleString() : "active";
     return '<div class="cd" style="margin:0 16px">' + head + '<span>You are verified until ' + esc(new Date(v.until).toLocaleDateString()) + " (" + from + ").</span>" +
       (v.auto ? '<span class="mut">Renews automatically: KSh ' + rec.price + " every " + rec.days + " days.</span>" : "") +
-      btn("Renew: KSh " + pre[0].price + " for " + pre[0].label, "vbuy", ' data-p="' + pre[0].id + '"') + "</div>";
+      btn("Renew", "vpick", "") + "</div>";
   }
   const trial = !v.trial_used ? btn("Apply: 1 month free · KSh 3 to send", "vtrial", "", true) + '<span class="note">Fill in a short form and pay KSh 3. Your badge is approved automatically 30 minutes later.</span>' : "";
   return '<div class="cd" style="margin:0 16px">' + head +
@@ -1637,17 +1652,18 @@ function stvView() {
 const rowGo = (p, t, sb) => '<button class="row" data-a="pg" data-p="' + p + '"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span style="color:var(--mu);font-size:22px">›</span></button>';
 const rowSoon = (t, sb) => '<div class="row" style="opacity:.75;cursor:default"><span class="t"><b>' + t + "</b><small>" + sb + '</small></span><span class="note" style="font-weight:700">Soon</span></div>';
 function meTab() {
-  const E = EXTRA || {}, rq = E.requests ? E.requests.length : 0, trust = U.trust == null ? 100 : U.trust;
-  const row = (p, label, sub, ic, badge) => '<button class="row" data-a="pg" data-p="' + p + '" style="min-height:58px"><span class="av" style="width:36px;height:36px;background:var(--acs);color:var(--ac);font-size:15px">' + ic + '</span><span class="t"><b>' + label + '</b><small>' + sub + '</small></span>' + (badge ? '<span class="pill" style="color:var(--ac)">' + badge + "</span>" : "") + '<span style="color:var(--mu);font-size:22px">›</span></button>';
-  const sec = (t) => '<div class="sec">' + t + "</div>";
+  const E = EXTRA || {}, rq = E.requests ? E.requests.length : 0;
+  const item = (p, label, sub, badge) => '<button data-a="pg" data-p="' + p + '" class="mrow"><span class="mrow-t"><b>' + label + "</b>" + (sub ? '<small class="mut">' + sub + "</small>" : "") + "</span>" + (badge ? '<span class="pill" style="color:var(--ac)">' + badge + "</span>" : "") + '<span class="chev">›</span></button>';
+  const head = (t) => '<div class="mhead">' + t + "</div>";
   return profileHead() + verifyCard() +
-    '<div class="cd" style="margin:0 16px"><b>Invite friends</b><span class="mut">Send the Orivoclass link. They open it and sign up on their own.</span><button class="btn o" data-a="shareapp">Share Orivoclass</button></div>' +
-    sec("ACCOUNT") + row("priv", "Privacy", E.locked ? "Private account" : "Public account", "🔒") + row("acct", "Account status", "Trust score " + trust + "%", "🛡") + row("dev", "Linked devices", "Devices logged in to your account", "📱") +
-    sec("CREATOR") + row("dash", "Dashboard", "Followers, posts and reach", "📊") + row("reqs", "Follow requests", rq ? rq + " waiting" : "None waiting", "👥", rq ? String(rq) : "") +
-    sec("CHATS AND ALERTS") + row("notif", "Notifications", "Messages, status and views", "🔔") + row("lock", "Chat lock", lockOn() ? "On · PIN" : "Off", "🔐") + row("dm", "Disappearing messages", "Set inside each chat", "⏱") + row("backup", "Backup", "Download a copy of your chats", "💾") + row("theme", "Appearance", "Light or dark, and your colour", "🎨") + row("aiset", "Orivoclass AI", "Save your AI chats, or not", "✦") + row("photo", "Profile photo", "Add a photo and choose who sees it", "🖼") + (isStandalone() ? "" : row("install", "Install app", "Add Orivoclass to your home screen", "⬇")) +
-    sec("HELP AND LEGAL") + row("terms", "Terms of Service", "Last updated: November 2026", "📄") + row("privacy", "Privacy Policy", "How we handle your data", "🛡") + row("rules", "Community Rules", "What is allowed on Orivoclass", "📜") + row("about", "About Us", "Who we are", "ℹ") + row("help", "Help and contact", "Questions and support", "❓") +
-    '<div class="cd" style="margin-top:16px"><button class="btn o" data-a="logout">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="btn d" data-a="pg" data-p="del">Delete my account</button></div>';
+    '<div class="cd" style="margin:12px 16px"><b>Invite friends</b><span class="mut">Send the Orivoclass link. They sign up on their own.</span><button class="btn o" data-a="shareapp">Share Orivoclass</button></div>' +
+    head("Account") + item("priv", "Privacy", E.locked ? "Private account" : "Public account") + item("acct", "Account status", "Trust score " + (U.trust == null ? 100 : U.trust) + "%") + item("dev", "Linked devices", "Devices signed in to your account") +
+    head("Creator") + item("dash", "Dashboard", "Followers, posts and reach") + item("reqs", "Follow requests", rq ? rq + " waiting" : "None waiting", rq ? String(rq) : "") +
+    head("Chats and alerts") + item("notif", "Notifications", "Messages, status and views") + item("lock", "Chat lock", lockOn() ? "On" : "Off") + item("dm", "Disappearing messages", "Set inside each chat") + item("backup", "Backup", "Chats and message keys") + item("theme", "Appearance", "Theme, colour and text size") + item("aiset", "Orivoclass AI") + item("photo", "Profile photo") + (isStandalone() ? "" : item("install", "Install app")) +
+    head("Help and legal") + item("terms", "Terms of Service") + item("privacy", "Privacy Policy") + item("rules", "Community Rules") + item("about", "About us") + item("help", "Help and contact") +
+    '<div style="padding:18px 16px 28px"><button class="btn o" data-a="logout" style="width:100%">' + (V.lo ? "Tap again to log out" : "Log out") + '</button><button class="lnk" data-a="pg" data-p="del" style="display:block;margin:14px auto 0;color:var(--cr)">Delete my account</button></div>';
 }
+
 function installBanner() {
   if (isStandalone()) return "";
   let dismissed = false; try { dismissed = !!localStorage.getItem("bv.nobanner"); } catch (e) {}
@@ -1807,7 +1823,7 @@ const LEGAL = {
     ["Version", "Web version 0.4. More features are on the way."],
     ["Contact", "mtaanitech76@gmail.com"]]]
 };
-  const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
+const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
 const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
 function recCard() {
   if (RC) return '<div class="cd" style="align-items:center"><b>Your new recovery code</b><b style="font-size:22px;letter-spacing:2px;user-select:all">' + esc(RC) + '</b><span class="note">Save it now. The old code no longer works. It is shown only once.</span><button class="btn o" data-a="copycode">Copy code</button><button class="btn" data-a="rcdone">I saved it</button></div>';
@@ -1823,7 +1839,7 @@ function pageOv() {
     b = '<div id="cvp" style="height:96px;border-radius:18px;margin:6px 16px;background:' + coverBg(EDT.cover) + '"></div><div class="cd"><b>Cover</b><div class="sw" style="flex-wrap:wrap">' + COV.map((c, i) => '<button class="cov ' + (EDT.cover == i ? "on" : "") + '" data-a="cvsel" data-i="' + i + '" style="background:' + coverBg(i) + '" aria-label="Cover ' + (i + 1) + '"></button>').join("") + '</div><b>Mood</b><div class="chips" style="padding:0;flex-wrap:wrap">' + MOODS.map((e) => '<button class="chip ' + (EDT.mood == e ? "on" : "") + '" data-a="mdsel" data-v="' + e + '">' + (e || "None") + "</button>").join("") + '</div></div><div class="cd"><label>Name<input id="pn" value="' + esc(U.name) + '"></label><label>About<input id="pa" value="' + esc(U.about) + '"></label><button class="btn" data-a="savep">Save</button></div>';
   } else if (p == "priv") {
     t = "Privacy";
-    b = privExtra() + '<div class="cd"><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><span class="note">“My contacts except…” comes in a later update.</span></div>' +
+  b = privExtra() + '<div class="cd"><label>Last seen and online<select id="sp">' + ["everyone", "contacts", "nobody"].map((v, i) => '<option value="' + v + '"' + (U.seen_privacy == v ? " selected" : "") + ">" + ["Everyone", "My contacts", "Nobody"][i] + "</option>").join("") + '</select></label><span class="note">“My contacts except…” comes in a later update.</span></div>' +
       '<div class="cd"><b>Blocked contacts</b><span class="mut">People you block cannot see your status or last seen, and cannot reach you.</span><button class="btn o" data-a="bls">Blocked contacts (' + BL.length + ')</button></div>' +
       '<div class="cd"><b>Coming soon</b><span class="mut">Who can see your status, and read receipts control. Photo privacy is in Profile photo.</span></div>';
   } else if (p == "acct") {
@@ -1899,6 +1915,7 @@ function overlays() {
   if (o == "cmenu") return cmenuView();
   if (o == "editpost") return editPostHtml();
   if (o == "editmsg") return editMsgHtml();
+  if (o == "vpick") return vpickView();
   if (o == "linkin") return linkinView();
   if (o == "sgprof") return sgProfHtml();
   if (o == "imgv") return imgViewHtml();
@@ -2325,6 +2342,8 @@ app.addEventListener("click", async (e) => {
       try { await api("/posts/" + IMGV.pid + "/comments", "POST", { body: t }); $("imgc").value = ""; toast("Comment sent"); } catch (e) { toast(e.message); }
       return;
     }
+    if (a == "vpick") { V.ov = "vpick"; return render(); }
+    if (a == "vpx") { V.ov = null; return render(); }
     if (a == "vtrial" || a == "vbuy") {
       try {
         let form = null; if (a == "vtrial") { form = await openApplyForm(); if (!form) return; }
