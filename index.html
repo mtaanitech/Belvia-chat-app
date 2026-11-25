@@ -901,7 +901,7 @@ function likeInner(p, r) {
   const top = ((p && p.top_reactions) || []).slice(0, 3).join("");
   return '<span style="font-size:17px;line-height:1">' + (top || r || "♡") + '</span><b style="font-weight:600">' + ((p && p.likes) || 0) + "</b>";
 }
-function paintReact(id, r) { const p = findPost(id); document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = likeInner(p, r); b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
+  function paintReact(id, r) { const p = findPost(id); document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = likeInner(p, r); b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
 async function setReaction(id, emoji) {
   const p = findPost(id); if (!p) return;
   const prev = p.my_reaction || null, undo = prev === emoji, wasLiked = !!prev, nowLiked = !undo;
@@ -1023,18 +1023,32 @@ function verifyCard() {
       (v.auto ? '<span class="mut">Renews automatically: KSh ' + rec.price + " every " + rec.days + " days.</span>" : "") +
       btn("Renew: KSh " + pre[0].price + " for " + pre[0].label, "vbuy", ' data-p="' + pre[0].id + '"') + "</div>";
   }
-  const trial = !v.trial_used ? btn("Start 1 month free · card needed", "vtrial", "", true) + '<span class="note">We check your card with KSh 1. Your badge is approved automatically 30 minutes later.</span>' : "";
+  const trial = !v.trial_used ? btn("Apply: 1 month free · KSh 3 to send", "vtrial", "", true) + '<span class="note">Fill in a short form and pay KSh 3. Your badge is approved automatically 30 minutes later.</span>' : "";
   return '<div class="cd" style="margin:0 16px">' + head +
     '<span class="mut">A blue-and-red tick next to your name and on your posts, and your posts reach more people.</span>' + trial +
     btn("KSh " + rec.price + " every " + Math.round(rec.days / 30 * 10) / 10 + " months (renews)", "vbuy", ' data-p="recurring"') +
     pre.map((x) => btn("KSh " + x.price + " for " + x.label, "vbuy", ' data-p="' + x.id + '"')).join("") + "</div>";
+}
+function openApplyForm() {
+  return new Promise((res) => {
+    const d = document.createElement("div");
+    d.style.cssText = "position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px";
+    d.innerHTML = '<div style="background:var(--bg);border-radius:18px;padding:20px;max-width:380px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(16,24,40,.3)">' +
+      '<b style="font-size:17px">Apply for the verified badge</b><p class="mut" style="margin:6px 0 12px">Fill in the form and pay KSh 3 to send it. You get 1 month free. It is approved automatically 30 minutes later.</p>' +
+      '<label class="label">Full name</label><input id="apn" autocomplete="name" style="margin-bottom:10px">' +
+      '<label class="label">Why do you want the badge?</label><textarea id="apr" rows="3" maxlength="400" style="margin-bottom:10px"></textarea>' +
+      '<label class="label">Contact (optional)</label><input id="apc" placeholder="Website or social link" style="margin-bottom:14px">' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end"><button data-c="0" class="btn o">Cancel</button><button data-c="1" class="btn">Send · KSh 3</button></div></div>';
+    d.addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (!b) return; const out = b.dataset.c === "1" ? { name: d.querySelector("#apn").value, reason: d.querySelector("#apr").value, contact: d.querySelector("#apc").value } : null; d.remove(); res(out); });
+    document.body.appendChild(d);
+  });
 }
 async function checkVerifyPay() {
   let ref = ""; try { ref = localStorage.getItem("bv.vpay") || ""; } catch (e) {}
   if (!ref || !T) return;
   try {
     const j = await api("/verify/confirm", "POST", { reference: ref });
-    if (j.ok) { try { localStorage.removeItem("bv.vpay"); } catch (e) {} VPLAN = null; toast(j.trial ? "Free trial approved. Your badge starts in about 30 minutes." : "Verified badge payment received."); }
+    if (j.ok) { try { localStorage.removeItem("bv.vpay"); } catch (e) {} VPLAN = null; toast(j.trial ? "Application received. Your badge starts in about 30 minutes." : "Verified badge payment received."); }
     else toast("Payment not confirmed yet.");
   } catch (e) { toast(e.message); }
 }
@@ -1760,7 +1774,7 @@ async function send() {
 const LEGAL = {
   terms: ["Terms of Service", [
     ["Using Orivoclass", "By creating an account you agree to these terms. You must be old enough to use the service in your country, and at least 18 to use Singles."],
-    ["Verified badge subscriptions", "The verified badge is a paid subscription. The free trial needs a card, and we check the card with KSh 1. After the trial, the recurring plan (KSh 80 every 45 days) renews automatically on the card you gave us, until you stop it. Prepaid plans (7 months and 1 year) do not renew. You can cancel renewals by asking support at mtaanitech76@gmail.com. Payments are processed by Paystack."],
+    ["Verified badge", "The verified badge is a paid service. To apply, you fill in a short form and pay KSh 3 to send it. Applications are approved automatically 30 minutes later, and the first month is free. After the free month you pay again each time you renew (KSh 80 for 45 days, or a prepaid plan of 7 months or 1 year). We do not keep your card, so renewals are not charged automatically. Payments are processed by Paystack. To ask about a payment, write to mtaanitech76@gmail.com."],
     ["Your account", "You are responsible for your password and for everything done with your account. Give us a real phone number and keep your details up to date."],
     ["Acceptable use", "Do not use Orivoclass for spam, scams, harassment, threats, illegal content or anything that harms others. See the Community Rules for details."],
     ["Content", "You own what you send. You allow us to store and deliver it so the service can work."],
@@ -1793,13 +1807,13 @@ const LEGAL = {
     ["Version", "Web version 0.4. More features are on the way."],
     ["Contact", "mtaanitech76@gmail.com"]]]
 };
-const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
+  const agreed = () => { try { return !!localStorage.getItem("bv.agreed"); } catch (e) { return false; } };
 const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawyer must review it before launch. Last updated: November 2026.</span>' + sec.map((x) => "<div><b>" + x[0] + '</b><p class="mut" style="margin:4px 0 0">' + x[1] + "</p></div>").join("") + "</div>";
 function recCard() {
   if (RC) return '<div class="cd" style="align-items:center"><b>Your new recovery code</b><b style="font-size:22px;letter-spacing:2px;user-select:all">' + esc(RC) + '</b><span class="note">Save it now. The old code no longer works. It is shown only once.</span><button class="btn o" data-a="copycode">Copy code</button><button class="btn" data-a="rcdone">I saved it</button></div>';
   return '<div class="cd"><b>Recovery code</b><span class="mut">Make a new code if you lost yours or think someone saw it. The old code stops working.</span><label>Your password<input id="rpw" type="password" autocomplete="current-password"></label><button class="btn" data-a="newcode">Generate new code</button></div>';
-                     }
-  function pageOv() {
+}
+function pageOv() {
   const p = V.pg; let t = "", b = "";
   if (LEGAL[p]) {
     t = LEGAL[p][0]; b = docHtml(LEGAL[p][1]);
@@ -2313,7 +2327,8 @@ app.addEventListener("click", async (e) => {
     }
     if (a == "vtrial" || a == "vbuy") {
       try {
-        const j = a == "vtrial" ? await api("/verify/trial", "POST", {}) : await api("/verify/buy", "POST", { plan: b.dataset.p });
+        let form = null; if (a == "vtrial") { form = await openApplyForm(); if (!form) return; }
+        const j = a == "vtrial" ? await api("/verify/trial", "POST", form) : await api("/verify/buy", "POST", { plan: b.dataset.p });
         try { localStorage.setItem("bv.vpay", j.reference); } catch (e) {}
         location.href = j.authorization_url;
       } catch (e) { toast(e.message); }
@@ -2440,5 +2455,3 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
-
-  
