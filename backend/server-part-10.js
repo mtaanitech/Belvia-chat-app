@@ -478,21 +478,27 @@ async function verifyPlan() {
   const r = await db.query("SELECT value FROM app_settings WHERE key='verify_plan'");
   return r.rows[0] ? r.rows[0].value : VERIFY_DEFAULT;
 }
-const VPLANS = { trialDays: 30, cardWaitMin: 30, cardCheck: 100, recurring: { price: 80, days: 45 }, prepaid: [{ id: "7m", label: "7 months", price: 200, days: 210 }, { id: "1y", label: "1 year", price: 700, days: 365 }] };
+const VPLANS = { trialDays: 30, cardWaitMin: 30, applyFee: 3, recurring: { price: 80, days: 45 }, prepaid: [{ id: "7m", label: "7 months", price: 200, days: 210 }, { id: "1y", label: "1 year", price: 700, days: 365 }] };
 app.get("/api/verify/plan", need, wrap(async (req, res) => {
   const me = (await db.query("SELECT verified_until, verified_from, trial_used, verify_renew FROM users WHERE id=$1", [req.uid])).rows[0] || {};
   res.json({ paid: !!process.env.PAYSTACK_SECRET_KEY, plans: VPLANS, until: me.verified_until, from: me.verified_from, trial_used: !!me.trial_used, auto: !!me.verify_renew });
 }));
-// Free trial: a card is needed (a small check charge, KSh 1). Approved automatically; the badge starts 30 minutes later.
+// Free trial: fill in the application form and pay KSh 3 to send it. Approved automatically 30 minutes later.
 app.post("/api/verify/trial", need, boostLimit, wrap(async (req, res) => {
   if (!process.env.PAYSTACK_SECRET_KEY) return bad(res, "Payments are not set up yet.", 503);
   const me = (await db.query("SELECT trial_used FROM users WHERE id=$1", [req.uid])).rows[0];
   if (me && me.trial_used) return bad(res, "You have already used the free trial.", 403);
-  const ref = "TRY" + crypto.randomBytes(9).toString("hex");
-  await db.query("INSERT INTO verify_orders(reference,user_id,amount,days,status,kind,plan) VALUES($1,$2,1,$3,'pending','trial','trial')", [ref, req.uid, VPLANS.trialDays]);
+  const name = String(req.body.name || "").trim().slice(0, 80);
+  const reason = String(req.body.reason || "").trim().slice(0, 400);
+  const contact = String(req.body.contact || "").trim().slice(0, 120);
+  if (name.length < 3) return bad(res, "Write your full name.");
+  if (reason.length < 10) return bad(res, "Write why you want the badge (at least 10 letters).");
+  const ref = "APP" + crypto.randomBytes(9).toString("hex");
+  await db.query("INSERT INTO verify_orders(reference,user_id,amount,days,status,kind,plan) VALUES($1,$2,$3,$4,'pending','apply','trial')", [ref, req.uid, VPLANS.applyFee, VPLANS.trialDays]);
+  await db.query("INSERT INTO verify_apps(reference,user_id,full_name,reason,contact) VALUES($1,$2,$3,$4,$5)", [ref, req.uid, name, reason, contact]);
   const email = "u" + req.uid.replace(/-/g, "").slice(0, 16) + "@orivoclass.app";
-  const r = await paystack("POST", "/transaction/initialize", { email, amount: VPLANS.cardCheck, currency: "KES", reference: ref, callback_url: APP_URL, metadata: { kind: "verify_trial" } });
-  if (!r.ok || !r.json.status) return bad(res, "Could not start the card check. Try again.", 502);
+  const r = await paystack("POST", "/transaction/initialize", { email, amount: VPLANS.applyFee * 100, currency: "KES", reference: ref, callback_url: APP_URL, metadata: { kind: "verify_apply" } });
+  if (!r.ok || !r.json.status) return bad(res, "Could not send your application. Try again.", 502);
   res.json({ reference: ref, authorization_url: r.json.data.authorization_url });
 }));
 // Paid plans: recurring (KSh 80 every 45 days, renews automatically), or prepaid 7 months / 1 year.
@@ -522,17 +528,17 @@ app.post("/api/verify/confirm", need, wrap(async (req, res) => {
   const done = await db.query("UPDATE verify_orders SET status='paid' WHERE reference=$1 AND status<>'paid' RETURNING reference", [ref]);
   if (!done.rowCount) return res.json({ ok: true, status: "paid" });
   const auth = d.authorization && d.authorization.reusable ? d.authorization.authorization_code : null;
-  if (o.kind === "trial") {
-    await db.query(`UPDATE users SET trial_used=true, verify_auth=$2, verify_renew=true, verified_from = now() + make_interval(mins => $3),
-      verified_until = now() + make_interval(mins => $3) + make_interval(days => $4), verify_next = now() + make_interval(mins => $3) + make_interval(days => $4) WHERE id=$1`,
-      [req.uid, auth, VPLANS.cardWaitMin, o.days]);
+  if (o.kind === "apply") {
+    await db.query(`UPDATE users SET trial_used=true, verify_renew=false, verified_from = now() + make_interval(mins => $2),
+      verified_until = now() + make_interval(mins => $2) + make_interval(days => $3) WHERE id=$1`,
+      [req.uid, VPLANS.cardWaitMin, o.days]);
   } else if (o.plan === "recurring") {
-    await db.query("UPDATE users SET verified_until = GREATEST(COALESCE(verified_until, now()), now()) + make_interval(days => $2), verified_from = COALESCE(verified_from, now()), verify_auth = COALESCE($3, verify_auth), verify_renew = true WHERE id=$1", [req.uid, o.days, auth]);
-    await db.query("UPDATE users SET verify_next = verified_until WHERE id=$1", [req.uid]);
+    // paid by hand each time, no card is kept
+    await db.query("UPDATE users SET verified_until = GREATEST(COALESCE(verified_until, now()), now()) + make_interval(days => $2), verified_from = COALESCE(verified_from, now()), verify_renew = false WHERE id=$1", [req.uid, o.days]);
   } else {
     await db.query("UPDATE users SET verified_until = GREATEST(COALESCE(verified_until, now()), now()) + make_interval(days => $2), verified_from = COALESCE(verified_from, now()) WHERE id=$1", [req.uid, o.days]);
   }
-  res.json({ ok: true, status: "paid", trial: o.kind === "trial" });
+  res.json({ ok: true, status: "paid", trial: o.kind === "apply" });
 }));
 // Renewal every 10 minutes: the recurring plan is charged on the saved card when it is due.
 async function renewVerified() {
