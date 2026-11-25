@@ -6,7 +6,7 @@ app.get("/api/chats", need, wrap(async (req, res) => {
          SELECT CASE WHEN from_id=$1 THEN to_id ELSE from_id END AS peer, id, CASE WHEN view_once THEN 'View once message' ELSE body END AS body, from_id, created_at
          FROM messages WHERE ((from_id=$1 AND NOT del_from) OR (to_id=$1 AND NOT del_to)) AND (expires_at IS NULL OR expires_at > now())
        ) x ORDER BY peer, id DESC)
-     SELECT m.*, (SELECT count(*)::int FROM messages x WHERE x.from_id=m.peer AND x.to_id=$1 AND x.read_at IS NULL AND NOT x.del_to AND (x.expires_at IS NULL OR x.expires_at > now())) AS unread, u.phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS display, (c.contact IS NOT NULL) AS saved, u.name AS pname,
+     SELECT m.*, (SELECT count(*)::int FROM messages x WHERE x.from_id=m.peer AND x.to_id=$1 AND x.read_at IS NULL AND NOT x.del_to AND (x.expires_at IS NULL OR x.expires_at > now())) AS unread, CASE WHEN c.contact IS NOT NULL THEN u.phone ELSE NULL END AS phone, u.last_seen, u.seen_privacy, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE COALESCE(NULLIF(u.name,''), 'Member') END) AS display, (c.contact IS NOT NULL) AS saved, u.name AS pname,
             EXISTS (SELECT 1 FROM contacts k WHERE k.owner=m.peer AND k.contact=$1) AS theirs,
             COALESCE(p.pinned, false) AS pinned, COALESCE(p.archived, false) AS archived,
             EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=$1 AND b.blocked=m.peer) OR (b.blocker=m.peer AND b.blocked=$1)) AS blk,
@@ -22,6 +22,8 @@ app.get("/api/chats", need, wrap(async (req, res) => {
 
 app.get("/api/messages/:peer", need, wrap(async (req, res) => {
   if (!isId(req.params.peer)) return bad(res, "Invalid id.");
+  const acc = await requestAccess(req.uid, req.params.peer);
+  if (!acc.ok) return res.json({ messages: [], ttl: null, locked: true, request: acc.state });
   await db.query("UPDATE messages SET read_at=now() WHERE to_id=$1 AND from_id=$2 AND read_at IS NULL AND NOT del_to", [req.uid, req.params.peer]);
   const r = await db.query(
     `SELECT * FROM (
@@ -44,6 +46,8 @@ app.post("/api/messages", need, wrap(async (req, res) => {
   }
   const ok = await db.query("SELECT 1 FROM users WHERE id=$1", [req.body.to]);
   if (!ok.rowCount) return bad(res, "Recipient not found.", 404);
+  const gate = await requestGate(req.uid, req.body.to);
+  if (gate) return bad(res, gate, 403);
   const bl = (await db.query("SELECT blocker FROM blocks WHERE (blocker=$1 AND blocked=$2) OR (blocker=$2 AND blocked=$1)", [req.uid, req.body.to])).rows;
   if (bl.some((x) => x.blocker === req.uid)) return bad(res, "Unblock this person to send messages.", 403);
   const ttl = await chatTtl(req.uid, req.body.to);
