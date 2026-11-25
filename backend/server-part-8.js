@@ -89,6 +89,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_next timestamptz;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_used boolean NOT NULL DEFAULT false;
 ALTER TABLE verify_orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'plan';
 ALTER TABLE verify_orders ADD COLUMN IF NOT EXISTS plan text;
+CREATE TABLE IF NOT EXISTS verify_apps(reference text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, full_name text NOT NULL, reason text NOT NULL, contact text, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
