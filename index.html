@@ -643,10 +643,10 @@ function postCard(p) {
     body +
     (!o && hasPhoto ? '<div data-a="cmts" data-id="' + p.id + '" data-img="' + photoKey + '" style="cursor:pointer;border-radius:12px;background:var(--sf);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">' + photo + "</div>" : "") +
     orig +
-    '<div style="display:flex;gap:18px;align-items:center;color:var(--mu);font-size:14px">' +
+    '<div style="display:flex;gap:28px;align-items:center;color:var(--mu);font-size:14px">' +
       '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
       '<button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px">' + IC_CMT + "<span>" + p.comments + "</span></button>" +
-      (me ? "" : '<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
+      (me ? "" : '<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;margin-left:auto;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
     "</div></article>";
 }
 let IMGV = null, TXTV = null, CPFIRED = false;
@@ -884,13 +884,32 @@ async function openProfile(id) {
 }
 const REACTS = ["❤️", "😂", "😭", "🥰", "😮", "👍", "🔥"];
 const findPost = (id) => FEED.find((x) => x.id == id) || PROFP.find((x) => x.id == id);
-function paintReact(id, r) { document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = r || "♡"; b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
+function askConfirm(msg, ok) {
+  return new Promise((res) => {
+    const d = document.createElement("div");
+    d.style.cssText = "position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px";
+    d.innerHTML = '<div style="background:var(--bg);border-radius:18px;padding:20px;max-width:340px;width:100%;box-shadow:0 20px 50px rgba(16,24,40,.3)"><div style="font-size:16px;line-height:1.45;margin-bottom:18px;color:var(--ink)">' + esc(msg) + '</div><div style="display:flex;gap:10px;justify-content:flex-end"><button data-c="0" style="border:0;background:none;padding:10px 14px;font:inherit;color:var(--mu);font-weight:600">Cancel</button><button data-c="1" style="border:0;background:var(--ac);color:#fff;padding:10px 16px;border-radius:12px;font:inherit;font-weight:600">' + esc(ok || "OK") + '</button></div></div>';
+    d.addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (!b) return; d.remove(); res(b.dataset.c === "1"); });
+    document.body.appendChild(d);
+  });
+}
+// replace every "!(await askConfirm(msg))" with "!(await askConfirm(msg))", keeping the message as it is
+(function () {
+  let src = document.currentScript ? null : null;
+})();
+function likeInner(p, r) {
+  const top = ((p && p.top_reactions) || []).slice(0, 3).join("");
+  return '<span style="font-size:17px;line-height:1">' + (top || r || "♡") + '</span><b style="font-weight:600">' + ((p && p.likes) || 0) + "</b>";
+}
+function paintReact(id, r) { const p = findPost(id); document.querySelectorAll('[data-a="like"][data-id="' + id + '"]').forEach((b) => { b.innerHTML = likeInner(p, r); b.style.color = r ? "var(--ink)" : "var(--mu)"; }); }
 async function setReaction(id, emoji) {
   const p = findPost(id); if (!p) return;
-  const prev = p.my_reaction || null, undo = prev === emoji;
+  const prev = p.my_reaction || null, undo = prev === emoji, wasLiked = !!prev, nowLiked = !undo;
+  const before = p.likes || 0;
+  if (wasLiked !== nowLiked) p.likes = Math.max(0, before + (nowLiked ? 1 : -1));
   p.my_reaction = undo ? null : emoji; paintReact(id, p.my_reaction);
   try { const j = await api("/posts/" + id + "/like", "POST", undo ? { like: false } : { like: true, emoji }); p.my_reaction = j.my_reaction || null; paintReact(id, p.my_reaction); }
-  catch (e) { p.my_reaction = prev; paintReact(id, prev); toast(e.message); }
+  catch (e) { p.my_reaction = prev; p.likes = before; paintReact(id, prev); toast(e.message); }
 }
 // tap: react with ❤️, or take the reaction back. Hold: choose any reaction.
 function toggleLike(id) { const p = findPost(id); return setReaction(id, (p && p.my_reaction) || "❤️"); }
@@ -947,7 +966,7 @@ async function doReport(id) {
   try { await api("/posts/" + id + "/report", "POST", { reason: reason.trim() || "Other" }); toast("Report sent. Thank you."); } catch (e) { toast(e.message); }
 }
 async function doDelPost(id) {
-  if (!confirm("Delete this post? It cannot be undone.")) return;
+  if (!(await askConfirm("Delete this post? It cannot be undone."))) return;
   try { await api("/posts/" + id, "DELETE"); FEED = FEED.filter((p) => p.id != id); PROFP = PROFP.filter((p) => p.id != id); render(); toast("Post deleted"); } catch (e) { toast(e.message); }
 }
 async function loadExtra() { try { EXTRA = await api("/me/extras"); } catch (e) {} try { VPLAN = await api("/verify/plan"); } catch (e) {} }
@@ -990,16 +1009,34 @@ async function doFollow(uid) {
 // ---- Link a computer with a code ----
 function verifyCard() {
   const v = VPLAN || {};
-  const active = v.until && new Date(v.until) > new Date();
-  const body = active ? '<span>You are verified until ' + esc(new Date(v.until).toLocaleDateString()) + ".</span>" + '<button class="btn o" data-a="vbuy">Renew</button>'
-    : '<span class="mut">Show a blue tick next to your name on your profile and posts. Verified posts reach more people.</span>' + (v.paid === false ? '<span class="note">Payments are not set up yet.</span>' : '<button class="btn" data-a="vbuy">Get verified · KSh ' + (v.price || 300) + " for " + (v.days || 30) + " days</button>");
-  return '<div class="cd" style="margin:0 16px"><b>' + VBADGE + ' Verified badge</b>' + body + "</div>";
+  const now = new Date();
+  const active = v.until && new Date(v.until) > now;
+  const plans = (v.plans || {});
+  const rec = plans.recurring || { price: 80, days: 45 };
+  const pre = plans.prepaid || [{ id: "7m", label: "7 months", price: 200 }, { id: "1y", label: "1 year", price: 700 }];
+  const btn = (label, act, attrs, primary) => '<button class="' + (primary ? "btn" : "btn o") + '" style="width:100%;margin-top:6px" data-a="' + act + '"' + (attrs || "") + ">" + label + "</button>";
+  const head = '<b>' + VBADGE + ' Verified badge</b>';
+  if (v.paid === false) return '<div class="cd" style="margin:0 16px">' + head + '<span class="note">Payments are not set up yet.</span></div>';
+  if (active) {
+    const from = v.from && new Date(v.from) > now ? "starts " + new Date(v.from).toLocaleString() : "active";
+    return '<div class="cd" style="margin:0 16px">' + head + '<span>You are verified until ' + esc(new Date(v.until).toLocaleDateString()) + " (" + from + ").</span>" +
+      (v.auto ? '<span class="mut">Renews automatically: KSh ' + rec.price + " every " + rec.days + " days.</span>" : "") +
+      btn("Renew: KSh " + pre[0].price + " for " + pre[0].label, "vbuy", ' data-p="' + pre[0].id + '"') + "</div>";
+  }
+  const trial = !v.trial_used ? btn("Start 1 month free · card needed", "vtrial", "", true) + '<span class="note">We check your card with KSh 1. Your badge is approved automatically 30 minutes later.</span>' : "";
+  return '<div class="cd" style="margin:0 16px">' + head +
+    '<span class="mut">A blue-and-red tick next to your name and on your posts, and your posts reach more people.</span>' + trial +
+    btn("KSh " + rec.price + " every " + Math.round(rec.days / 30 * 10) / 10 + " months (renews)", "vbuy", ' data-p="recurring"') +
+    pre.map((x) => btn("KSh " + x.price + " for " + x.label, "vbuy", ' data-p="' + x.id + '"')).join("") + "</div>";
 }
 async function checkVerifyPay() {
   let ref = ""; try { ref = localStorage.getItem("bv.vpay") || ""; } catch (e) {}
   if (!ref || !T) return;
-  try { const j = await api("/verify/confirm", "POST", { reference: ref }); if (j.ok) { try { localStorage.removeItem("bv.vpay"); } catch (e) {} VPLAN = null; toast("You are verified"); } else toast("Payment not confirmed yet."); }
-  catch (e) { toast(e.message); }
+  try {
+    const j = await api("/verify/confirm", "POST", { reference: ref });
+    if (j.ok) { try { localStorage.removeItem("bv.vpay"); } catch (e) {} VPLAN = null; toast(j.trial ? "Free trial approved. Your badge starts in about 30 minutes." : "Verified badge payment received."); }
+    else toast("Payment not confirmed yet.");
+  } catch (e) { toast(e.message); }
 }
 function linkView() {
   const c = LNK ? LNK.code : "";
@@ -1094,7 +1131,7 @@ app.addEventListener("pointerdown", (e) => {
 ["pointerup", "pointercancel", "pointerleave", "pointermove"].forEach((ev) => app.addEventListener(ev, () => { if (!HOLD.fired) clearTimeout(HOLD.t); }));
 async function holdDeleteChat(id) {
   const c = CH.find((x) => x.peer == id); const nm = c ? c.display : "this chat";
-  if (!confirm("Delete chat with " + nm + "?")) return;
+  if (!(await askConfirm("Delete chat with " + nm + "?"))) return;
   try { await api("/chats/" + id, "DELETE"); await loadCH(); render(); toast("Chat deleted"); } catch (e) { toast(e.message); }
 }
 // Runs an action that came from a notification (or from the link that opened the app).
@@ -1135,7 +1172,7 @@ async function backupKeys() {
   const pin = prompt("Choose a 6-digit PIN for your key backup. You will need it on a new phone.", "");
   if (!pin) return;
   if (!/^\d{6}$/.test(pin)) return toast("Use exactly 6 digits.");
-  if (!confirm("This makes a new message key for this phone. Old messages sent before this will not be readable on this phone. Continue?")) return;
+  if (!(await askConfirm("This makes a new message key for this phone. Old messages sent before this will not be readable on this phone. Continue?"))) return;
   const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
   const dev = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
   localStorage.setItem("bv.kdev", dev); await E2E.put("pair:" + dev, pair);
@@ -1723,6 +1760,7 @@ async function send() {
 const LEGAL = {
   terms: ["Terms of Service", [
     ["Using Orivoclass", "By creating an account you agree to these terms. You must be old enough to use the service in your country, and at least 18 to use Singles."],
+    ["Verified badge subscriptions", "The verified badge is a paid subscription. The free trial needs a card, and we check the card with KSh 1. After the trial, the recurring plan (KSh 80 every 45 days) renews automatically on the card you gave us, until you stop it. Prepaid plans (7 months and 1 year) do not renew. You can cancel renewals by asking support at mtaanitech76@gmail.com. Payments are processed by Paystack."],
     ["Your account", "You are responsible for your password and for everything done with your account. Give us a real phone number and keep your details up to date."],
     ["Acceptable use", "Do not use Orivoclass for spam, scams, harassment, threats, illegal content or anything that harms others. See the Community Rules for details."],
     ["Content", "You own what you send. You allow us to store and deliver it so the service can work."],
@@ -1760,8 +1798,8 @@ const docHtml = (sec) => '<div class="cd"><span class="note">Draft text. A lawye
 function recCard() {
   if (RC) return '<div class="cd" style="align-items:center"><b>Your new recovery code</b><b style="font-size:22px;letter-spacing:2px;user-select:all">' + esc(RC) + '</b><span class="note">Save it now. The old code no longer works. It is shown only once.</span><button class="btn o" data-a="copycode">Copy code</button><button class="btn" data-a="rcdone">I saved it</button></div>';
   return '<div class="cd"><b>Recovery code</b><span class="mut">Make a new code if you lost yours or think someone saw it. The old code stops working.</span><label>Your password<input id="rpw" type="password" autocomplete="current-password"></label><button class="btn" data-a="newcode">Generate new code</button></div>';
-}
-function pageOv() {
+                     }
+  function pageOv() {
   const p = V.pg; let t = "", b = "";
   if (LEGAL[p]) {
     t = LEGAL[p][0]; b = docHtml(LEGAL[p][1]);
@@ -1946,7 +1984,7 @@ app.addEventListener("click", async (e) => {
     if (a == "stnext") { nextStory(); return; }
     if (a == "stviews") { try { VW = (await api("/status/" + id + "/views")).views; V.ov = "vws"; clearTimeout(STV && STV.timer); return render(); } catch (e) { return toast(e.message); } }
     if (a == "stdel" || a == "stdelone") {
-      if (!confirm("Delete this status?")) return;
+      if (!(await askConfirm("Delete this status?"))) return;
       try { await api("/status/" + id, "DELETE"); } catch (e) { return toast(e.message); }
       ST = ST.filter((x) => x.id != id);
       if (STV) { STV.people.forEach((p) => { p.items = p.items.filter((x) => x.id != id); }); STV.people = STV.people.filter((p) => p.items.length); if (!STV.people.length) return closeStories(); if (STV.pi >= STV.people.length) STV.pi = STV.people.length - 1; STV.si = Math.min(STV.si, STV.people[STV.pi].items.length - 1); showStory(); }
@@ -2053,7 +2091,7 @@ app.addEventListener("click", async (e) => {
     if (a == "gdescsave") { await api("/groups/" + V.gid + "/description", "PUT", { description: $("gdesc").value }); await loadGInfo(); await loadGMsgs(true); render(); return toast("Description saved"); }
     if (a == "ginvon") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: true }); await loadGInfo(); return render(); }
     if (a == "ginvoff") { await api("/groups/" + V.gid + "/settings", "PUT", { invite_on: false }); await loadGInfo(); return render(); }
-    if (a == "ginvreset") { if (!confirm("Reset the link? The old link will stop working.")) return; await api("/groups/" + V.gid + "/invite/reset", "POST"); await loadGInfo(); render(); return toast("New link ready"); }
+    if (a == "ginvreset") { if (!(await askConfirm("Reset the link? The old link will stop working."))) return; await api("/groups/" + V.gid + "/invite/reset", "POST"); await loadGInfo(); render(); return toast("New link ready"); }
     if (a == "gcopy" || a == "gshare") {
       const link = location.origin + location.pathname + "#join=" + GI.invite_token, text = "Join my group “" + GI.name + "” on Orivoclass: " + link;
       if (a == "gshare" && navigator.share) { try { await navigator.share({ text }); } catch (e) {} return; }
@@ -2079,11 +2117,11 @@ app.addEventListener("click", async (e) => {
     if (a == "joinno") { dropJoin(); V.ov = null; return render(); }
     if (a == "ai") { V.scr = "ai"; V.ov = null; render(); const n = $("msg"); if (n) n.focus(); if (AIKEEP !== 0) loadAI().then(() => refreshAI(true)).catch(() => {}); return; }
     if (a == "aiset") { V.pg = "aiset"; V.ov = "pg"; return render(); }
-    if (a == "aidel") { if (!confirm("Delete your saved AI chats?")) return; await api("/ai/history", "DELETE"); AIM = []; refreshAI(false); render(); return toast("AI chats deleted"); }
+    if (a == "aidel") { if (!(await askConfirm("Delete your saved AI chats?"))) return; await api("/ai/history", "DELETE"); AIM = []; refreshAI(false); render(); return toast("AI chats deleted"); }
     if (a == "aisend") return sendAI();
     if (a == "aipick") { const f = $("aifile"); if (f) f.click(); return; }
     if (a == "aiimgx") { AIIMG = ""; aiPrevRefresh(); return; }
-    if (a == "aiclear") { if (AIKEEP !== 0) { if (!confirm("Clear this chat? Your saved AI chat will be deleted too.")) return; await api("/ai/history", "DELETE"); } AIM = []; refreshAI(false); return toast("Chat cleared"); }
+    if (a == "aiclear") { if (AIKEEP !== 0) { if (!(await askConfirm("Clear this chat? Your saved AI chat will be deleted too."))) return; await api("/ai/history", "DELETE"); } AIM = []; refreshAI(false); return toast("Chat cleared"); }
     if (a == "newcall") { V.ov = "cc"; return render(); }
     if (a == "callv" || a == "callvid") { V.ov = null; return startCall(id, a == "callvid" ? "video" : "voice", b.dataset.n || callName(id)); }
     if (a == "callacc") return acceptCall();
@@ -2145,7 +2183,7 @@ app.addEventListener("click", async (e) => {
     if (a == "sgpick") { const f = $("sgf"); if (f) f.click(); return; }
     if (a == "sgrmphoto") { await api("/singles/photo", "DELETE"); SGP.photo = null; return render(); }
     if (a == "sgtoggle") { await api("/singles/me", "PUT", { nick: SGP.nick, gender: SGP.gender, show_me: SGP.show_me, age_min: SGP.age_min, age_max: SGP.age_max, town: SGP.town, bio: SGP.bio, active: !SGP.active }); await loadSG(); return render(); }
-    if (a == "sgdel") { if (!confirm("Delete your Singles profile? Your matches and chats there will be erased.")) return; await api("/singles/me", "DELETE"); SGP = null; SGD = []; SGM = []; render(); return toast("Singles profile deleted"); }
+    if (a == "sgdel") { if (!(await askConfirm("Delete your Singles profile? Your matches and chats there will be erased."))) return; await api("/singles/me", "DELETE"); SGP = null; SGD = []; SGM = []; render(); return toast("Singles profile deleted"); }
     if (a == "sglike" || a == "sgpass") {
       const p = SGD[0]; if (!p) return;
       const j = await api("/singles/like/" + p.user_id, "POST", { like: a == "sglike" });
@@ -2158,7 +2196,7 @@ app.addEventListener("click", async (e) => {
     if (a == "sgopen" || a == "sgsay") { const pid = a == "sgsay" ? SGMP.user_id : id; V.cid = pid; V.scr = "schat"; V.ov = null; V.menu = false; SGCM = []; sgKey = ""; SGPEER = SGM.find((x) => x.user_id == pid) || null; render(); return loadSChat(true); }
     if (a == "sgsend") return sendS();
     if (a == "sgtip") return toast("Like this person. If they like you back, you can open their profile and chat.");
-    if (a == "unmatch") { if (!confirm("Unmatch? The chat will be deleted for both of you.")) return; await api("/singles/match/" + V.cid, "DELETE"); SGM = SGM.filter((x) => x.user_id != V.cid); V.scr = null; V.menu = false; render(); return toast("Unmatched"); }
+    if (a == "unmatch") { if (!(await askConfirm("Unmatch? The chat will be deleted for both of you."))) return; await api("/singles/match/" + V.cid, "DELETE"); SGM = SGM.filter((x) => x.user_id != V.cid); V.scr = null; V.menu = false; render(); return toast("Unmatched"); }
     if (a == "cvsel") { EDT.cover = +b.dataset.i; document.querySelectorAll('[data-a="cvsel"]').forEach((x) => x.classList.toggle("on", x.dataset.i == EDT.cover)); const pv = $("cvp"); if (pv) pv.style.background = coverBg(EDT.cover); return; }
     if (a == "mdsel") { EDT.mood = b.dataset.v; document.querySelectorAll('[data-a="mdsel"]').forEach((x) => x.classList.toggle("on", x.dataset.v == EDT.mood)); return; }
     if (a == "thm") { const t = TH(); t.m = b.dataset.v; localStorage.setItem("bv.th", JSON.stringify(t)); applyTheme(); return render(); }
@@ -2180,7 +2218,7 @@ app.addEventListener("click", async (e) => {
     if (a == "grename") { await api("/groups/" + V.gid, "PUT", { name: $("gren").value }); await loadGInfo(); await loadGMsgs(true); loadGL().catch(() => {}); render(); return toast("Name saved"); }
     if (a == "gmk") { await api("/groups/" + V.gid + "/admins/" + id, "POST"); await loadGInfo(); await loadGMsgs(true); return render(); }
     if (a == "grm") { await api("/groups/" + V.gid + "/members/" + id, "DELETE"); await loadGInfo(); await loadGMsgs(true); return render(); }
-    if (a == "gleave") { if (!confirm("Leave this group?")) return; await api("/groups/" + V.gid + "/leave", "POST"); V.scr = null; V.ov = null; V.menu = false; await loadGL(); render(); return toast("You left the group"); }
+    if (a == "gleave") { if (!(await askConfirm("Leave this group?"))) return; await api("/groups/" + V.gid + "/leave", "POST"); V.scr = null; V.ov = null; V.menu = false; await loadGL(); render(); return toast("You left the group"); }
     if (a == "vwr") { VW = (await api("/status/" + id + "/views")).views; V.ov = "vws"; return render(); }
     if (a == "vwback") { V.ov = "view"; return render(); }
     if (a == "pushon") { await pushOn(); NOTIF = await api("/notifications"); PUSH = pushState(NOTIF); render(); return toast("Notifications on"); }
@@ -2273,9 +2311,12 @@ app.addEventListener("click", async (e) => {
       try { await api("/posts/" + IMGV.pid + "/comments", "POST", { body: t }); $("imgc").value = ""; toast("Comment sent"); } catch (e) { toast(e.message); }
       return;
     }
-    if (a == "vbuy") {
-      try { const j = await api("/verify/checkout", "POST", {}); try { localStorage.setItem("bv.vpay", j.reference); } catch (e) {} location.href = j.authorization_url; }
-      catch (e) { toast(e.message); }
+    if (a == "vtrial" || a == "vbuy") {
+      try {
+        const j = a == "vtrial" ? await api("/verify/trial", "POST", {}) : await api("/verify/buy", "POST", { plan: b.dataset.p });
+        try { localStorage.setItem("bv.vpay", j.reference); } catch (e) {}
+        location.href = j.authorization_url;
+      } catch (e) { toast(e.message); }
       return;
     }
     if (a == "keybackup") return backupKeys().catch((e) => toast(e.message));
@@ -2399,3 +2440,5 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
+
+  
