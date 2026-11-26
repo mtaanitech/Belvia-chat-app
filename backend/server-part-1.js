@@ -179,7 +179,23 @@ for (const name of APP_FILES) {
 // otherwise           -> the code is sent by SMS through Africa's Talking (AT_USERNAME, AT_API_KEY).
 if (process.env.DEV_SHOW_CODE === "true") console.warn("WARNING: DEV_SHOW_CODE is ON. Codes are shown on screen. Turn it off before launch.");
 const otpHash = (phone, code) => crypto.createHash("sha256").update(phone + ":" + code + ":" + JWT_SECRET).digest("hex");
+// Frostwood sends the SMS when FROST_API_KEY is set (FROST_SENDER = the approved sender name).
+// Kenyan numbers are sent in the local form (07..), as Frostwood's examples show.
 async function sendSms(to, text) {
+  if (process.env.FROST_API_KEY) {
+    const local = to.startsWith("+254") ? "0" + to.slice(4) : to;
+    const r = await fetch("https://sms.frostwood.co.ke/api/v1/messages", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + process.env.FROST_API_KEY, "Content-Type": "application/json", "Idempotency-Key": "otp-" + crypto.randomUUID() },
+      body: JSON.stringify({ sender_id: process.env.FROST_SENDER || "ORIVOCLASS", category: "transactional", recipients: [local], body: text, client_reference: "otp-" + Date.now() }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.status !== 202) {
+      const detail = (j.error && (j.error.message || j.error.code)) || j.message || ("HTTP " + r.status);
+      throw new Error("Frostwood: " + detail);
+    }
+    return; // 202 means accepted and queued
+  }
   const { AT_USERNAME, AT_API_KEY } = process.env;
   const host = AT_USERNAME === "sandbox" ? "api.sandbox.africastalking.com" : "api.africastalking.com";
   const r = await fetch("https://" + host + "/version1/messaging", {
@@ -200,8 +216,8 @@ app.post("/api/otp/send", authLimit, wrap(async (req, res) => {
   if ((await db.query("SELECT 1 FROM users WHERE phone=$1", [phone])).rowCount) return bad(res, "This number is already registered.", 409);
   const prev = (await db.query("SELECT last_sent FROM otps WHERE phone=$1", [phone])).rows[0];
   if (prev && Date.now() - new Date(prev.last_sent).getTime() < 30000) return bad(res, "Wait 30 seconds before asking for a new code.", 429);
-  const dev = process.env.DEV_SHOW_CODE === "true";
-  if (!dev && (!process.env.AT_USERNAME || !process.env.AT_API_KEY)) return bad(res, "SMS is not set up yet.", 503);
+  const dev = process.env.DEV_SHOW_CODE === "true" && !process.env.FROST_API_KEY; // codes on screen only when no SMS service is set
+  if (!dev && !process.env.FROST_API_KEY && (!process.env.AT_USERNAME || !process.env.AT_API_KEY)) return bad(res, "SMS is not set up yet.", 503);
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
   await db.query(
     `INSERT INTO otps(phone,code_hash,expires_at,attempts,last_sent) VALUES($1,$2,now()+interval '10 minutes',0,now())
