@@ -318,7 +318,6 @@ app.post("/api/posts/:id/repost", need, postLimit, wrap(async (req, res) => {
   if (await isRestricted(req.uid)) return bad(res, "Your account is restricted, so you cannot repost for now.", 403);
   const p = await visiblePost(req.uid, req.params.id);
   if (!p) return bad(res, "This post is not available.", 404);
-  if (p.user_id === req.uid) return bad(res, "This is already your post.");
   const o = (await db.query("SELECT audience FROM posts WHERE id=$1", [p.id])).rows[0];
   if (!o || o.audience !== "public") return bad(res, "Only public posts can be reposted.", 403);
   if ((await db.query("SELECT 1 FROM posts WHERE user_id=$1 AND repost_of=$2 AND NOT removed", [req.uid, p.id])).rowCount) return res.json({ ok: true, already: true });
@@ -606,7 +605,8 @@ async function requestGate(me, to) {
     await db.query("UPDATE chat_requests SET sent=sent+1, updated_at=now() WHERE from_id=$1 AND to_id=$2", [r.from_id, r.to_id]);
     return null;
   }
-  await db.query("INSERT INTO chat_requests(from_id,to_id,status,sent) VALUES($1,$2,'pending',1) ON CONFLICT (from_id,to_id) DO NOTHING", [me, to]);
+  const fresh = await db.query("INSERT INTO chat_requests(from_id,to_id,status,sent) VALUES($1,$2,'pending',1) ON CONFLICT (from_id,to_id) DO NOTHING RETURNING from_id", [me, to]);
+  if (fresh.rowCount) await notifyPlain(to, me, "msgreq");
   return null;
 }
 app.get("/api/requests", need, wrap(async (req, res) => {
@@ -623,5 +623,68 @@ app.post("/api/requests/:uid/decline", need, wrap(async (req, res) => {
   if (!isId(req.params.uid)) return bad(res, "Invalid id.");
   await db.query("UPDATE chat_requests SET status='declined', updated_at=now() WHERE from_id=$2 AND to_id=$1 AND status='pending'", [req.uid, req.params.uid.toLowerCase()]);
   res.json({ ok: true });
+}));
+// Edit my own comment.
+app.put("/api/comments/:id/edit", need, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const body = String(req.body.body || "").trim().slice(0, 300);
+  if (!body) return bad(res, "Write something first.");
+  const r = await db.query("UPDATE post_comments SET body=$3, edited=true WHERE id=$1 AND user_id=$2 AND NOT removed RETURNING id", [req.params.id, req.uid, body]);
+  if (!r.rowCount) return bad(res, "You can only edit your own comments.", 403);
+  res.json({ ok: true });
+}));
+// Report a comment (the person who wrote it is the one reported).
+app.post("/api/comments/:id/report", need, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const c = (await db.query(`SELECT c.id, c.user_id FROM post_comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.user_id
+    WHERE c.id=$2 AND NOT c.removed AND ${POST_OK}`, [req.uid, req.params.id])).rows[0];
+  if (!c) return bad(res, "This comment is not available.", 404);
+  if (c.user_id === req.uid) return bad(res, "You cannot report your own comment.");
+  const reason = REASONS.includes(req.body.reason) ? req.body.reason : "Other";
+  await db.query("INSERT INTO reports(reporter,reported,reason,note) VALUES($1,$2,$3,$4)", [req.uid, c.user_id, reason, "Comment: " + String(req.body.note || "").slice(0, 200)]);
+  res.json({ ok: true });
+}));
+// ---- Notifications: likes, comments, replies, tags, follows, requests and message requests ----
+async function notifyRow(user, actor, kind, postId, commentId) {
+  if (!user || !actor || user === actor) return;
+  await db.query("INSERT INTO notifications(user_id,actor_id,kind,post_id,comment_id) VALUES($1,$2,$3,$4,$5)", [user, actor, kind, postId || null, commentId || null]);
+}
+async function notifyPlain(user, actor, kind) {
+  const dup = await db.query("SELECT 1 FROM notifications WHERE user_id=$1 AND actor_id=$2 AND kind=$3 AND NOT read LIMIT 1", [user, actor, kind]);
+  if (!dup.rowCount) await notifyRow(user, actor, kind, null, null);
+}
+async function notifyLike(postId, actor) {
+  const owner = (await db.query("SELECT user_id FROM posts WHERE id=$1", [postId])).rows[0];
+  if (!owner) return;
+  const dup = await db.query("SELECT 1 FROM notifications WHERE user_id=$1 AND actor_id=$2 AND kind='like' AND post_id=$3 LIMIT 1", [owner.user_id, actor, postId]);
+  if (!dup.rowCount) await notifyRow(owner.user_id, actor, "like", postId, null);
+}
+async function notifyComment(postId, actor, commentId, parentId, mentions) {
+  const owner = (await db.query("SELECT user_id FROM posts WHERE id=$1", [postId])).rows[0];
+  if (owner) await notifyRow(owner.user_id, actor, "comment", postId, commentId);
+  if (parentId) {
+    const pa = (await db.query("SELECT user_id FROM post_comments WHERE id=$1", [parentId])).rows[0];
+    if (pa) await notifyRow(pa.user_id, actor, "reply", postId, commentId);
+  }
+  // tags: only people who follow the one writing the comment
+  for (const m of [...new Set(mentions.filter(isId))].slice(0, 10)) {
+    const f = await db.query("SELECT 1 FROM follows WHERE follower=$1 AND followee=$2", [m.toLowerCase(), actor]);
+    if (f.rowCount) await notifyRow(m.toLowerCase(), actor, "tag", postId, commentId);
+  }
+}
+app.get("/api/inbox", need, wrap(async (req, res) => {
+  const rows = (await db.query(`SELECT n.id, n.kind, n.post_id, n.comment_id, n.read, n.created_at, u.id AS actor_id, u.name AS actor_name
+    FROM notifications n JOIN users u ON u.id=n.actor_id WHERE n.user_id=$1 ORDER BY n.id DESC LIMIT 60`, [req.uid])).rows;
+  const unread = (await db.query("SELECT count(*)::int AS n FROM notifications WHERE user_id=$1 AND NOT read", [req.uid])).rows[0].n;
+  res.json({ notifications: rows, unread });
+}));
+app.post("/api/inbox/read", need, wrap(async (req, res) => {
+  await db.query("UPDATE notifications SET read=true WHERE user_id=$1 AND NOT read", [req.uid]);
+  res.json({ ok: true });
+}));
+// The people who follow me: used to tag them in comments.
+app.get("/api/followers/mine", need, wrap(async (req, res) => {
+  const r = await db.query("SELECT u.id, u.name FROM follows f JOIN users u ON u.id=f.follower WHERE f.followee=$1 AND NOT u.banned ORDER BY u.name LIMIT 500", [req.uid]);
+  res.json({ people: r.rows });
 }));
 // END OF PART 10
