@@ -656,6 +656,14 @@ function postCard(p) {
     "</div></article>";
 }
 let IMGV = null, TXTV = null, CPFIRED = false, CMTM = null, CMTE = null;
+function tagHtml(text) {
+  let out = esc(text || "");
+  (FLW || []).forEach((f) => {
+    const name = esc(f.name); if (!name) return;
+    out = out.split("@" + name).join('<span style="color:#D92D20;font-weight:600">@' + name + "</span>");
+  });
+  return out;
+}
 function cmtItem(id) { return (CMTS && CMTS.list || []).find((x) => x.id == id) || {}; }
 function cmtMenuView() {
   const c = cmtItem(CMTM), own = c.user_id == U.id, canDel = own || (CMTS && CMTS.mine);
@@ -826,7 +834,7 @@ function cmtsHtml() {
   const kids = {}; list.forEach((c) => { if (c.parent_id && ids.has(c.parent_id)) (kids[c.parent_id] = kids[c.parent_id] || []).push(c); });
   const pic = (c) => c.has_image ? '<div data-cimg="' + c.id + '" style="margin-top:6px;border-radius:12px;overflow:hidden;background:var(--sf);max-width:260px;min-height:80px">' + (c._img ? '<img alt="" decoding="async" src="' + esc(c._img) + '" style="width:100%;display:block">' : '<span class="note">Loading photo…</span>') + "</div>" : "";
   const row = (c, sub) => '<div style="display:flex;gap:10px;padding:10px 14px;align-items:flex-start;' + (sub ? "padding-left:58px;" : "") + '">' + av(c.name, sub ? 28 : 34, false, c.user_id) +
-    '<div style="flex:1;min-width:0"><b style="font-size:14px">' + esc(c.name) + '</b> <small class="mut">' + tm(c.created_at) + '</small>' + (c.body ? '<div style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(c.body) + "</div>" : "") + pic(c) +
+    '<div style="flex:1;min-width:0"><b style="font-size:14px">' + esc(c.name) + '</b> <small class="mut">' + tm(c.created_at) + '</small>' + (c.body ? '<div style="white-space:pre-wrap;overflow-wrap:anywhere">' + tagHtml(c.body) + "</div>" : "") + pic(c) +
     '<div style="display:flex;gap:14px;align-items:center;margin-top:4px"><button data-a="cmtreply" data-id="' + c.id + '" data-n="' + esc(c.name) + '" style="border:0;background:none;padding:4px 0 0;color:var(--mu);font-size:12px;font-weight:600">Reply</button></div></div>' +
     '<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button data-a="cmtlike" data-id="' + c.id + '" aria-label="Like" style="border:0;background:none;padding:4px;font-size:16px;color:' + (c.liked ? "var(--cr)" : "var(--mu)") + '">' + (c.liked ? "♥" : "♡") + "</button>" + (c.likes ? '<small class="mut">' + c.likes + "</small>" : "") + "</div>" +
     '<button class="ib" style="min-width:32px;min-height:32px;color:var(--mu);font-size:18px" data-a="cmtmenu" data-id="' + c.id + '" aria-label="More">⋮</button>' + "</div>";
@@ -891,7 +899,7 @@ function dashView() {
   else b = audienceHtml();
   return '<div class="ov"><div class="hd"><button class="ib" data-a="dashx" aria-label="Back">' + IC_BACK + '</button><h1>Dashboard</h1></div>' + tabs + '<div class="body">' + b + "</div></div>";
 }
-function profView() {
+  function profView() {
   const P = PROF; if (!P) return "";
   const cover = coverBg(P.cover);
   return '<div class="ov"><div class="hd"><button class="ib" data-a="profx" aria-label="Back">' + IC_BACK + '</button><h1 style="font-size:18px">' + esc(P.name) + '</h1></div><div class="body">' +
@@ -901,7 +909,7 @@ function profView() {
     (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn o" style="min-width:120px" data-a="pmsg" data-id="' + P.id + '">Message</button><button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
     '<div class="sec">POSTS</div><div id="profl">' + (P.locked && !P.am_following && P.id != U.id ? '<div class="empty"><b>This account is private</b>Follow it to see its posts.</div>' : PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
 }
- async function openProfile(id) {
+async function openProfile(id) {
   PROF = null; PROFP = []; V.ov = "prof"; V.profId = id; render();
   try { PROF = await api("/profile/" + id); PROFP = (await api("/users/" + id + "/posts")).posts; } catch (e) { toast(e.message); V.ov = null; PROF = null; }
   if (V.ov == "prof" && V.profId == id) { render(); loadPostImages(); }
@@ -1052,9 +1060,12 @@ function verifyCard() {
   if (v.paid === false) return '<div class="cd" style="margin:0 16px">' + head + '<span class="note">Payments are not set up yet.</span></div>';
   if (active) {
     const from = v.from && new Date(v.from) > now ? "starts " + new Date(v.from).toLocaleString() : "active";
+    const pkg = v.last_plan === "7m" ? "7 months" : v.last_plan === "1y" ? "1 year" : null;
+    if (pkg) // a prepaid package: show what they have, no renew button
+      return '<div class="cd" style="margin:0 16px">' + head + '<span>Package: ' + pkg + '. You are verified until ' + esc(new Date(v.until).toLocaleDateString()) + ".</span></div>";
+    // applied (free trial or the monthly plan): renew pays the monthly plan again
     return '<div class="cd" style="margin:0 16px">' + head + '<span>You are verified until ' + esc(new Date(v.until).toLocaleDateString()) + " (" + from + ").</span>" +
-      (v.auto ? '<span class="mut">Renews automatically: KSh ' + rec.price + " every " + rec.days + " days.</span>" : "") +
-      btn("Renew", "vpick", "") + "</div>";
+      btn("Renew: KSh " + rec.price + " for " + rec.days + " days", "vbuy", ' data-p="recurring"') + "</div>";
   }
   const trial = !v.trial_used ? btn("Apply: 1 month free · KSh 3 to send", "vtrial", "", true) + '<span class="note">Fill in a short form and pay KSh 3. Your badge is approved automatically 30 minutes later.</span>' : "";
   return '<div class="cd" style="margin:0 16px">' + head +
@@ -1079,12 +1090,12 @@ function openApplyForm() {
 async function checkVerifyPay() {
   let ref = ""; try { ref = localStorage.getItem("bv.vpay") || ""; } catch (e) {}
   if (!ref || !T) return;
+  try { localStorage.removeItem("bv.vpay"); } catch (e) {} // checked once; never sends the person back to Me on the next open
   V.tab = "me"; V.scr = null; V.ov = null; render(); // bring the person back to where they started: Me, with the Verified badge card
   for (let i = 0; i < 4; i++) { // Paystack can take a few seconds to confirm
     try {
       const j = await api("/verify/confirm", "POST", { reference: ref });
       if (j.ok) {
-        try { localStorage.removeItem("bv.vpay"); } catch (e) {}
         await loadExtra().catch(() => {});
         toast(j.trial ? "Application received. Your badge starts in about 30 minutes." : "Payment received. Your verified badge is updated.");
         if (V.tab == "me" && !V.scr && !V.ov) render();
@@ -1631,8 +1642,8 @@ function statusPeople() {
   ST.filter((x) => x.user_id != U.id).forEach((x) => { if (!map.has(x.user_id)) map.set(x.user_id, { id: x.user_id, name: x.name, items: [] }); map.get(x.user_id).items.push(x); });
   const others = [...map.values()].map((p) => { p.items.sort((x, y) => new Date(x.created_at) - new Date(y.created_at)); p.unseen = p.items.some((x) => !x.seen); return p; });
   return { mine, others };
-}
-function statusTab() {
+  }
+  function statusTab() {
   const { mine, others } = statusPeople();
   const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - new Date(t)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
   const inside = (x) => x && x.has_image
@@ -2130,6 +2141,8 @@ app.addEventListener("click", async (e) => {
       const t = $("cmtin").value.trim(); if ((!t && !CMTIMG) || !CMTS) return;
       const img = CMTIMG, pr = CMTS.replyTo ? CMTS.replyTo.id : null;
       $("cmtin").value = ""; CMTIMG = ""; cmtPrev();
+      const tmp = { id: "tmp" + Date.now(), user_id: U.id, name: U.name, body: t, created_at: new Date().toISOString(), parent_id: pr, has_image: !!img, likes: 0, liked: false, mine: true };
+      CMTS.list = (CMTS.list || []).concat([tmp]); const cb = $("cmtb"); if (cb) { cb.innerHTML = cmtsHtml(); cb.scrollTop = cb.scrollHeight; }
       try { await api("/posts/" + CMTS.id + "/comments", "POST", { body: t, parent_id: pr, image: img || null, mentions: MENT.filter((m) => t.includes("@" + m.name)).map((m) => m.id) }); CMTS.replyTo = null; cmtBar(); await refreshComments(); }
       catch (e) { toast(e.message); $("cmtin").value = t; CMTIMG = img; cmtPrev(); }
       return;
@@ -2323,7 +2336,7 @@ app.addEventListener("click", async (e) => {
       const ids = [...document.querySelectorAll(".gm:checked")].map((c) => c.value), nm = $("gnm").value.trim();
       if (!nm) return toast("Give the group a name."); if (!ids.length) return toast("Choose at least one contact.");
       const j = await api("/groups", "POST", { name: nm, members: ids }); await loadGL(); return openGroup(j.id);
-  }
+    }
     if (a == "opengrp") return openGroup(id);
     if (a == "gsend") return sendG();
     if (a == "gsel") { V.sel = V.sel == m ? null : m; return upd(false); }
