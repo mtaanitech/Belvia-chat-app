@@ -117,7 +117,7 @@ function applyTheme() { const t = TH(), d = t.m == "dark"; const tc = document.q
 applyTheme();
 const VBADGE = '<span style="display:inline-flex;align-items:center;margin-left:6px;vertical-align:middle" aria-label="Verified account"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#D92D20" d="M12 1.5l2.6 2.1 3.3-.3 1 3.2 2.9 1.7-.9 3.2 1.1 3.1-2.6 2.1-.2 3.3-3.3.6L12 22.5l-2.9-1.4-3.3-.6-.2-3.3-2.6-2.1 1.1-3.1-.9-3.2 2.9-1.7 1-3.2 3.3.3z"/><path fill="#101828" d="M10.3 15.2l-3-3 1.1-1.1 1.9 1.9 4.8-4.8 1.1 1.1z"/></svg></span>';
 const VLABEL = '<div style="font-size:12px;font-weight:700;color:#D92D20;margin-top:1px">Verified account</div>';
-let VPLAN = null, SGMENU = false, SGMORE = false, SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
+let VPLAN = null, SGMENU = false, SGMORE = false, SGN = [], SGLK = { liked_you: [], you_liked: [] }, SGPV = null, NTF = { notifications: [], unread: 0 }, FLW = [], MENT = [], FEEDNEW = 0, SEC = null, STKEY = "", T = "", U = null, RC = "", PEND = null, DC = "", WAIT = null, WT = null, LR = null, STV = null, STSET = null, STY = null, LNK = null, LNKT = null, DEVS = [], ACC = null, NT = null, AP = null, PH = {}, TT = 0, NOTIF = null, PUSH = "off", BK = null, BKI = null, BKE = null, VW = [], GL = [], MG = [], GI = null, gKey = "", EDT = { cover: 0, mood: "" }, CALL = null, CALLS = [], AIM = [], AIKEEP = 0, AIB = false, SIMG = "", JP = null, MSC = {}, GMC = {}, LSTH = "", FEED = [], SUGG = [], EXTRA = null, DTAB = "over", FQ = "", SRES = [], BST = [], BPLANS = null, BPAID = false, SQT = null, SEENIO = null, CPT = null, NAVKEY = null, NAVPOP = false, FEEDIDLE = 0, ENDIO = null, FSC = "all", FEEDOK = false, FEEDBUSY = false, COMPOSE = null, CMTS = null, CMTIMG = "", DASH = null, PROF = null, PROFP = [], CMP = { body: "", image: "" }, MSL = false, gLoad = false, PENDM = [], GPEND = [], SGP = null, SGD = [], SGL = {}, SGM = [], SGt = "discover", SGMP = null, SGCM = [], SGPEER = null, sgKey = "", CT = [], CH = [], MS = [], ST = [], timer = null, msKey = "", PR = null, lastTy = 0, BL = [];
 try { T = localStorage.getItem("bv.t") || ""; } catch (e) {}
 let V = { pg: "", sq: false, once: false, fw: "", vo: "", arch: false, menu: false, tab: "feed", scr: null, cid: null, q: "", f: "all", sel: null, reply: null, ov: null, vid: null, col: COL[0], draft: "", mode: "signup", lo: false };
 
@@ -652,10 +652,28 @@ function postCard(p) {
     '<div style="display:flex;gap:28px;align-items:center;color:var(--mu);font-size:14px">' +
       '<button data-a="like" data-id="' + p.id + '" aria-label="Like. Hold to choose a reaction" style="border:0;background:none;padding:6px 0;font:inherit;display:flex;align-items:center;gap:6px;color:' + (r ? "var(--ink)" : "var(--mu)") + '"><span style="font-size:17px;line-height:1">' + (top || (r || "♡")) + '</span><b style="font-weight:600">' + (p.likes || 0) + "</b></button>" +
       '<button data-a="cmts" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px">' + IC_CMT + "<span>" + p.comments + "</span></button>" +
-      (me ? "" : '<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;margin-left:auto;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
+      ('<button data-a="repost" data-id="' + p.id + '" style="border:0;background:none;padding:6px 0;margin-left:auto;color:var(--mu);font:inherit;display:flex;align-items:center;gap:6px;font-weight:600">↻ Repost</button>') +
     "</div></article>";
 }
-let IMGV = null, TXTV = null, CPFIRED = false;
+let IMGV = null, TXTV = null, CPFIRED = false, CMTM = null, CMTE = null;
+function cmtItem(id) { return (CMTS && CMTS.list || []).find((x) => x.id == id) || {}; }
+function cmtMenuView() {
+  const c = cmtItem(CMTM), own = c.user_id == U.id, canDel = own || (CMTS && CMTS.mine);
+  const it = (label, act, danger) => '<button data-a="' + act + '" data-id="' + CMTM + '" data-n="' + esc(c.name || "") + '" data-cmi style="display:block;width:100%;text-align:left;border:0;background:none;padding:15px 20px;font:inherit;font-size:16px;color:' + (danger ? "var(--cr)" : "var(--ink)") + '">' + label + "</button>";
+  const dv = '<div style="height:1px;background:var(--ln)"></div>';
+  return '<div data-a="cmclose" style="position:absolute;inset:0;background:rgba(16,24,40,.35);z-index:45;display:flex;align-items:flex-end"><div style="width:100%;background:var(--bg);border-radius:18px 18px 0 0;padding:8px 0 calc(12px + env(safe-area-inset-bottom,0px))"><div style="width:44px;height:5px;border-radius:3px;background:var(--ln);margin:6px auto 8px"></div>' +
+    it("Reply", "cmtreply") + dv + (own ? it("Edit", "cmtedit") + dv : "") + (canDel ? it("Delete", "cmtdel", true) + dv : "") + (own ? "" : it("Report", "cmtrep", true)) + "</div></div>";
+}
+function cmtReportView() {
+  const reasons = ["Spam", "Harassment or insults", "Unsolicited nudes", "Scam or fake links", "Other"];
+  const it = (r) => '<button data-a="cmtrep2" data-id="' + CMTM + '" data-r="' + esc(r) + '" data-cmi style="display:block;width:100%;text-align:left;border:0;background:none;padding:15px 20px;font:inherit;font-size:16px;color:var(--ink)">' + esc(r) + "</button>";
+  return '<div data-a="cmclose" style="position:absolute;inset:0;background:rgba(16,24,40,.35);z-index:45;display:flex;align-items:flex-end"><div style="width:100%;background:var(--bg);border-radius:18px 18px 0 0;padding:8px 0 calc(12px + env(safe-area-inset-bottom,0px))"><div style="padding:10px 20px 6px;font-weight:700">Why are you reporting this comment?</div>' +
+    reasons.map((r) => it(r) + '<div style="height:1px;background:var(--ln)"></div>').join("") + "</div></div>";
+}
+function cmtEditView() {
+  const c = cmtItem(CMTE);
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtex" aria-label="Back">' + IC_BACK + '</button><h1>Edit comment</h1><span style="flex:1"></span><button class="btn" style="min-height:40px" data-a="cmtsave">Save</button></div><div class="body"><div class="cd"><textarea id="cmteb" rows="4" maxlength="300">' + esc(c.body || "") + "</textarea></div></div></div>";
+}
 function openText(pid) {
   const p = findPost(pid); if (!p) return;
   TXTV = { pid, body: p.body || "", name: p.name }; V.ov = "txtv"; render();
@@ -792,7 +810,7 @@ async function shareCmp() {
 function commentsView() {
   const bar = CMTS && CMTS.replyTo ? 'Replying to <b>' + esc(CMTS.replyTo.name) + '</b> <button class="lnk" data-a="cmtrpx" style="min-height:30px">✕</button>' : "";
   return '<div class="ov"><div class="hd"><button class="ib" data-a="cmtx" aria-label="Back">' + IC_BACK + '</button><h1>Comments</h1></div><div id="cmtpv" style="flex:none;max-height:40vh;overflow:auto">' + cmtPostPreview() + '</div><div class="body" id="cmtb">' + (CMTS ? cmtsHtml() : '<div class="empty"><div class="spin" style="width:30px;height:30px;border-width:3px"></div></div>') + '</div>' +
-    '<div id="cmtrp" class="rp">' + bar + '</div><div id="cmtprev">' + cmtPrevHtml() + '</div>' +
+    '<div id="cmtrp" class="rp">' + bar + '</div><div id="mention"></div><div id="cmtprev">' + cmtPrevHtml() + '</div>' +
     '<div class="comp"><button class="ib" data-a="cmtpick" aria-label="Add a photo" style="font-size:30px;line-height:1;color:var(--ac);min-width:40px">+</button><textarea id="cmtin" rows="1" placeholder="Write a comment" maxlength="300" autocomplete="off" style="flex:1;min-width:0;resize:none;max-height:120px;font:inherit;padding:10px 14px;border-radius:22px;border:1px solid var(--ln);background:var(--sf);color:var(--ink);line-height:1.35"></textarea><button class="sendb" data-a="cmtsend" aria-label="Send">' + IC_SEND + '</button></div>' +
     '<input id="cmtfile" type="file" accept="image/*" style="display:none"></div>';
 }
@@ -811,7 +829,7 @@ function cmtsHtml() {
     '<div style="flex:1;min-width:0"><b style="font-size:14px">' + esc(c.name) + '</b> <small class="mut">' + tm(c.created_at) + '</small>' + (c.body ? '<div style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(c.body) + "</div>" : "") + pic(c) +
     '<div style="display:flex;gap:14px;align-items:center;margin-top:4px"><button data-a="cmtreply" data-id="' + c.id + '" data-n="' + esc(c.name) + '" style="border:0;background:none;padding:4px 0 0;color:var(--mu);font-size:12px;font-weight:600">Reply</button></div></div>' +
     '<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button data-a="cmtlike" data-id="' + c.id + '" aria-label="Like" style="border:0;background:none;padding:4px;font-size:16px;color:' + (c.liked ? "var(--cr)" : "var(--mu)") + '">' + (c.liked ? "♥" : "♡") + "</button>" + (c.likes ? '<small class="mut">' + c.likes + "</small>" : "") + "</div>" +
-    (c.user_id == U.id || CMTS.mine ? '<button class="ib" style="min-width:32px;min-height:32px;color:var(--mu)" data-a="cmtdel" data-id="' + c.id + '" aria-label="Delete">🗑</button>' : "") + "</div>";
+    '<button class="ib" style="min-width:32px;min-height:32px;color:var(--mu);font-size:18px" data-a="cmtmenu" data-id="' + c.id + '" aria-label="More">⋮</button>' + "</div>";
   return tops.map((c) => row(c, false) + (kids[c.id] || []).map((k) => row(k, true)).join("")).join("");
 }
 async function loadCommentImages() {
@@ -883,7 +901,7 @@ function profView() {
     (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn o" style="min-width:120px" data-a="pmsg" data-id="' + P.id + '">Message</button><button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
     '<div class="sec">POSTS</div><div id="profl">' + (P.locked && !P.am_following && P.id != U.id ? '<div class="empty"><b>This account is private</b>Follow it to see its posts.</div>' : PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
 }
-async function openProfile(id) {
+  async function openProfile(id) {
   PROF = null; PROFP = []; V.ov = "prof"; V.profId = id; render();
   try { PROF = await api("/profile/" + id); PROFP = (await api("/users/" + id + "/posts")).posts; } catch (e) { toast(e.message); V.ov = null; PROF = null; }
   if (V.ov == "prof" && V.profId == id) { render(); loadPostImages(); }
@@ -898,7 +916,7 @@ function askConfirm(msg, ok) {
     d.addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (!b) return; d.remove(); res(b.dataset.c === "1"); });
     document.body.appendChild(d);
   });
-  }
+}
 // replace every "!(await askConfirm(msg))" with "!(await askConfirm(msg))", keeping the message as it is
 (function () {
   let src = document.currentScript ? null : null;
@@ -1061,11 +1079,21 @@ function openApplyForm() {
 async function checkVerifyPay() {
   let ref = ""; try { ref = localStorage.getItem("bv.vpay") || ""; } catch (e) {}
   if (!ref || !T) return;
-  try {
-    const j = await api("/verify/confirm", "POST", { reference: ref });
-    if (j.ok) { try { localStorage.removeItem("bv.vpay"); } catch (e) {} VPLAN = null; toast(j.trial ? "Application received. Your badge starts in about 30 minutes." : "Verified badge payment received."); }
-    else toast("Payment not confirmed yet.");
-  } catch (e) { toast(e.message); }
+  V.tab = "me"; V.scr = null; V.ov = null; render(); // bring the person back to where they started: Me, with the Verified badge card
+  for (let i = 0; i < 4; i++) { // Paystack can take a few seconds to confirm
+    try {
+      const j = await api("/verify/confirm", "POST", { reference: ref });
+      if (j.ok) {
+        try { localStorage.removeItem("bv.vpay"); } catch (e) {}
+        await loadExtra().catch(() => {});
+        toast(j.trial ? "Application received. Your badge starts in about 30 minutes." : "Payment received. Your verified badge is updated.");
+        if (V.tab == "me" && !V.scr && !V.ov) render();
+        return;
+      }
+    } catch (e) { toast(e.message); return; }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  toast("Payment is still being confirmed. Open this page again in a minute.");
 }
 function linkView() {
   const c = LNK ? LNK.code : "";
@@ -1424,7 +1452,7 @@ async function loadPr() {
   if (V.scr != "chat" || V.cid != id) return;
   PR = j; const e = $("pr"); if (e) e.innerHTML = prHtml();
 }
-function start() { setTimeout(checkJoin, 300); ensureDeviceKey().catch(() => {}); if (V.tab == "feed" && !V.scr && !V.ov) { feedFromCache(); if (!FEEDOK) loadFeed(false); } clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { const stj = await api("/status"); const sk = JSON.stringify(stj.status); if (sk !== STKEY) { STKEY = sk; ST = stj.status; refreshMain(); } } catch (e) {} try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); if (PENDING_ACT && String(j.call.id) == String(PENDING_ACT.id)) { PENDING_ACT = null; acceptCall(); } } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
+function start() { setTimeout(checkJoin, 300); loadNotifs().then(() => { if (U && !V.ov && !V.scr) render(); }).catch(() => {}); ensureDeviceKey().catch(() => {}); if (V.tab == "feed" && !V.scr && !V.ov) { feedFromCache(); if (!FEEDOK) loadFeed(false); } clearInterval(timer); timer = setInterval(async () => { if (!U) return; try { const stj = await api("/status"); const sk = JSON.stringify(stj.status); if (sk !== STKEY) { STKEY = sk; ST = stj.status; refreshMain(); } } catch (e) {} try { if (V.scr == "chat") { await loadMsgs(false); await loadPr(); } else if (V.scr == "gchat") { await loadGMsgs(false); } else if (V.scr == "schat") { await loadSChat(false); } else if (V.tab == "chats" && !V.ov) { await Promise.all([loadCH(), loadGL()]); saveCache(); refreshList(); } } catch (e) {} try { const j = await api("/login-requests"); if (j.request) { if (!LR || LR.id != j.request.id) { LR = j.request; drawLR(); } } else if (LR) { LR = null; removeLR(); } if (j.notice) { if (!NT || NT.id != j.notice.id) { NT = j.notice; drawNT(); } } else if (NT) { NT = null; removeNT(); } if (j.call) { if (!CALL) incomingCall(j.call); if (PENDING_ACT && String(j.call.id) == String(PENDING_ACT.id)) { PENDING_ACT = null; acceptCall(); } } else if (CALL && CALL.role == "in" && CALL.status == "incoming") { endCallUi(); toast("Missed call"); } } catch (e) {} }, 3000); }
 
 // ---- Phone line indicator (Kenya). A guess from the first digits, display only. ----
 function lineOf(cc, ph) {
@@ -1525,6 +1553,19 @@ async function otpGo() {
 
 function nav() { return "<nav>" + [["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"], ["me", "Me"]].map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + ico(IC[x[0]]) + x[1] + "</button>").join("") + "</nav>"; }
 let REQS = { incoming: [], outgoing: [] };
+async function loadNotifs() { try { NTF = await api("/inbox"); } catch (e) {} }
+async function loadFollowers() { if (FLW.length) return; try { FLW = (await api("/followers/mine")).people; } catch (e) {} }
+function notifText(n) {
+  const who = esc(n.actor_name || "Someone");
+  const t = { like: "liked your post", comment: "commented on your post", reply: "replied to your comment", tag: "tagged you in a comment", follow: "started following you", request: "asked to follow you", msgreq: "wants to message you" }[n.kind] || "did something";
+  return '<b>' + who + "</b> " + t;
+}
+function bellBadge() { return NTF.unread > 0 ? '<span style="position:absolute;top:2px;right:0;min-width:16px;height:16px;line-height:16px;padding:0 4px;border-radius:8px;background:#D92D20;color:#fff;font-size:10px;font-weight:700">' + (NTF.unread > 99 ? "99+" : NTF.unread) + "</span>" : ""; }
+function notifsView() {
+  const list = NTF.notifications || [];
+  return '<div class="ov"><div class="hd"><button class="ib" data-a="notifx" aria-label="Back">' + IC_BACK + '</button><h1>Notifications</h1></div><div class="body">' +
+    (list.length ? list.map((n) => '<button data-a="notifopen" data-id="' + n.id + '" data-p="' + (n.post_id || "") + '" data-u="' + n.actor_id + '" data-k="' + n.kind + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;border-bottom:1px solid var(--ln);background:' + (n.read ? "none" : "var(--acs)") + ';text-align:left;color:var(--ink);font:inherit">' + av(n.actor_name, 40, false, n.actor_id) + '<span style="flex:1;min-width:0">' + notifText(n) + '<small class="mut" style="display:block">' + tm(n.created_at) + "</small></span></button>").join("") : '<p class="mut" style="padding:24px 16px">No notifications yet.</p>') + "</div></div>";
+}
 async function loadRequests() { try { REQS = await api("/requests"); } catch (e) {} }
 function reqsHtml() {
   const inc = REQS.incoming || [], out = REQS.outgoing || [];
@@ -1686,7 +1727,7 @@ function topbar() {
   const T4 = [["feed", "Home"], ["chats", "Chats"], ["status", "Status"], ["calls", "Calls"], ["singles", "Singles"]];
   const bd = { feed: FEEDNEW, chats: CH.reduce((n, c) => n + (c.unread || 0), 0), status: statusPeople().others.filter((p) => p.unseen).length };
   const badge = (k) => bd[k] > 0 ? '<span style="display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--ac);color:var(--on);font-size:11px;vertical-align:middle">' + (bd[k] > 99 ? "99+" : bd[k]) + "</span>" : "";
-  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="Menu" style="padding:0;color:var(--ink)">' + IC_MENU + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
+  return '<div class="hd" style="padding-top:12px"><button class="ib" data-a="tab" data-t="me" aria-label="Menu" style="padding:0;color:var(--ink)">' + IC_MENU + '</button><h1 style="text-align:center;color:var(--ac);font-size:21px;font-weight:800">Orivoclass</h1><button class="ib" data-a="notifs" aria-label="Notifications" style="position:relative">' + ico("M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0") + bellBadge() + '</button><button class="ib" data-a="sq" aria-label="Search">' + ico(SRCH) + '</button></div><div class="tabs">' +
     T4.map((x) => '<button data-a="tab" data-t="' + x[0] + '" class="' + (V.tab == x[0] ? "on" : "") + '">' + x[1] + badge(x[0]) + "</button>").join("") + "</div>";
 }
 function main() {
@@ -1797,8 +1838,8 @@ async function send() {
   try { const enc = await encryptFor(cid, t).catch(() => null); await api("/messages", "POST", { to: cid, body: enc || t, reply: rp, once }); drop(); await loadMsgs(true); loadCH().catch(() => {}); }
   catch (e) { drop(); MS = MS.filter((x) => x !== tmp); upd(false); toast(e.message); i.value = t; }
   i.focus();
-  }
-  const LEGAL = {
+}
+const LEGAL = {
   terms: ["Terms of Service", [
     ["Using Orivoclass", "By creating an account you agree to these terms. You must be old enough to use the service in your country, and at least 18 to use Singles."],
     ["Verified badge", "The verified badge is a paid service. To apply, you fill in a short form and pay KSh 3 to send it. Applications are approved automatically 30 minutes later, and the first month is free. After the free month you pay again each time you renew (KSh 80 for 45 days, or a prepaid plan of 7 months or 1 year). We do not keep your card, so renewals are not charged automatically. Payments are processed by Paystack. To ask about a payment, write to mtaanitech76@gmail.com."],
@@ -1927,6 +1968,10 @@ function overlays() {
   if (o == "editpost") return editPostHtml();
   if (o == "editmsg") return editMsgHtml();
   if (o == "vpick") return vpickView();
+  if (o == "notifs") return notifsView();
+  if (o == "cmtm") return cmtMenuView();
+  if (o == "cmtrp") return cmtReportView();
+  if (o == "cmte") return cmtEditView();
   if (o == "linkin") return linkinView();
   if (o == "sgprof") return sgProfHtml();
   if (o == "imgv") return imgViewHtml();
@@ -2041,6 +2086,19 @@ app.addEventListener("click", async (e) => {
       return;
     }
     if (a == "linkstart") return linkStartNew();
+    if (a == "notifs") { V.ov = "notifs"; render(); await api("/inbox/read", "POST", {}).catch(() => {}); NTF.unread = 0; NTF.notifications.forEach((n) => (n.read = true)); return render(); }
+    if (a == "notifx") { V.ov = null; return render(); }
+    if (a == "notifopen") {
+      V.ov = null; const k = b.dataset.k, pid = b.dataset.p, u = b.dataset.u;
+      if (pid) return openComments(pid);
+      if (k == "msgreq") { V.tab = "chats"; V.scr = null; V.cseg = "public"; await loadRequests(); return render(); }
+      return openProfile(u);
+    }
+    if (a == "mention") {
+      const i = $("cmtin"); if (!i) return;
+      i.value = i.value.replace(/@[^\s@]{0,30}$/, "@" + b.dataset.n + " ");
+      MENT.push({ id: b.dataset.id, name: b.dataset.n }); const bx = $("mention"); if (bx) bx.innerHTML = ""; i.focus(); return;
+    }
     if (a == "cseg") { V.cseg = b.dataset.t; if (V.cseg == "public") await loadRequests(); return render(); }
     if (a == "reqacc") { try { await api("/requests/" + id + "/accept", "POST", {}); } catch (e) { toast(e.message); } await loadRequests(); await loadCH().catch(() => {}); return render(); }
     if (a == "reqdec") { try { await api("/requests/" + id + "/decline", "POST", {}); } catch (e) { toast(e.message); } await loadRequests(); return render(); }
@@ -2072,7 +2130,7 @@ app.addEventListener("click", async (e) => {
       const t = $("cmtin").value.trim(); if ((!t && !CMTIMG) || !CMTS) return;
       const img = CMTIMG, pr = CMTS.replyTo ? CMTS.replyTo.id : null;
       $("cmtin").value = ""; CMTIMG = ""; cmtPrev();
-      try { await api("/posts/" + CMTS.id + "/comments", "POST", { body: t, parent_id: pr, image: img || null }); CMTS.replyTo = null; cmtBar(); await refreshComments(); }
+      try { await api("/posts/" + CMTS.id + "/comments", "POST", { body: t, parent_id: pr, image: img || null, mentions: MENT.filter((m) => t.includes("@" + m.name)).map((m) => m.id) }); CMTS.replyTo = null; cmtBar(); await refreshComments(); }
       catch (e) { toast(e.message); $("cmtin").value = t; CMTIMG = img; cmtPrev(); }
       return;
     }
@@ -2085,6 +2143,19 @@ app.addEventListener("click", async (e) => {
       try { const j = await api("/comments/" + id + "/like", "POST", { like: on }); c.liked = j.liked; c.likes = j.likes; const b3 = $("cmtb"); if (b3) b3.innerHTML = cmtsHtml(); loadCommentImages(); }
       catch (e) { toast(e.message); }
       return;
+    }
+    if (a == "cmtex") { CMTE = null; V.ov = null; return render(); }
+    if (a == "cmtmenu") { CMTM = id; V.ov = "cmtm"; return render(); }
+    if (a == "cmtedit") { CMTE = id; V.ov = "cmte"; return render(); }
+    if (a == "cmtsave") {
+      const t = ($("cmteb") && $("cmteb").value.trim()) || ""; if (!t) return toast("Write something first.");
+      try { await api("/comments/" + CMTE + "/edit", "PUT", { body: t }); } catch (e) { return toast(e.message); }
+      V.ov = null; CMTE = null; await refreshComments(); return render();
+    }
+    if (a == "cmtrep") { V.ov = "cmtrp"; return render(); }
+    if (a == "cmtrep2") {
+      try { await api("/comments/" + CMTM + "/report", "POST", { reason: b.dataset.r }); toast("Thanks. We will review this comment."); } catch (e) { toast(e.message); }
+      V.ov = null; return render();
     }
     if (a == "cmtdel") { try { await api("/comments/" + id, "DELETE"); await refreshComments(); } catch (e) { toast(e.message); } return; }
     if (a == "dash") return doDash();
@@ -2436,7 +2507,16 @@ app.addEventListener("click", async (e) => {
   } catch (err) { toast(err.message); }
 });
 app.addEventListener("input", (e) => {
-  if (e.target.id == "cmtin") { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }
+  if (e.target.id == "cmtin") {
+    e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+    const m = /@([^\s@]{0,30})$/.exec(e.target.value), box = $("mention");
+    if (!m) { if (box) box.innerHTML = ""; return; }
+    loadFollowers().then(() => {
+      const q = m[1].toLowerCase(), hits = FLW.filter((f) => f.name.toLowerCase().includes(q)).slice(0, 6);
+      if (box) box.innerHTML = hits.length ? '<div style="max-height:200px;overflow:auto;border-bottom:1px solid var(--ln);background:var(--bg)">' + hits.map((f) => '<button data-a="mention" data-id="' + f.id + '" data-n="' + esc(f.name) + '" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;border:0;background:none;text-align:left;font:inherit;color:var(--ink)">' + av(f.name, 30, false, f.id) + "<b>" + esc(f.name) + "</b></button>").join("") + "</div>" : "";
+    });
+    return;
+  }
   if (e.target.id == "fsearch") { FQ = e.target.value.trim(); clearTimeout(SQT); SQT = setTimeout(async () => { if (FQ.length < 2) SRES = []; else { try { SRES = (await api("/search?q=" + encodeURIComponent(FQ))).people; } catch (err) { SRES = []; } } if (V.tab == "feed" && !V.scr && !V.ov) { const l = $("feedl"); if (l) l.innerHTML = feedListHtml(); } }, 300); return; }
   if (e.target.id == "ph" || e.target.id == "cc") showLine();
   if (e.target.id == "q") { V.q = e.target.value; const l = $("lst"); if (l) l.innerHTML = listHtml(); }
