@@ -901,7 +901,7 @@ function profView() {
     (P.id == U.id ? '<button class="btn o" data-a="dash">Open dashboard</button>' : '<button class="btn o" style="min-width:120px" data-a="pmsg" data-id="' + P.id + '">Message</button><button class="btn' + (P.am_following ? " o" : "") + '" style="min-width:160px" data-a="follow" data-id="' + P.id + '">' + (P.am_following ? "Following" : P.requested ? "Requested" : P.follows_me ? "Follow back" : "Follow") + "</button>") + "</div>" +
     '<div class="sec">POSTS</div><div id="profl">' + (P.locked && !P.am_following && P.id != U.id ? '<div class="empty"><b>This account is private</b>Follow it to see its posts.</div>' : PROFP.length ? PROFP.map(postCard).join("") : '<p class="mut" style="padding:8px 16px">No posts yet.</p>') + "</div></div></div>";
 }
-  async function openProfile(id) {
+async function openProfile(id) {
   PROF = null; PROFP = []; V.ov = "prof"; V.profId = id; render();
   try { PROF = await api("/profile/" + id); PROFP = (await api("/users/" + id + "/posts")).posts; } catch (e) { toast(e.message); V.ov = null; PROF = null; }
   if (V.ov == "prof" && V.profId == id) { render(); loadPostImages(); }
@@ -2178,8 +2178,7 @@ app.addEventListener("click", async (e) => {
       if (k == "edit") { V.epid = id; V.ov = "editpost"; return render(); }
       if (k == "report") return doReport(id);
       return;
-    }
-    if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
+      if (a == "boostpick") { V.bpid = id; V.ov = "bpick"; if (!BPLANS) { try { const j = await api("/boosts/plans"); BPLANS = j.plans; BPAID = j.paid; } catch (e) { toast(e.message); } } return render(); }
     if (a == "bpx") { V.ov = null; return render(); }
     if (a == "bpay") { try { const j = await api("/boosts/checkout", "POST", { post_id: id, days: +b.dataset.d }); try { localStorage.setItem("bv.pay", j.reference); } catch (e) {} location.href = j.authorization_url; } catch (e) { toast(e.message); } return; }
     if (a == "cmpaud") { if ($("cpb")) CMP.body = $("cpb").value; CMP.aud = b.dataset.t; return render(); }
@@ -2569,3 +2568,4 @@ app.addEventListener("keydown", (e) => { if (e.key == "Enter" && e.target.id == 
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                            }
