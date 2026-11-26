@@ -187,7 +187,7 @@ async function sendSms(to, text) {
     const r = await fetch("https://sms.frostwood.co.ke/api/v1/messages", {
       method: "POST",
       headers: { Authorization: "Bearer " + process.env.FROST_API_KEY, "Content-Type": "application/json", "Idempotency-Key": "otp-" + crypto.randomUUID() },
-      body: JSON.stringify({ sender_id: process.env.FROST_SENDER || "ORIVOCLASS", category: "transactional", recipients: [local], body: text, client_reference: "otp-" + Date.now() }),
+      body: JSON.stringify({ ...(process.env.FROST_SENDER ? { sender_id: process.env.FROST_SENDER } : {}), category: "transactional", recipients: [local], body: text, client_reference: "otp-" + Date.now() }),
     });
     const j = await r.json().catch(() => ({}));
     if (r.status !== 202) {
