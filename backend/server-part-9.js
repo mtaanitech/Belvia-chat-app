@@ -120,6 +120,7 @@ app.post("/api/posts/:id/like", need, socialLimit, wrap(async (req, res) => {
   else {
     const emoji = REACTIONS.includes(req.body.emoji) ? req.body.emoji : "❤️";
     await db.query("INSERT INTO post_likes(post_id,user_id,emoji) VALUES($1,$2,$3) ON CONFLICT (post_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji", [req.params.id, req.uid, emoji]);
+    await notifyLike(req.params.id, req.uid);
   }
   const mine = (await db.query("SELECT emoji FROM post_likes WHERE post_id=$1 AND user_id=$2", [req.params.id, req.uid])).rows[0];
   res.json({ ok: true, my_reaction: mine ? mine.emoji : null });
@@ -150,7 +151,8 @@ app.post("/api/posts/:id/comments", need, commentLimit, wrap(async (req, res) =>
     if (!pc) return bad(res, "That comment is no longer there.", 404);
     parent = pc.parent_id || pc.id; // replies sit under the main comment (one level)
   }
-  await db.query("INSERT INTO post_comments(post_id,user_id,body,parent_id,image) VALUES($1,$2,$3,$4,$5)", [req.params.id, req.uid, body, parent, image]);
+  const ins = await db.query("INSERT INTO post_comments(post_id,user_id,body,parent_id,image) VALUES($1,$2,$3,$4,$5) RETURNING id", [req.params.id, req.uid, body, parent, image]);
+  await notifyComment(req.params.id, req.uid, ins.rows[0].id, parent, Array.isArray(req.body.mentions) ? req.body.mentions : []);
   res.json({ ok: true });
 }));
 app.delete("/api/comments/:id", need, wrap(async (req, res) => { // your own comment, or any comment on your own post
@@ -166,9 +168,11 @@ app.post("/api/follow/:uid", need, socialLimit, wrap(async (req, res) => {
   const lk = (await db.query("SELECT locked FROM users WHERE id=$1", [t])).rows[0];
   if (lk && lk.locked) { // private account: they approve the request first
     await db.query("INSERT INTO follow_requests(follower,followee) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.uid, t]);
+    await notifyPlain(t, req.uid, "request");
     return res.json({ ok: true, requested: true });
   }
   await db.query("INSERT INTO follows(follower,followee) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.uid, t]);
+  await notifyPlain(t, req.uid, "follow");
   res.json({ ok: true });
 }));
 app.delete("/api/follow/:uid", need, socialLimit, wrap(async (req, res) => {
