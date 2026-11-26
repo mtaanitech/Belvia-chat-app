@@ -480,7 +480,8 @@ async function verifyPlan() {
 const VPLANS = { trialDays: 30, cardWaitMin: 30, applyFee: 3, recurring: { price: 80, days: 45 }, prepaid: [{ id: "7m", label: "7 months", price: 200, days: 210 }, { id: "1y", label: "1 year", price: 700, days: 365 }] };
 app.get("/api/verify/plan", need, wrap(async (req, res) => {
   const me = (await db.query("SELECT verified_until, verified_from, trial_used, verify_renew FROM users WHERE id=$1", [req.uid])).rows[0] || {};
-  res.json({ paid: !!process.env.PAYSTACK_SECRET_KEY, plans: VPLANS, until: me.verified_until, from: me.verified_from, trial_used: !!me.trial_used, auto: !!me.verify_renew });
+  const last = (await db.query("SELECT kind, plan FROM verify_orders WHERE user_id=$1 AND status='paid' ORDER BY created_at DESC LIMIT 1", [req.uid])).rows[0] || {};
+  res.json({ paid: !!process.env.PAYSTACK_SECRET_KEY, plans: VPLANS, until: me.verified_until, from: me.verified_from, trial_used: !!me.trial_used, auto: !!me.verify_renew, last_kind: last.kind || null, last_plan: last.plan || null });
 }));
 // Free trial: fill in the application form and pay KSh 3 to send it. Approved automatically 30 minutes later.
 app.post("/api/verify/trial", need, boostLimit, wrap(async (req, res) => {
