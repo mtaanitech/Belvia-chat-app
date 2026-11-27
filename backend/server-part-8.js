@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS chat_requests(from_id uuid NOT NULL REFERENCES users(
 ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS edited boolean NOT NULL DEFAULT false;
 CREATE TABLE IF NOT EXISTS notifications(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, actor_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, post_id bigint, comment_id bigint, read boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS notif_user ON notifications(user_id, id DESC);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS find_by_phone boolean NOT NULL DEFAULT true;
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
