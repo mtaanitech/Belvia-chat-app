@@ -259,7 +259,7 @@ app.post("/api/otp/send", authLimit, wrap(async (req, res) => {
     [phone, otpHash(phone, code)]);
   if (dev) return res.json({ sent: true, dev_code: code });
   try { await sendSms(phone, "Orivoclass code: " + code + ". Valid for 10 minutes. If you did not ask for it, ignore this message."); }
-  catch (e) { console.error(e.message); return bad(res, "Could not send the SMS. Try again.", 502); }
+  catch (e) { console.error(e.message); return bad(res, "Could not send the SMS: " + String(e.message).slice(0, 160), 502); }
   res.json({ sent: true });
 }));
 // END OF PART 1
