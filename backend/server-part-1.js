@@ -181,20 +181,31 @@ if (process.env.DEV_SHOW_CODE === "true") console.warn("WARNING: DEV_SHOW_CODE i
 const otpHash = (phone, code) => crypto.createHash("sha256").update(phone + ":" + code + ":" + JWT_SECRET).digest("hex");
 // Frostwood sends the SMS when FROST_API_KEY is set (FROST_SENDER = the approved sender name).
 // Kenyan numbers are sent in the local form (07..), as Frostwood's examples show.
+// Checks what happened to one message after it was accepted (shown in the Render Logs).
+async function frostCheck(id) {
+  try {
+    const r = await fetch("https://sms.frostwood.co.ke/api/v1/messages/" + id, { headers: { Authorization: "Bearer " + process.env.FROST_API_KEY } });
+    const m = await r.json().catch(() => ({}));
+    console.log("Frostwood message", id, JSON.stringify({ submission: m.submission_status, delivery: m.delivery_status, billing: m.billing_status, error: m.error || null }));
+  } catch (e) { console.log("Frostwood status check failed:", e.message); }
+}
+// Frostwood sends the SMS when FROST_API_KEY is set. Endpoint: POST /sms (sender_id optional when the account has one approved sender).
 async function sendSms(to, text) {
   if (process.env.FROST_API_KEY) {
     const local = to.startsWith("+254") ? "0" + to.slice(4) : to;
-    const r = await fetch("https://sms.frostwood.co.ke/api/v1/messages", {
+    const r = await fetch("https://sms.frostwood.co.ke/api/v1/sms", {
       method: "POST",
-      headers: { Authorization: "Bearer " + process.env.FROST_API_KEY, "Content-Type": "application/json", "Idempotency-Key": "otp-" + crypto.randomUUID() },
-      body: JSON.stringify({ ...(process.env.FROST_SENDER ? { sender_id: process.env.FROST_SENDER } : {}), category: "transactional", recipients: [local], body: text, client_reference: "otp-" + Date.now() }),
+      headers: { Authorization: "Bearer " + process.env.FROST_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ to: local, message: text, category: "transactional", reference: "otp-" + crypto.randomUUID(), ...(process.env.FROST_SENDER ? { sender_id: process.env.FROST_SENDER } : {}) }),
     });
     const j = await r.json().catch(() => ({}));
     if (r.status !== 202) {
-      const detail = (j.error && (j.error.message || j.error.code)) || j.message || ("HTTP " + r.status);
-      throw new Error("Frostwood: " + detail);
+      const e = j.error || {};
+      throw new Error("Frostwood " + (e.code || r.status) + ": " + (e.message || "request failed"));
     }
-    return; // 202 means accepted and queued
+    const mid = j.messages && j.messages[0] && j.messages[0].id;
+    if (mid) setTimeout(() => frostCheck(mid), 20000);
+    return; // 202 = accepted and queued
   }
   const { AT_USERNAME, AT_API_KEY } = process.env;
   const host = AT_USERNAME === "sandbox" ? "api.sandbox.africastalking.com" : "api.africastalking.com";
