@@ -187,21 +187,27 @@ const otpHash = (phone, code) => crypto.createHash("sha256").update(phone + ":" 
 async function sendViaMobi(to, text) {
   const url = process.env.MOBI_URL;
   if (!url) throw new Error("MOBI_URL is not set");
+  const key = process.env.MOBI_API_KEY;
   const headerName = process.env.MOBI_AUTH_HEADER || "h_api_key";
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", [headerName]: process.env.MOBI_API_KEY },
-    body: JSON.stringify({ mobile: to, response_type: "json", sender_name: process.env.MOBI_SENDER || "MOBI-TECH", service_id: 0, message: text }),
-  });
-  const raw = await r.text();
-  console.log("MobiTech response", r.status, raw.slice(0, 400));
-  if (!r.ok) throw new Error("MobiTech HTTP " + r.status + ": " + raw.slice(0, 160));
-  // MobiTech can answer HTTP 200 and still refuse the message; the status code inside the body decides.
-  let j = {}; try { j = JSON.parse(raw); } catch (e) {}
-  const code = String(j.status_code || "");
-  const ok = code === "1000" || code === "1001" || /success/i.test(String(j.status_desc || ""));
-  if (!ok) throw new Error("MobiTech " + (code || "error") + ": " + (j.status_desc || raw.slice(0, 120)));
-  return raw;
+  const payload = { mobile: to, response_type: "json", sender_name: process.env.MOBI_SENDER || "MOBI-TECH", service_id: 0, message: text };
+  // Try 1: key in the header. Try 2 (only if the first is refused): key in the body too.
+  const attempts = [
+    { label: "header", headers: { "Content-Type": "application/json", [headerName]: key }, body: payload },
+    { label: "body", headers: { "Content-Type": "application/json", [headerName]: key }, body: { ...payload, api_key: key } },
+  ];
+  let last = "";
+  for (const at of attempts) {
+    const r = await fetch(url, { method: "POST", headers: at.headers, body: JSON.stringify(at.body) });
+    const raw = await r.text();
+    console.log("MobiTech try", at.label, r.status, raw.slice(0, 300));
+    if (!r.ok) { last = "HTTP " + r.status + ": " + raw.slice(0, 160); continue; }
+    let j = {}; try { j = JSON.parse(raw); } catch (e) {}
+    const code = String(j.status_code || "");
+    if (code === "1000" || code === "1001" || /success/i.test(String(j.status_desc || ""))) return raw;
+    last = "MobiTech " + (code || "error") + ": " + (j.status_desc || raw.slice(0, 120));
+    if (code !== "1006") break; // only "Invalid credentials" is worth trying again another way
+  }
+  throw new Error(last);
 }
 // Checks what happened to one message after it was accepted (shown in the Render Logs).
 async function frostCheck(id) {
