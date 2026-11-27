@@ -688,4 +688,27 @@ app.get("/api/followers/mine", need, wrap(async (req, res) => {
   const r = await db.query("SELECT u.id, u.name FROM follows f JOIN users u ON u.id=f.follower WHERE f.followee=$1 AND NOT u.banned ORDER BY u.name LIMIT 500", [req.uid]);
   res.json({ people: r.rows });
 }));
+// ---- Find friends from contacts ----
+// The phone sends SHA-256 hashes of the numbers in its contacts (never the numbers). We compare them with the hashes of
+// people who allow being found by phone. Nothing from the contacts is stored.
+let PHONE_IDX = { at: 0, map: new Map() };
+async function phoneIndex() {
+  if (Date.now() - PHONE_IDX.at < 600000 && PHONE_IDX.map.size) return PHONE_IDX.map;
+  const rows = (await db.query("SELECT id, name, phone FROM users WHERE find_by_phone AND NOT banned AND phone IS NOT NULL")).rows;
+  const map = new Map();
+  for (const r of rows) map.set(crypto.createHash("sha256").update(r.phone).digest("hex"), { id: r.id, name: r.name });
+  PHONE_IDX = { at: Date.now(), map };
+  return map;
+}
+app.post("/api/contacts/match", need, wrap(async (req, res) => {
+  const hs = Array.isArray(req.body.hashes) ? req.body.hashes.filter((h) => /^[a-f0-9]{64}$/.test(h)).slice(0, 1000) : [];
+  if (!hs.length) return res.json({ people: [] });
+  const idx = await phoneIndex();
+  const seen = new Set(), people = [];
+  for (const h of hs) {
+    const p = idx.get(h);
+    if (p && p.id !== req.uid && !seen.has(p.id)) { seen.add(p.id); people.push({ id: p.id, name: p.name }); }
+  }
+  res.json({ people: people.slice(0, 200) });
+}));
 // END OF PART 10
