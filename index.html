@@ -92,6 +92,26 @@ div[style*="border-bottom:1px solid var(--ln)"]>.row{background-image:none}
 body,#app{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 #app button svg{display:block}
+/* Home: cleaner post cards */
+article[data-pid]{padding:16px 16px 14px !important;gap:12px !important;border-bottom:1px solid var(--ln) !important}
+article[data-pid] img{border-radius:14px}
+article[data-pid] button[data-a="like"],article[data-pid] button[data-a="repost"],article[data-pid] button[data-a="cmt"],article[data-pid] button[data-a="comments"]{font-weight:600;letter-spacing:.1px}
+article[data-pid] .mut{font-size:13px;line-height:1.4}
+
+/* Home: feel */
+@keyframes lkpop{0%{transform:scale(1)}35%{transform:scale(1.35)}60%{transform:scale(.92)}100%{transform:scale(1)}}
+article[data-pid] button[data-a="like"].pop span{display:inline-block;animation:lkpop .42s cubic-bezier(.2,.8,.3,1)}
+article[data-pid] button{transition:transform .12s ease,opacity .12s ease}
+article[data-pid] button:active{transform:scale(.94)}
+article[data-pid]{transition:background .2s ease}
+article[data-pid]:active{background:var(--sf)}
+
+/* Brand: the purple is used only where it means "this is you / this is active" */
+.tabs button{font-weight:600;color:var(--mu)}
+.tabs button.on{color:var(--ac);box-shadow:inset 0 -3px 0 var(--ac)}
+article[data-pid] button[data-a="like"][style*="var(--ink)"]{color:var(--ac) !important}
+article[data-pid] button[data-a="like"][style*="var(--ink)"] span{filter:none}
+
 </style>
 </head>
 <body>
@@ -881,7 +901,7 @@ async function checkPayment() {
   try { const j = await api("/boosts/verify", "POST", { reference: ref }); if (j.ok) { try { localStorage.removeItem("bv.pay"); } catch (e) {} DASH = null; toast("Boost is active"); } else toast("Payment not confirmed yet. It will be checked again next time you open the app."); }
   catch (e) { toast(e.message); }
 }
-// ---- Feed search, copy, seen ----
+  // ---- Feed search, copy, seen ----
 function audienceHtml() {
   const D = DASH || {};
   const li = (arr, empty) => (arr && arr.length ? arr.map((x) => '<button class="row" data-a="profopen" data-id="' + x.id + '">' + av(x.name, 40, false, x.id) + '<span class="t"><b>' + esc(x.name) + "</b></span></button>").join("") : '<p class="mut" style="padding:8px 16px">' + empty + "</p>");
@@ -899,7 +919,7 @@ function dashView() {
   else b = audienceHtml();
   return '<div class="ov"><div class="hd"><button class="ib" data-a="dashx" aria-label="Back">' + IC_BACK + '</button><h1>Dashboard</h1></div>' + tabs + '<div class="body">' + b + "</div></div>";
 }
-  function profView() {
+function profView() {
   const P = PROF; if (!P) return "";
   const cover = coverBg(P.cover);
   return '<div class="ov"><div class="hd"><button class="ib" data-a="profx" aria-label="Back">' + IC_BACK + '</button><h1 style="font-size:18px">' + esc(P.name) + '</h1></div><div class="body">' +
@@ -1642,8 +1662,8 @@ function statusPeople() {
   ST.filter((x) => x.user_id != U.id).forEach((x) => { if (!map.has(x.user_id)) map.set(x.user_id, { id: x.user_id, name: x.name, items: [] }); map.get(x.user_id).items.push(x); });
   const others = [...map.values()].map((p) => { p.items.sort((x, y) => new Date(x.created_at) - new Date(y.created_at)); p.unseen = p.items.some((x) => !x.seen); return p; });
   return { mine, others };
-  }
-  function statusTab() {
+}
+function statusTab() {
   const { mine, others } = statusPeople();
   const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - new Date(t)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
   const inside = (x) => x && x.has_image
@@ -2297,7 +2317,7 @@ app.addEventListener("click", async (e) => {
         const x = MS.find((z) => z.id == V.emid); if (x) { x.body = body; x._plain = t; x.edited = true; }
         V.ov = null; render(); return toast("Message updated");
       } catch (e) { return toast(e.message); }
-    }
+                  }
     if (a == "medit") { V.emid = m; V.ov = "editmsg"; V.sel = null; return render(); }
     if (a == "sgtme") { SGMORE = false; SGt = "me"; return render(); }
     if (a == "sgprofx") { SGMENU = false; V.ov = null; return render(); }
@@ -2519,6 +2539,13 @@ app.addEventListener("click", async (e) => {
     if (a == "logout") { if (!V.lo) { V.lo = true; return render(); } return doLogout(); }
   } catch (err) { toast(err.message); }
 });
+app.addEventListener("click", (e) => {
+  const lk = e.target.closest && e.target.closest('article[data-pid] button[data-a="like"]');
+  if (!lk) return;
+  lk.classList.remove("pop"); void lk.offsetWidth; lk.classList.add("pop");
+  setTimeout(() => lk.classList.remove("pop"), 500);
+}, true);
+
 app.addEventListener("input", (e) => {
   if (e.target.id == "cmtin") {
     e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
