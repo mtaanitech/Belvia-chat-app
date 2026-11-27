@@ -225,7 +225,8 @@ app.post("/api/photos", need, wrap(async (req, res) => {
     `SELECT u.id, u.photo FROM users u WHERE u.id = ANY($2::uuid[]) AND u.photo IS NOT NULL AND (
        u.id=$1 OR (
          NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker=u.id AND b.blocked=$1) OR (b.blocker=$1 AND b.blocked=u.id))
-         AND (u.photo_privacy='everyone' OR (u.photo_privacy='contacts' AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=u.id AND c.contact=$1)))))`,
+         AND ((NOT u.locked AND (u.photo_privacy='everyone' OR (u.photo_privacy='contacts' AND EXISTS (SELECT 1 FROM contacts c WHERE c.owner=u.id AND c.contact=$1))))
+              OR (u.locked AND EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=u.id)))))`,
     [req.uid, ids]);
   const photos = {}; for (const x of r.rows) photos[x.id] = x.photo;
   res.json({ photos });
