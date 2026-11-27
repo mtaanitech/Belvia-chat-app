@@ -57,7 +57,7 @@ app.post("/api/messages", need, wrap(async (req, res) => {
     [req.uid, req.body.to, body, reply, !!req.body.once && !req.body.fwd, !!req.body.fwd, hideFromThem, ttl ? new Date(Date.now() + ttl * 1000) : null]);
   await db.query("UPDATE chat_prefs SET archived=false WHERE (owner=$1 AND peer=$2) OR (owner=$2 AND peer=$1)", [req.uid, req.body.to]);
   if (webpush && !hideFromThem) // never include the message text
-    db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, req.body.to])
+    db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE COALESCE(NULLIF(u.name,''), 'Member') END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, req.body.to])
       .then((q) => notify(req.body.to, "msg", { title: (q.rows[0] && q.rows[0].n) || "Orivoclass", body: "New message", tag: "m" + req.uid, type: "msg", peer: req.uid })).catch(() => {});
   res.json({ id: r.rows[0].id });
 }));
