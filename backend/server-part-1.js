@@ -181,6 +181,23 @@ if (process.env.DEV_SHOW_CODE === "true") console.warn("WARNING: DEV_SHOW_CODE i
 const otpHash = (phone, code) => crypto.createHash("sha256").update(phone + ":" + code + ":" + JWT_SECRET).digest("hex");
 // Frostwood sends the SMS when FROST_API_KEY is set (FROST_SENDER = the approved sender name).
 // Kenyan numbers are sent in the local form (07..), as Frostwood's examples show.
+// MobiTech: used when MOBI_API_KEY is set. MOBI_URL = the full endpoint from MobiTech's docs.
+// MOBI_AUTH_HEADER = the header name MobiTech expects the key in (check the docs; default below is a guess).
+// MOBI_SENDER = the approved sender name. Every response is written to the Render Logs.
+async function sendViaMobi(to, text) {
+  const url = process.env.MOBI_URL;
+  if (!url) throw new Error("MOBI_URL is not set");
+  const headerName = process.env.MOBI_AUTH_HEADER || "h_api_key";
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", [headerName]: process.env.MOBI_API_KEY },
+    body: JSON.stringify({ mobile: to, response_type: "json", sender_name: process.env.MOBI_SENDER || "MOBI-TECH", service_id: 0, message: text }),
+  });
+  const raw = await r.text();
+  console.log("MobiTech response", r.status, raw.slice(0, 400));
+  if (!r.ok) throw new Error("MobiTech HTTP " + r.status + ": " + raw.slice(0, 160));
+  return raw;
+}
 // Checks what happened to one message after it was accepted (shown in the Render Logs).
 async function frostCheck(id) {
   try {
@@ -191,6 +208,7 @@ async function frostCheck(id) {
 }
 // Frostwood sends the SMS when FROST_API_KEY is set. Endpoint: POST /sms (sender_id optional when the account has one approved sender).
 async function sendSms(to, text) {
+  if (process.env.MOBI_API_KEY) return sendViaMobi(to, text);
   if (process.env.FROST_API_KEY) {
     const local = to.startsWith("+254") ? "0" + to.slice(4) : to;
     const r = await fetch("https://sms.frostwood.co.ke/api/v1/sms", {
@@ -227,8 +245,8 @@ app.post("/api/otp/send", authLimit, wrap(async (req, res) => {
   if ((await db.query("SELECT 1 FROM users WHERE phone=$1", [phone])).rowCount) return bad(res, "This number is already registered.", 409);
   const prev = (await db.query("SELECT last_sent FROM otps WHERE phone=$1", [phone])).rows[0];
   if (prev && Date.now() - new Date(prev.last_sent).getTime() < 30000) return bad(res, "Wait 30 seconds before asking for a new code.", 429);
-  const dev = process.env.DEV_SHOW_CODE === "true" && !process.env.FROST_API_KEY; // codes on screen only when no SMS service is set
-  if (!dev && !process.env.FROST_API_KEY && (!process.env.AT_USERNAME || !process.env.AT_API_KEY)) return bad(res, "SMS is not set up yet.", 503);
+  const dev = process.env.DEV_SHOW_CODE === "true" && !process.env.FROST_API_KEY && !process.env.MOBI_API_KEY; // codes on screen only when no SMS service is set
+  if (!dev && !process.env.FROST_API_KEY && !process.env.MOBI_API_KEY && (!process.env.AT_USERNAME || !process.env.AT_API_KEY)) return bad(res, "SMS is not set up yet.", 503);
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
   await db.query(
     `INSERT INTO otps(phone,code_hash,expires_at,attempts,last_sent) VALUES($1,$2,now()+interval '10 minutes',0,now())
