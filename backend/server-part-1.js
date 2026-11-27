@@ -196,6 +196,11 @@ async function sendViaMobi(to, text) {
   const raw = await r.text();
   console.log("MobiTech response", r.status, raw.slice(0, 400));
   if (!r.ok) throw new Error("MobiTech HTTP " + r.status + ": " + raw.slice(0, 160));
+  // MobiTech can answer HTTP 200 and still refuse the message; the status code inside the body decides.
+  let j = {}; try { j = JSON.parse(raw); } catch (e) {}
+  const code = String(j.status_code || "");
+  const ok = code === "1000" || code === "1001" || /success/i.test(String(j.status_desc || ""));
+  if (!ok) throw new Error("MobiTech " + (code || "error") + ": " + (j.status_desc || raw.slice(0, 120)));
   return raw;
 }
 // Checks what happened to one message after it was accepted (shown in the Render Logs).
