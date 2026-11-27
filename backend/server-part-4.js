@@ -165,7 +165,7 @@ app.post("/api/status/:id/view", need, wrap(async (req, res) => {
   if (s) {
     const ins = await db.query("INSERT INTO status_views(status_id,viewer_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING status_id", [s.id, req.uid]);
     if (ins.rowCount && webpush) {
-      const q = (await db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, s.user_id])).rows[0];
+      const q = (await db.query("SELECT COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE COALESCE(NULLIF(u.name,''), 'Member') END) AS n FROM users u LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE u.id=$1", [req.uid, s.user_id])).rows[0];
       notify(s.user_id, "views", { title: (q && q.n) || "Orivoclass", body: "viewed your status", tag: "v" + s.id });
     }
   }
@@ -174,7 +174,7 @@ app.post("/api/status/:id/view", need, wrap(async (req, res) => {
 app.get("/api/status/:id/views", need, wrap(async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return bad(res, "Invalid id.");
   if (!(await db.query("SELECT 1 FROM statuses WHERE id=$1 AND user_id=$2", [req.params.id, req.uid])).rowCount) return bad(res, "Not found.", 404);
-  const r = await db.query("SELECT u.id, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE u.phone END) AS name, v.viewed_at FROM status_views v JOIN users u ON u.id=v.viewer_id LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE v.status_id=$1 ORDER BY v.viewed_at DESC", [req.params.id, req.uid]);
+  const r = await db.query("SELECT u.id, COALESCE(NULLIF(c.alias,''), CASE WHEN c.contact IS NOT NULL THEN u.name ELSE COALESCE(NULLIF(u.name,''), 'Member') END) AS name, v.viewed_at FROM status_views v JOIN users u ON u.id=v.viewer_id LEFT JOIN contacts c ON c.owner=$2 AND c.contact=u.id WHERE v.status_id=$1 ORDER BY v.viewed_at DESC", [req.params.id, req.uid]);
   res.json({ views: r.rows });
 }));
 setInterval(() => db.query("DELETE FROM statuses WHERE created_at < now() - interval '2 days'").catch(() => {}), 3600000); // views go with them
