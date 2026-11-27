@@ -219,7 +219,7 @@ async function frostCheck(id) {
 }
 // Frostwood sends the SMS when FROST_API_KEY is set. Endpoint: POST /sms (sender_id optional when the account has one approved sender).
 async function sendSms(to, text) {
-  if (process.env.MOBI_API_KEY) return sendViaMobi(to, text);
+  if (process.env.MOBI_API_KEY && !process.env.FROST_API_KEY) return sendViaMobi(to, text); // Frostwood first when both are set
   if (process.env.FROST_API_KEY) {
     const local = to.startsWith("+254") ? "0" + to.slice(4) : to;
     const r = await fetch("https://sms.frostwood.co.ke/api/v1/sms", {
