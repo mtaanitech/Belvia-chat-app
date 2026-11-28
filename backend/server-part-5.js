@@ -16,6 +16,14 @@ VERIFIED BADGE: a subscription paid with Paystack from Me, for a set number of d
 RULES: no spam, scams, harassment, hate, or unwanted nude images. Report or block from the menu.
 `;
 const APP_UPDATES = [
+  "Find friends: pick people from your contacts. Your contacts are not stored.",
+  "Chats are Private (people you know) or Public (others). Message requests can be accepted or declined.",
+  "Saved posts: keep a post for later from its ⋮ menu, and find it on your Me page.",
+  "Notifications: choose which alerts reach your phone, such as likes, comments, tags and follows.",
+  "Recent searches for accounts, and one-tap emoji replies to a status.",
+  "Verified badge: a free trial, monthly renewal, or a prepaid 7 months or 1 year.",
+  "Singles: black screen, purple photo frames, and Message from a profile.",
+  "Me: quick buttons for the things you use most.",
   "Home: tap a post's picture or text to open its comments, read others' comments, and reply.",
   "Chats: the menu is a list now; Back closes it first. Hold a chat for 2 seconds to delete it.",
   "Edit your own posts and messages.",
@@ -26,6 +34,8 @@ const APP_UPDATES = [
   "Message keys backup with a PIN, and end-to-end encryption for one-to-one chats.",
   "Text size settings (Small, Medium, Large).",
 ];
+// The app reads this list for "Recent changes" on the About page.
+app.get("/api/updates", (req, res) => res.json({ updates: APP_UPDATES }));
 const AI_SYSTEM = process.env.AI_SYSTEM !== undefined ? process.env.AI_SYSTEM : `You are Orivoclass AI: a funny, warm, smart friend. Use emojis naturally. Reply in the person's language (Swahili, English or Sheng). Keep replies short unless detail is asked. Do not ask a question in every reply; ask only when you truly need to. Remember the conversation. Explain app steps clearly with the button names. Never reveal other people's data, passwords, PINs, recovery codes, keys, or server secrets; refuse kindly.
 ${APP_GUIDE}
 Recent app updates:
