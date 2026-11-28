@@ -646,9 +646,16 @@ app.post("/api/comments/:id/report", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 // ---- Notifications: likes, comments, replies, tags, follows, requests and message requests ----
+const PUSH_KIND = { like: "like", comment: "comment", reply: "comment", tag: "tag", follow: "follow", request: "follow" };
+const PUSH_TEXT = { like: "liked your post", comment: "commented on your post", reply: "replied to your comment", tag: "tagged you in a comment", follow: "started following you", request: "asked to follow you" };
 async function notifyRow(user, actor, kind, postId, commentId) {
   if (!user || !actor || user === actor) return;
   await db.query("INSERT INTO notifications(user_id,actor_id,kind,post_id,comment_id) VALUES($1,$2,$3,$4,$5)", [user, actor, kind, postId || null, commentId || null]);
+  const pk = PUSH_KIND[kind];
+  if (pk && webpush) {
+    const who = (await db.query("SELECT name FROM users WHERE id=$1", [actor])).rows[0];
+    notify(user, pk, { title: (who && who.name) || "Orivoclass", body: PUSH_TEXT[kind], tag: pk + actor, type: pk, peer: actor }).catch(() => {});
+  }
 }
 async function notifyPlain(user, actor, kind) {
   const dup = await db.query("SELECT 1 FROM notifications WHERE user_id=$1 AND actor_id=$2 AND kind=$3 AND NOT read LIMIT 1", [user, actor, kind]);
@@ -711,4 +718,36 @@ app.post("/api/contacts/match", need, wrap(async (req, res) => {
   }
   res.json({ people: people.slice(0, 200) });
 }));
+// ---- Saved posts: kept for later, only posts this person is allowed to see ----
+app.post("/api/posts/:id/save", need, wrap(async (req, res) => {
+  if (!numId(req.params.id)) return bad(res, "Invalid id.");
+  const on = req.body.on !== false;
+  if (on) await db.query("INSERT INTO saved_posts(user_id,post_id) SELECT $1, p.id FROM posts p WHERE p.id=$2 AND NOT p.removed ON CONFLICT DO NOTHING", [req.uid, req.params.id]);
+  else await db.query("DELETE FROM saved_posts WHERE user_id=$1 AND post_id=$2", [req.uid, req.params.id]);
+  res.json({ saved: on });
+}));
+app.get("/api/saved", need, wrap(async (req, res) => {
+  const r = await db.query(`SELECT ${POST_COLS} FROM posts p JOIN users u ON u.id=p.user_id JOIN saved_posts sp ON sp.post_id=p.id AND sp.user_id=$1
+    WHERE ${POST_OK} ORDER BY sp.created_at DESC LIMIT 100`, [req.uid]);
+  res.json({ posts: r.rows });
+}));
+// ---- Voice notes: the audio is encrypted on the phone; the server keeps only the encrypted bytes ----
+app.post("/api/voice", need, express.raw({ type: "application/octet-stream", limit: "400kb" }), wrap(async (req, res) => {
+  const to = String(req.query.to || "").toLowerCase();
+  if (!isId(to)) return bad(res, "Invalid id.");
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return bad(res, "Empty voice note.");
+  const gate = await requestGate(req.uid, to);
+  if (gate) return bad(res, gate, 403);
+  const id = crypto.randomUUID();
+  await db.query("INSERT INTO voice_notes(id,from_id,to_id,data) VALUES($1,$2,$3,$4)", [id, req.uid, to, req.body]);
+  res.json({ id });
+}));
+app.get("/api/voice/:id", need, wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, "Invalid id.", 404);
+  const r = (await db.query("SELECT data FROM voice_notes WHERE id=$1 AND (from_id=$2 OR to_id=$2)", [req.params.id.toLowerCase(), req.uid])).rows[0];
+  if (!r) return bad(res, "Voice note not found.", 404);
+  res.set("Content-Type", "application/octet-stream");
+  res.send(r.data);
+}));
+setInterval(() => db.query("DELETE FROM voice_notes WHERE created_at < now() - interval '30 days'").catch(() => {}), 3600000);
 // END OF PART 10
