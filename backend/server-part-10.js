@@ -750,4 +750,204 @@ app.get("/api/voice/:id", need, wrap(async (req, res) => {
   res.send(r.data);
 }));
 setInterval(() => db.query("DELETE FROM voice_notes WHERE created_at < now() - interval '30 days'").catch(() => {}), 3600000);
+// ---- Groups: anyone can start one. Posts rotate inside, with likes and comments. ----
+const cnum = (v) => (/^\d{1,12}$/.test(String(v)) ? Number(v) : 0);
+async function commRole(cid, uid) {
+  return (await db.query("SELECT role, muted FROM community_members WHERE community_id=$1 AND user_id=$2", [cid, uid])).rows[0] || null;
+}
+// Ranks: admin > co-admin > moderator > member. You can act only on people below you.
+const RANK = { admin: 3, coadmin: 2, mod: 1, member: 0 };
+const canAct = (actor, target) => !!actor && RANK[actor.role] >= 1 && RANK[actor.role] > RANK[target.role];
+async function commFind(cid) {
+  return (await db.query("SELECT id, owner, name, about, is_public, join_mode, members_count FROM communities WHERE id=$1 AND NOT removed", [cid])).rows[0] || null;
+}
+app.get("/api/communities", need, wrap(async (req, res) => {
+  const r = await db.query(`SELECT c.id, c.name, c.about, c.is_public, c.join_mode, c.members_count, m.role AS my_role
+    FROM communities c LEFT JOIN community_members m ON m.community_id=c.id AND m.user_id=$1
+    WHERE NOT c.removed AND (c.is_public OR m.user_id IS NOT NULL)
+    ORDER BY (m.user_id IS NOT NULL) DESC, c.members_count DESC, c.id DESC LIMIT 100`, [req.uid]);
+  res.json({ communities: r.rows });
+}));
+app.post("/api/communities", need, wrap(async (req, res) => {
+  const name = String(req.body.name || "").trim().slice(0, 60);
+  const about = String(req.body.about || "").trim().slice(0, 300);
+  if (name.length < 3) return bad(res, "Give the group a name (at least 3 letters).");
+  const mode = req.body.join_mode === "request" ? "request" : "direct";
+  const c = (await db.query("INSERT INTO communities(owner,name,about,is_public,join_mode,members_count) VALUES($1,$2,$3,$4,$5,1) RETURNING id", [req.uid, name, about, req.body.is_public !== false, mode])).rows[0];
+  await db.query("INSERT INTO community_members(community_id,user_id,role) VALUES($1,$2,'admin')", [c.id, req.uid]);
+  res.json({ id: c.id });
+}));
+app.get("/api/communities/:id", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), c = cid && (await commFind(cid));
+  if (!c) return bad(res, "Group not found.", 404);
+  const m = await commRole(cid, req.uid);
+  if (!c.is_public && !m) return bad(res, "Group not found.", 404);
+  const rq = (await db.query("SELECT 1 FROM community_requests WHERE community_id=$1 AND user_id=$2", [cid, req.uid])).rowCount > 0;
+  res.json({ community: c, me: m ? { role: m.role, muted: !!m.muted } : null, requested: rq });
+}));
+app.post("/api/communities/:id/join", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), c = cid && (await commFind(cid));
+  if (!c) return bad(res, "Group not found.", 404);
+  if (await commRole(cid, req.uid)) return res.json({ ok: true, joined: true });
+  if (!c.is_public && c.join_mode !== "request") return bad(res, "This group is private.", 403);
+  if (c.join_mode === "request") {
+    await db.query("INSERT INTO community_requests(community_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [cid, req.uid]);
+    return res.json({ ok: true, requested: true });
+  }
+  await db.query("INSERT INTO community_members(community_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT DO NOTHING", [cid, req.uid]);
+  await db.query("UPDATE communities SET members_count=(SELECT count(*) FROM community_members WHERE community_id=$1) WHERE id=$1", [cid]);
+  res.json({ ok: true, joined: true });
+}));
+app.post("/api/communities/:id/leave", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), c = cid && (await commFind(cid));
+  if (!c) return bad(res, "Group not found.", 404);
+  if (c.owner === req.uid) return bad(res, "The admin cannot leave their own group.");
+  await db.query("DELETE FROM community_members WHERE community_id=$1 AND user_id=$2", [cid, req.uid]);
+  await db.query("UPDATE communities SET members_count=(SELECT count(*) FROM community_members WHERE community_id=$1) WHERE id=$1", [cid]);
+  res.json({ ok: true });
+}));
+app.get("/api/communities/:id/requests", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), m = cid && (await commRole(cid, req.uid));
+  if (!m || m.role !== "admin") return bad(res, "Only the admin can see requests.", 403);
+  const r = await db.query("SELECT u.id, u.name FROM community_requests rq JOIN users u ON u.id=rq.user_id WHERE rq.community_id=$1 ORDER BY rq.created_at ASC LIMIT 100", [cid]);
+  res.json({ requests: r.rows });
+}));
+app.post("/api/communities/:id/requests/:uid/:act", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), m = cid && (await commRole(cid, req.uid));
+  if (!m || m.role !== "admin") return bad(res, "Only the admin can decide requests.", 403);
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  const who = req.params.uid.toLowerCase();
+  if (req.params.act === "accept") await db.query("INSERT INTO community_members(community_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT DO NOTHING", [cid, who]);
+  await db.query("DELETE FROM community_requests WHERE community_id=$1 AND user_id=$2", [cid, who]);
+  await db.query("UPDATE communities SET members_count=(SELECT count(*) FROM community_members WHERE community_id=$1) WHERE id=$1", [cid]);
+  res.json({ ok: true });
+}));
+app.get("/api/communities/:id/posts", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), c = cid && (await commFind(cid));
+  if (!c) return bad(res, "Group not found.", 404);
+  if (!c.is_public && !(await commRole(cid, req.uid))) return bad(res, "Group not found.", 404);
+  const off = Math.max(0, Number(req.query.offset) || 0);
+  const r = await db.query(`SELECT p.id, p.body, p.created_at, p.edited, u.id AS user_id, u.name,
+      (SELECT count(*)::int FROM community_likes l WHERE l.post_id=p.id) AS likes,
+      (SELECT count(*)::int FROM community_comments cm WHERE cm.post_id=p.id AND NOT cm.removed) AS comments,
+      EXISTS (SELECT 1 FROM community_likes l WHERE l.post_id=p.id AND l.user_id=$2) AS liked
+    FROM community_posts p JOIN users u ON u.id=p.user_id
+    WHERE p.community_id=$1 AND NOT p.removed
+    ORDER BY (p.user_id=$2) ASC, p.id DESC LIMIT 20 OFFSET $3`, [cid, req.uid, off]);
+  res.json({ posts: r.rows });
+}));
+app.post("/api/communities/:id/posts", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), m = cid && (await commRole(cid, req.uid));
+  if (!m) return bad(res, "Join the group first.", 403);
+  if (m.muted) return bad(res, "You are muted in this group.", 403);
+  const body = String(req.body.body || "").trim().slice(0, 1000);
+  if (!body) return bad(res, "Write something first.");
+  const r = await db.query("INSERT INTO community_posts(community_id,user_id,body) VALUES($1,$2,$3) RETURNING id", [cid, req.uid, body]);
+  res.json({ id: r.rows[0].id });
+}));
+app.post("/api/communities/:id/posts/:pid/like", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), pid = cnum(req.params.pid), m = cid && (await commRole(cid, req.uid));
+  if (!m) return bad(res, "Join the group first.", 403);
+  const on = req.body.on !== false;
+  if (on) await db.query("INSERT INTO community_likes(post_id,user_id) SELECT id, $2 FROM community_posts WHERE id=$1 AND community_id=$3 ON CONFLICT DO NOTHING", [pid, req.uid, cid]);
+  else await db.query("DELETE FROM community_likes WHERE post_id=$1 AND user_id=$2", [pid, req.uid]);
+  res.json({ liked: on });
+}));
+app.post("/api/communities/:id/posts/:pid/remove", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), pid = cnum(req.params.pid), m = cid && (await commRole(cid, req.uid));
+  const author = (await db.query("SELECT user_id FROM community_posts WHERE id=$1 AND community_id=$2", [pid, cid])).rows[0];
+  if (!author) return bad(res, "This post is no longer available.", 404);
+  const isMod = !!m && RANK[m.role] >= 1 && RANK[m.role] >= 1;
+  if (author.user_id !== req.uid && !(isMod && (await canRemoveAuthor(cid, m, author.user_id)))) return bad(res, "You cannot delete this post.", 403);
+  await db.query("UPDATE community_posts SET removed=true WHERE id=$1", [pid]);
+  res.json({ ok: true });
+}));
+app.get("/api/communities/:id/posts/:pid/comments", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), pid = cnum(req.params.pid), c = cid && (await commFind(cid));
+  if (!c) return bad(res, "Group not found.", 404);
+  if (!c.is_public && !(await commRole(cid, req.uid))) return bad(res, "Group not found.", 404);
+  const r = await db.query("SELECT cm.id, cm.body, cm.created_at, u.id AS user_id, u.name FROM community_comments cm JOIN users u ON u.id=cm.user_id WHERE cm.post_id=$1 AND NOT cm.removed ORDER BY cm.id ASC LIMIT 200", [pid]);
+  res.json({ comments: r.rows });
+}));
+app.post("/api/communities/:id/posts/:pid/comments", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), pid = cnum(req.params.pid), m = cid && (await commRole(cid, req.uid));
+  if (!m) return bad(res, "Join the group first.", 403);
+  if (m.muted) return bad(res, "You are muted in this group.", 403);
+  const body = String(req.body.body || "").trim().slice(0, 300);
+  if (!body) return bad(res, "Write a comment first.");
+  const ok = (await db.query("SELECT 1 FROM community_posts WHERE id=$1 AND community_id=$2 AND NOT removed", [pid, cid])).rowCount;
+  if (!ok) return bad(res, "This post is no longer available.", 404);
+  await db.query("INSERT INTO community_comments(post_id,user_id,body) VALUES($1,$2,$3)", [pid, req.uid, body]);
+  res.json({ ok: true });
+}));
+// A moderator can remove a post by someone with a lower rank (not an admin, co-admin or another moderator above them).
+async function canRemoveAuthor(cid, actor, authorId) {
+  const t = (await db.query("SELECT role FROM community_members WHERE community_id=$1 AND user_id=$2", [cid, authorId])).rows[0];
+  return !t ? true : canAct(actor, t);
+}
+// ---- Members and roles ----
+app.get("/api/communities/:id/members", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), m = cid && (await commRole(cid, req.uid));
+  if (!m) return bad(res, "Join the group first.", 403);
+  const r = await db.query(`SELECT u.id, u.name, cm.role, cm.muted FROM community_members cm JOIN users u ON u.id=cm.user_id
+    WHERE cm.community_id=$1 ORDER BY CASE cm.role WHEN 'admin' THEN 0 WHEN 'coadmin' THEN 1 WHEN 'mod' THEN 2 ELSE 3 END, u.name LIMIT 500`, [cid]);
+  res.json({ members: r.rows, me: { role: m.role, muted: !!m.muted, id: req.uid } });
+}));
+app.post("/api/communities/:id/members/:uid/:act", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), actor = cid && (await commRole(cid, req.uid));
+  if (!isId(req.params.uid)) return bad(res, "Invalid id.");
+  const who = req.params.uid.toLowerCase();
+  if (who === req.uid) return bad(res, "You cannot do this to yourself.");
+  const target = (await db.query("SELECT role FROM community_members WHERE community_id=$1 AND user_id=$2", [cid, who])).rows[0];
+  if (!target) return bad(res, "This person is not in the group.", 404);
+  if (!canAct(actor, target)) return bad(res, "You cannot do this to this person.", 403);
+  const act = req.params.act;
+  if (act === "mute") {
+    await db.query("UPDATE community_members SET muted=$3 WHERE community_id=$1 AND user_id=$2", [cid, who, req.body.on !== false]);
+  } else if (act === "role") {
+    const role = ["coadmin", "mod", "member"].includes(req.body.role) ? req.body.role : "member";
+    if (RANK[role] >= RANK[actor.role]) return bad(res, "You cannot give this role.", 403);
+    await db.query("UPDATE community_members SET role=$3 WHERE community_id=$1 AND user_id=$2", [cid, who, role]);
+  } else if (act === "remove") {
+    await db.query("DELETE FROM community_members WHERE community_id=$1 AND user_id=$2", [cid, who]);
+    await db.query("UPDATE communities SET members_count=(SELECT count(*) FROM community_members WHERE community_id=$1) WHERE id=$1", [cid]);
+  } else return bad(res, "Unknown action.");
+  res.json({ ok: true });
+}));
+// ---- Reports: members report a post; the admin and moderators decide ----
+app.post("/api/communities/:id/posts/:pid/report", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), pid = cnum(req.params.pid), m = cid && (await commRole(cid, req.uid));
+  if (!m) return bad(res, "Join the group first.", 403);
+  const reason = String(req.body.reason || "Other").slice(0, 120);
+  const ok = (await db.query("SELECT 1 FROM community_posts WHERE id=$1 AND community_id=$2 AND NOT removed", [pid, cid])).rowCount;
+  if (!ok) return bad(res, "This post is no longer available.", 404);
+  await db.query("INSERT INTO community_reports(community_id,post_id,reporter,reason) VALUES($1,$2,$3,$4)", [cid, pid, req.uid, reason]);
+  res.json({ ok: true });
+}));
+app.get("/api/communities/:id/reports", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), m = cid && (await commRole(cid, req.uid));
+  if (!m || RANK[m.role] < 1) return bad(res, "Only moderators can see reports.", 403);
+  const r = await db.query(`SELECT rp.id, rp.reason, rp.created_at, rp.post_id, p.body, u.name AS reporter
+    FROM community_reports rp JOIN community_posts p ON p.id=rp.post_id JOIN users u ON u.id=rp.reporter
+    WHERE rp.community_id=$1 AND NOT rp.handled ORDER BY rp.id DESC LIMIT 100`, [cid]);
+  res.json({ reports: r.rows });
+}));
+app.post("/api/communities/:id/reports/:rid/resolve", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), rid = cnum(req.params.rid), m = cid && (await commRole(cid, req.uid));
+  if (!m || RANK[m.role] < 1) return bad(res, "Only moderators can decide reports.", 403);
+  const rp = (await db.query("SELECT post_id FROM community_reports WHERE id=$1 AND community_id=$2", [rid, cid])).rows[0];
+  if (!rp) return bad(res, "Report not found.", 404);
+  if (req.body.remove === true) await db.query("UPDATE community_posts SET removed=true WHERE id=$1", [rp.post_id]);
+  await db.query("UPDATE community_reports SET handled=true WHERE id=$1", [rid]);
+  res.json({ ok: true });
+}));
+// Public groups suggested on Home: ones this person has not joined or asked to join.
+app.get("/api/communities-suggest", need, wrap(async (req, res) => {
+  const r = await db.query(`SELECT c.id, c.name, c.about, c.join_mode, c.members_count FROM communities c
+    WHERE c.is_public AND NOT c.removed
+      AND NOT EXISTS (SELECT 1 FROM community_members m WHERE m.community_id=c.id AND m.user_id=$1)
+      AND NOT EXISTS (SELECT 1 FROM community_requests rq WHERE rq.community_id=c.id AND rq.user_id=$1)
+    ORDER BY c.members_count DESC, random() LIMIT 6`, [req.uid]);
+  res.json({ groups: r.rows });
+}));
 // END OF PART 10
