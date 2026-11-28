@@ -16,6 +16,14 @@ VERIFIED BADGE: a subscription paid with Paystack from Me, for a set number of d
 RULES: no spam, scams, harassment, hate, or unwanted nude images. Report or block from the menu.
 `;
 const APP_UPDATES = [
+  "Version 0.6: voice notes in one-to-one chats. Hold the mic to record; the audio is encrypted on your phone.",
+  "Hold a message to copy just that message, in chats and with Orivoclass AI.",
+  "Chat header shows Online, or typing with a moving line. Orivoclass AI shows Online too.",
+  "Keyboard stays open while you chat, and the chat header stays at the top.",
+  "Screens remember where you left them. Going to another tab starts it from the top.",
+  "Your own messages always show their text on the phone you sent them from.",
+  "Posts rotate for everyone, so your own posts do not stay at the top for you.",
+  "Faster start: the main screen opens first, and the rest loads behind it.",
   "Find friends: pick people from your contacts. Your contacts are not stored.",
   "Chats are Private (people you know) or Public (others). Message requests can be accepted or declined.",
   "Saved posts: keep a post for later from its ⋮ menu, and find it on your Me page.",
