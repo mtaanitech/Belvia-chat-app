@@ -233,7 +233,7 @@ async function sendSms(to, text) {
       throw new Error("Frostwood " + (e.code || r.status) + ": " + (e.message || "request failed"));
     }
     const mid = j.messages && j.messages[0] && j.messages[0].id;
-    if (mid) setTimeout(() => frostCheck(mid), 20000);
+    if (mid) { setTimeout(() => frostCheck(mid), 20000); setTimeout(() => frostCheck(mid), 300000); } // the second check shows the final delivery report
     return; // 202 = accepted and queued
   }
   const { AT_USERNAME, AT_API_KEY } = process.env;
