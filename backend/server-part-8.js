@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS community_likes(post_id bigint NOT NULL REFERENCES co
 CREATE TABLE IF NOT EXISTS community_comments(id bigserial PRIMARY KEY, post_id bigint NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL, removed boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE community_members ADD COLUMN IF NOT EXISTS muted boolean NOT NULL DEFAULT false;
 CREATE TABLE IF NOT EXISTS community_reports(id bigserial PRIMARY KEY, community_id bigint NOT NULL REFERENCES communities(id) ON DELETE CASCADE, post_id bigint REFERENCES community_posts(id) ON DELETE CASCADE, reporter uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, reason text NOT NULL, handled boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE communities ADD COLUMN IF NOT EXISTS photo text;
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
