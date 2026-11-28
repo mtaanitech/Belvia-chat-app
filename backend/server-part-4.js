@@ -183,7 +183,7 @@ setInterval(() => db.query("DELETE FROM statuses WHERE created_at < now() - inte
 async function notify(uid, kind, payload) {
   if (!webpush) return;
   try {
-    const col = { msg: "n_msg", status: "n_status", views: "n_views", calls: "n_calls" }[kind];
+    const col = { msg: "n_msg", status: "n_status", views: "n_views", calls: "n_calls", like: "n_like", comment: "n_comment", tag: "n_tag", follow: "n_follow" }[kind];
     const u = (await db.query(`SELECT ${col} AS enabled FROM users WHERE id=$1`, [uid])).rows[0];
     if (!u || !u.enabled) return;
     const subs = (await db.query("SELECT endpoint, p256dh, auth FROM push_subs WHERE user_id=$1", [uid])).rows;
@@ -207,12 +207,13 @@ app.post("/api/push/unsubscribe", need, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 app.get("/api/notifications", need, wrap(async (req, res) => {
-  const u = (await db.query("SELECT n_msg, n_status, n_views, n_calls FROM users WHERE id=$1", [req.uid])).rows[0];
+  const u = (await db.query("SELECT n_msg, n_status, n_views, n_calls, n_like, n_comment, n_tag, n_follow FROM users WHERE id=$1", [req.uid])).rows[0];
   const d = req.sid ? (await db.query("SELECT 1 FROM push_subs WHERE session_id=$1", [req.sid])).rowCount > 0 : false;
-  res.json({ available: !!webpush, msg: u.n_msg, status: u.n_status, views: u.n_views, calls: u.n_calls, this_device: d });
+  res.json({ available: !!webpush, msg: u.n_msg, status: u.n_status, views: u.n_views, calls: u.n_calls, like: u.n_like, comment: u.n_comment, tag: u.n_tag, follow: u.n_follow, this_device: d });
 }));
 app.put("/api/notifications", need, wrap(async (req, res) => {
-  await db.query("UPDATE users SET n_msg=$2, n_status=$3, n_views=$4, n_calls=$5 WHERE id=$1", [req.uid, req.body.msg === true, req.body.status === true, req.body.views === true, req.body.calls === true]);
+  await db.query("UPDATE users SET n_msg=$2, n_status=$3, n_views=$4, n_calls=$5, n_like=$6, n_comment=$7, n_tag=$8, n_follow=$9 WHERE id=$1",
+    [req.uid, req.body.msg === true, req.body.status === true, req.body.views === true, req.body.calls === true, req.body.like === true, req.body.comment === true, req.body.tag === true, req.body.follow === true]);
   res.json({ ok: true });
 }));
 
