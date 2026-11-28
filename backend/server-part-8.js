@@ -95,6 +95,12 @@ ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS edited boolean NOT NULL DEFAU
 CREATE TABLE IF NOT EXISTS notifications(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, actor_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind text NOT NULL, post_id bigint, comment_id bigint, read boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS notif_user ON notifications(user_id, id DESC);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS find_by_phone boolean NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS saved_posts(user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, post_id bigint NOT NULL REFERENCES posts(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,post_id));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS n_like boolean NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS n_comment boolean NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS n_tag boolean NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS n_follow boolean NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS voice_notes(id uuid PRIMARY KEY, from_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, to_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, data bytea NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS ai_messages(id bigserial PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, role text NOT NULL, content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS ai_user ON ai_messages(user_id, id);
 ALTER TABLE statuses ADD COLUMN IF NOT EXISTS image text;
