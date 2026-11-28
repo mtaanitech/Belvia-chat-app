@@ -49,7 +49,7 @@ app.get("/api/feed", need, wrap(async (req, res) => {
   if (following) {
     const r = await db.query(`SELECT ${POST_COLS} FROM posts p JOIN users u ON u.id=p.user_id
       WHERE ${POST_OK} AND (p.user_id=$1 OR EXISTS (SELECT 1 FROM follows f WHERE f.follower=$1 AND f.followee=p.user_id))
-      ORDER BY p.id DESC LIMIT 15 OFFSET $2`, [req.uid, off]);
+      ORDER BY (p.user_id=$1) ASC, p.id DESC LIMIT 15 OFFSET $2`, [req.uid, off]);
     return res.json({ posts: r.rows });
   }
   // For you: a mix of the strongest posts (of today and of the days before) and the newest ones.
@@ -59,8 +59,8 @@ app.get("/api/feed", need, wrap(async (req, res) => {
   const base = `SELECT ${POST_COLS} FROM posts p JOIN users u ON u.id=p.user_id WHERE ${POST_OK}`;
   const unseen = `AND NOT EXISTS (SELECT 1 FROM post_views v WHERE v.post_id=p.id AND v.viewer=$1)`;
   const [top, fresh, old] = await Promise.all([
-    db.query(`${base} ${unseen} ORDER BY ${score} DESC, p.id DESC LIMIT 300`, [req.uid]),
-    db.query(`${base} ${unseen} ORDER BY p.id DESC LIMIT 300`, [req.uid]),
+    db.query(`${base} AND p.user_id<>$1 ${unseen} ORDER BY ${score} DESC, p.id DESC LIMIT 300`, [req.uid]),
+    db.query(`${base} AND p.user_id<>$1 ${unseen} ORDER BY p.id DESC LIMIT 300`, [req.uid]),
     db.query(`${base} ORDER BY ${score} DESC, p.id DESC LIMIT 300`, [req.uid])]);
   const seen = new Set(), list = [];
   const add = (x) => { if (x && !seen.has(x.id)) { seen.add(x.id); list.push(x); } };
