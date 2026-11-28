@@ -759,10 +759,10 @@ async function commRole(cid, uid) {
 const RANK = { admin: 3, coadmin: 2, mod: 1, member: 0 };
 const canAct = (actor, target) => !!actor && RANK[actor.role] >= 1 && RANK[actor.role] > RANK[target.role];
 async function commFind(cid) {
-  return (await db.query("SELECT id, owner, name, about, is_public, join_mode, members_count FROM communities WHERE id=$1 AND NOT removed", [cid])).rows[0] || null;
+  return (await db.query("SELECT id, owner, name, about, is_public, join_mode, members_count, photo FROM communities WHERE id=$1 AND NOT removed", [cid])).rows[0] || null;
 }
 app.get("/api/communities", need, wrap(async (req, res) => {
-  const r = await db.query(`SELECT c.id, c.name, c.about, c.is_public, c.join_mode, c.members_count, m.role AS my_role
+  const r = await db.query(`SELECT c.id, c.name, c.about, c.is_public, c.join_mode, c.members_count, c.photo, m.role AS my_role
     FROM communities c LEFT JOIN community_members m ON m.community_id=c.id AND m.user_id=$1
     WHERE NOT c.removed AND (c.is_public OR m.user_id IS NOT NULL)
     ORDER BY (m.user_id IS NOT NULL) DESC, c.members_count DESC, c.id DESC LIMIT 100`, [req.uid]);
@@ -949,5 +949,24 @@ app.get("/api/communities-suggest", need, wrap(async (req, res) => {
       AND NOT EXISTS (SELECT 1 FROM community_requests rq WHERE rq.community_id=c.id AND rq.user_id=$1)
     ORDER BY c.members_count DESC, random() LIMIT 6`, [req.uid]);
   res.json({ groups: r.rows });
+}));
+// Group settings: the admin and co-admins change the name, about, privacy, how people join, and the group photo.
+app.post("/api/communities/:id/settings", need, wrap(async (req, res) => {
+  const cid = cnum(req.params.id), m = cid && (await commRole(cid, req.uid));
+  if (!m || RANK[m.role] < 2) return bad(res, "Only the admin or a co-admin can change the group.", 403);
+  const name = req.body.name != null ? String(req.body.name).trim().slice(0, 60) : null;
+  if (name !== null && name.length < 3) return bad(res, "Give the group a name (at least 3 letters).");
+  const about = req.body.about != null ? String(req.body.about).trim().slice(0, 300) : null;
+  const pub = typeof req.body.is_public === "boolean" ? req.body.is_public : null;
+  const mode = req.body.join_mode === "request" ? "request" : (req.body.join_mode === "direct" ? "direct" : null);
+  let photo = undefined;
+  if (req.body.photo === null) photo = null;
+  else if (typeof req.body.photo === "string" && req.body.photo) {
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(req.body.photo) || req.body.photo.length > 300000) return bad(res, "Choose a smaller picture (JPG, PNG or WEBP).");
+    photo = req.body.photo;
+  }
+  await db.query("UPDATE communities SET name=COALESCE($2,name), about=COALESCE($3,about), is_public=COALESCE($4,is_public), join_mode=COALESCE($5,join_mode), photo=CASE WHEN $6::boolean THEN $7 ELSE photo END WHERE id=$1",
+    [cid, name, about, pub, mode, photo !== undefined, photo === undefined ? null : photo]);
+  res.json({ ok: true });
 }));
 // END OF PART 10
